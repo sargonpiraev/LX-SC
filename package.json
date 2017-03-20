@@ -1,0 +1,30 @@
+{
+  "name": "lx-sc",
+  "version": "0.0.1",
+  "description": "ChronoBank Labor-X Smart Contracts",
+  "scripts": {
+    "test": "truffle test",
+    "compile": "truffle compile",
+    "truffle": "truffle",
+    "testrpc": "testrpc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChronoBank/LX-SC.git"
+  },
+  "keywords": [
+    "ethereum",
+    "solidity",
+    "truffle"
+  ],
+  "author": "ChronoBank",
+  "license": "LGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ChronoBank/LX-SC/issues"
+  },
+  "homepage": "https://github.com/ChronoBank/LX-SC#readme",
+  "dependencies": {
+    "bluebird": "^3.5.0",
+    "truffle": "^3.1.2"
+  }
+}
