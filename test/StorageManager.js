@@ -20,12 +20,38 @@ contract('StorageManager', function(accounts) {
 		.then(result => assert.equal(result, false));
 	});
 
-	it('should give access', () => {
+	it('should emit AccessGiven event after access is given', () => {
 		const address = '0xffffffffffffffffffffffffffffffffffffffff';
 		const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
 		return storageManager.giveAccess(address, role)
-		.then(result => assert.equal(result, true));
+		.then(result => {
+			for (var i = 0; i < result.logs.length; i++) {
+   				var log = result.logs[i];
+
+    			if (log.event == "AccessGiven") {
+      				return true;
+    			}
+  			}
+  			return false;
+		}).then(eventFound => assert.equal(eventFound, true, "AccessGiven event hasn't been emmited."));
 	});
+
+	it('should emit AccessBlocked event after access is blocked', () => {
+		const address = '0xffffffffffffffffffffffffffffffffffffffff';
+		const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+		return storageManager.blockAccess(address, role)
+		.then(result => {
+			for (var i = 0; i < result.logs.length; i++) {
+   				var log = result.logs[i];
+
+    			if (log.event == "AccessBlocked") {
+      				return true;
+    			}
+  			}
+  			return false;
+		}).then(eventFound => assert.equal(eventFound, true, "AccessBlocked event hasn't been emmited."));
+	});
+
 
 	it('should be accessible', () => {
 		const address = '0xffffffffffffffffffffffffffffffffffffffff';
@@ -35,14 +61,15 @@ contract('StorageManager', function(accounts) {
 		.then(result => assert.equal(result, true));
 	});
 
-	it('should block access', () => {
+	it('should not be accessible', () => {
 		const address = '0xffffffffffffffffffffffffffffffffffffffff';
 		const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
 		return storageManager.blockAccess(address, role)
+		.then(() => storageManager.isAllowed(address, role))
 		.then(result => assert.equal(result, false));
 	});
 
-	it('should not be accessible', () => {
+	it('should block allowed access', () => {
 		const address = '0xffffffffffffffffffffffffffffffffffffffff';
 		const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
 		return storageManager.giveAccess(address, role)
@@ -51,5 +78,4 @@ contract('StorageManager', function(accounts) {
 		.then(result => assert.equal(result, false));
 	});
 
-	
 });
