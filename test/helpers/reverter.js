@@ -4,8 +4,8 @@ function Reverter(web3) {
   this.revert = () => {
     return new Promise((resolve, reject) => {
       web3.currentProvider.sendAsync({
-        jsonrpc: "2.0",
-        method: "evm_revert",
+        jsonrpc: '2.0',
+        method: 'evm_revert',
         id: new Date().getTime(),
         params: [snapshotId]
       }, (err, result) => {
@@ -20,8 +20,8 @@ function Reverter(web3) {
   this.snapshot = () => {
     return new Promise((resolve, reject) => {
       web3.currentProvider.sendAsync({
-        jsonrpc: "2.0",
-        method: "evm_snapshot",
+        jsonrpc: '2.0',
+        method: 'evm_snapshot',
         id: new Date().getTime()
       }, (err, result) => {
         if (err) {
