@@ -1,8 +1,10 @@
 module.exports = assert => ({
-  equal: actual => {
-    return expected => {
+  equal: expected => {
+    return actual => {
       assert.equal(actual.valueOf(), expected.valueOf());
       return true;
     };
-  }
+  },
+  isTrue: assert.isTrue,
+  isFalse: assert.isFalse,
 });

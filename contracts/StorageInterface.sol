@@ -61,36 +61,36 @@ library StorageInterface {
         self.id = _id;
     }
 
-    function set(Config storage self, UInt storage item, uint _value) internal {
-        self.store.setUInt(self.crate, item.id, _value);
+    function set(Config storage self, UInt storage item, uint _value) internal returns(bool) {
+        return self.store.setUInt(self.crate, item.id, _value);
     }
 
-    function set(Config storage self, Int storage item, int _value) internal {
-        self.store.setInt(self.crate, item.id, _value);
+    function set(Config storage self, Int storage item, int _value) internal returns(bool) {
+        return self.store.setInt(self.crate, item.id, _value);
     }
 
-    function set(Config storage self, Address storage item, address _value) internal {
-        self.store.setAddress(self.crate, item.id, _value);
+    function set(Config storage self, Address storage item, address _value) internal returns(bool) {
+        return self.store.setAddress(self.crate, item.id, _value);
     }
 
-    function set(Config storage self, Bool storage item, bool _value) internal {
-        self.store.setBool(self.crate, item.id, _value);
+    function set(Config storage self, Bool storage item, bool _value) internal returns(bool) {
+        return self.store.setBool(self.crate, item.id, _value);
     }
 
-    function set(Config storage self, Bytes32 storage item, bytes32 _value) internal {
-        self.store.setBytes32(self.crate, item.id, _value);
+    function set(Config storage self, Bytes32 storage item, bytes32 _value) internal returns(bool) {
+        return self.store.setBytes32(self.crate, item.id, _value);
     }
 
-    function set(Config storage self, Mapping storage item, bytes32 _key, bytes32 _value) internal {
-        self.store.setBytes32(self.crate, sha3(item.id, _key), _value);
+    function set(Config storage self, Mapping storage item, bytes32 _key, bytes32 _value) internal returns(bool) {
+        return self.store.setBytes32(self.crate, sha3(item.id, _key), _value);
     }
 
-    function set(Config storage self, Mapping storage item, bytes32 _key, bytes32 _key2, bytes32 _value) internal {
-        self.store.setBytes32(self.crate, sha3(item.id, _key, _key2), _value);
+    function set(Config storage self, Mapping storage item, bytes32 _key, bytes32 _key2, bytes32 _value) internal returns(bool) {
+        return self.store.setBytes32(self.crate, sha3(item.id, _key, _key2), _value);
     }
 
-    function set(Config storage self, Mapping storage item, bytes32 _key, bytes32 _key2, bytes32 _key3, bytes32 _value) internal {
-        self.store.setBytes32(self.crate, sha3(item.id, _key, _key2, _key3), _value);
+    function set(Config storage self, Mapping storage item, bytes32 _key, bytes32 _key2, bytes32 _key3, bytes32 _value) internal returns(bool) {
+        return self.store.setBytes32(self.crate, sha3(item.id, _key, _key2, _key3), _value);
     }
 
     function get(Config storage self, UInt storage item) internal constant returns(uint) {
@@ -123,5 +123,13 @@ library StorageInterface {
 
     function get(Config storage self, Mapping storage item, bytes32 _key, bytes32 _key2, bytes32 _key3) internal constant returns(bytes32) {
         return self.store.getBytes32(self.crate, sha3(item.id, _key, _key2, _key3));
+    }
+
+    function toBool(bytes32 _value) constant returns(bool) {
+        return _value != bytes32(0);
+    }
+
+    function toBytes32(bool _value) constant returns(bytes32) {
+        return bytes32(_value ? 1 : 0);
     }
 }
