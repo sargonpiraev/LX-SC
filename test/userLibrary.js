@@ -2,29 +2,29 @@ const Reverter = require('./helpers/reverter');
 const Asserts = require('./helpers/asserts');
 const Storage = artifacts.require('./Storage.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
-const UserManager = artifacts.require('./UserManager.sol');
+const UserLibrary = artifacts.require('./UserLibrary.sol');
 const EventsHistory = artifacts.require('./EventsHistory.sol');
 
-contract('UserManager', function(accounts) {
+contract('UserLibrary', function(accounts) {
   const reverter = new Reverter(web3);
   afterEach('revert', reverter.revert);
 
   const asserts = Asserts(assert);
   let storage;
   let eventsHistory;
-  let userManager;
+  let userLibrary;
 
   before('setup', () => {
     return Storage.deployed()
     .then(instance => storage = instance)
     .then(() => ManagerMock.deployed())
     .then(instance => storage.setManager(instance.address))
-    .then(() => UserManager.deployed())
-    .then(instance => userManager = instance)
+    .then(() => UserLibrary.deployed())
+    .then(instance => userLibrary = instance)
     .then(() => EventsHistory.deployed())
     .then(instance => eventsHistory = instance)
-    .then(() => userManager.setupEventsHistory(eventsHistory.address))
-    .then(() => eventsHistory.addVersion(userManager.address, '_', '_'))
+    .then(() => userLibrary.setupEventsHistory(eventsHistory.address))
+    .then(() => eventsHistory.addVersion(userLibrary.address, '_', '_'))
     .then(reverter.snapshot);
   });
 
@@ -32,16 +32,30 @@ contract('UserManager', function(accounts) {
     const user = accounts[1];
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => userManager.addRole(user, role))
-    .then(() => userManager.hasRole(user, role))
+    .then(() => userLibrary.addRole(user, role))
+    .then(() => userLibrary.hasRole(user, role))
     .then(asserts.isTrue);
+  });
+
+  it('should emit AddRole event in EventsHistory', () => {
+    const user = accounts[1];
+    const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => userLibrary.addRole(user, role))
+    .then(result => {
+      assert.equal(result.logs.length, 1);
+      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].event, 'AddRole');
+      assert.equal(result.logs[0].args.user, user);
+      assert.equal(result.logs[0].args.role, role);
+    });
   });
 
   it('should not have user role by default', () => {
     const user = accounts[1];
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => userManager.hasRole(user, role))
+    .then(() => userLibrary.hasRole(user, role))
     .then(asserts.isFalse);
   });
 
@@ -49,10 +63,25 @@ contract('UserManager', function(accounts) {
     const user = accounts[1];
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => userManager.addRole(user, role))
-    .then(() => userManager.removeRole(user, role))
-    .then(() => userManager.hasRole(user, role))
+    .then(() => userLibrary.addRole(user, role))
+    .then(() => userLibrary.removeRole(user, role))
+    .then(() => userLibrary.hasRole(user, role))
     .then(asserts.isFalse);
+  });
+
+  it('should emit RemoveRole event in EventsHistory', () => {
+    const user = accounts[1];
+    const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => userLibrary.addRole(user, role))
+    .then(() => userLibrary.removeRole(user, role))
+    .then(result => {
+      assert.equal(result.logs.length, 1);
+      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].event, 'RemoveRole');
+      assert.equal(result.logs[0].args.user, user);
+      assert.equal(result.logs[0].args.role, role);
+    });
   });
 
   it('should not add user role if not allowed', () => {
@@ -60,8 +89,8 @@ contract('UserManager', function(accounts) {
     const nonOwner = accounts[2];
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => userManager.addRole(user, role, {from: nonOwner}))
-    .then(() => userManager.hasRole(user, role))
+    .then(() => userLibrary.addRole(user, role, {from: nonOwner}))
+    .then(() => userLibrary.hasRole(user, role))
     .then(asserts.isFalse);
   });
 
@@ -70,9 +99,9 @@ contract('UserManager', function(accounts) {
     const nonOwner = accounts[2];
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => userManager.addRole(user, role))
-    .then(() => userManager.removeRole(user, role, {from: nonOwner}))
-    .then(() => userManager.hasRole(user, role))
+    .then(() => userLibrary.addRole(user, role))
+    .then(() => userLibrary.removeRole(user, role, {from: nonOwner}))
+    .then(() => userLibrary.hasRole(user, role))
     .then(asserts.isTrue);
   });
 
@@ -81,11 +110,11 @@ contract('UserManager', function(accounts) {
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const role2 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     return Promise.resolve()
-    .then(() => userManager.addRole(user, role))
-    .then(() => userManager.addRole(user, role2))
-    .then(() => userManager.hasRole(user, role))
+    .then(() => userLibrary.addRole(user, role))
+    .then(() => userLibrary.addRole(user, role2))
+    .then(() => userLibrary.hasRole(user, role))
     .then(asserts.isTrue)
-    .then(() => userManager.hasRole(user, role2))
+    .then(() => userLibrary.hasRole(user, role2))
     .then(asserts.isTrue);
   });
 
@@ -95,15 +124,15 @@ contract('UserManager', function(accounts) {
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const role2 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     return Promise.resolve()
-    .then(() => userManager.addRole(user, role))
-    .then(() => userManager.addRole(user2, role2))
-    .then(() => userManager.hasRole(user2, role))
+    .then(() => userLibrary.addRole(user, role))
+    .then(() => userLibrary.addRole(user2, role2))
+    .then(() => userLibrary.hasRole(user2, role))
     .then(asserts.isFalse)
-    .then(() => userManager.hasRole(user, role2))
+    .then(() => userLibrary.hasRole(user, role2))
     .then(asserts.isFalse)
-    .then(() => userManager.hasRole(user, role))
+    .then(() => userLibrary.hasRole(user, role))
     .then(asserts.isTrue)
-    .then(() => userManager.hasRole(user2, role2))
+    .then(() => userLibrary.hasRole(user2, role2))
     .then(asserts.isTrue);
   });
 });

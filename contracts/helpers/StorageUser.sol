@@ -1,18 +1,9 @@
 pragma solidity 0.4.8;
 
 import '../StorageInterface.sol';
+import '../UsingStorage.sol';
 
-contract StorageUser {
-    using StorageInterface for StorageInterface.Config;
-    using StorageInterface for StorageInterface.UInt;
-    using StorageInterface for StorageInterface.Int;
-    using StorageInterface for StorageInterface.Address;
-    using StorageInterface for StorageInterface.Bool;
-    using StorageInterface for StorageInterface.Bytes32;
-    using StorageInterface for StorageInterface.Mapping;
-    
-    StorageInterface.Config store;
-    
+contract StorageUser is UsingStorage {
     StorageInterface.UInt uintVar;
     StorageInterface.Int intVar;
     StorageInterface.Address addressVar;
@@ -20,8 +11,7 @@ contract StorageUser {
     StorageInterface.Bytes32 bytes32Var;
     StorageInterface.Mapping mappingVar;
     
-    function StorageUser(Storage _store, bytes32 _crate) {
-        store.init(_store, _crate);
+    function StorageUser(Storage _store, bytes32 _crate) UsingStorage(_store, _crate) {
         uintVar.init('uintVar');
         intVar.init('intVar');
         addressVar.init('addressVar');

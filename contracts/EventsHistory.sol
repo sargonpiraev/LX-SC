@@ -6,16 +6,13 @@ import "./Owned.sol";
  * @title Events History universal contract.
  *
  * Contract serves as an Events storage and version history for a particular contract type.
- * Events appear on this contract address but their definitions provided by other contracts/libraries.
+ * Events appear on this contract address but their definitions provided by calling contracts.
  * Version info is provided for historical and informational purposes.
  *
  * Note: all the non constant functions return false instead of throwing in case if state change
  * didn't happen yet.
  */
 contract EventsHistory is Owned {
-    // Event emitter signature to address with Event definiton mapping.
-    mapping(bytes4 => address) public emitters;
-
     // Calling contract address to version mapping.
     mapping(address => uint) public versions;
 
@@ -31,25 +28,6 @@ contract EventsHistory is Owned {
         address caller;    // Address of this version calling contract.
         string name;       // Version name, informative.
         string changelog;  // Version changelog, informative.
-    }
-
-    /**
-     * Assign emitter address to a specified emit function signature.
-     *
-     * Can be set only once for each signature, and only by contract owner.
-     * Caller contract should be sure that emitter for a particular signature will never change.
-     *
-     * @param _eventSignature signature of the event emitting function.
-     * @param _emitter address with Event definition.
-     *
-     * @return success.
-     */
-    function addEmitter(bytes4 _eventSignature, address _emitter) onlyContractOwner() returns(bool) {
-        if (emitters[_eventSignature] != 0x0) {
-            return false;
-        }
-        emitters[_eventSignature] = _emitter;
-        return true;
     }
 
     /**
@@ -95,7 +73,7 @@ contract EventsHistory is Owned {
         // Internal Out Of Gas/Throw: revert this transaction too;
         // Call Stack Depth Limit reached: n/a after HF 4;
         // Recursive Call: safe, all changes already made.
-        if (!emitters[msg.sig].delegatecall(msg.data)) {
+        if (!msg.sender.delegatecall(msg.data)) {
             throw;
         }
     }

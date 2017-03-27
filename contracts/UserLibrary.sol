@@ -1,38 +1,24 @@
 pragma solidity 0.4.8;
 
-import './StorageInterface.sol';
 import './Owned.sol';
+import './Emitter.sol';
 
-contract Emitter {
-    function emitAddRole(address _user, bytes32 _role);
-    function emitRemoveRole(address _user, bytes32 _role);
-}
-
-contract UserManager is Owned {
-    using StorageInterface for StorageInterface.Config;
-    using StorageInterface for StorageInterface.Address;
-    using StorageInterface for StorageInterface.Mapping;
-    
-    StorageInterface.Config store;
-    
-    StorageInterface.Address eventsHistory;
+contract UserLibrary is Emitter, Owned {
     StorageInterface.Mapping roles;
     
-    function UserManager(Storage _store, bytes32 _crate) {
-        store.init(_store, _crate);
-        eventsHistory.init('eventsHistory');
+    function UserLibrary(Storage _store, bytes32 _crate) Emitter(_store, _crate) {
         roles.init('roles');
     }
 
     function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
-        if (store.get(eventsHistory) != 0x0) {
+        if (getEventsHistory() != 0x0) {
             return false;
         }
-        return store.set(eventsHistory, _eventsHistory);
+        return _setEventsHistory(_eventsHistory);
     }
 
     function hasRole(address _user, bytes32 _role) constant returns(bool) {
-        return StorageInterface.toBool(store.get(roles, bytes32(_user), _role));
+        return store.get(roles, bytes32(_user), _role).toBool();
     }
 
     function addRole(address _user, bytes32 _role) returns(bool) {
@@ -52,14 +38,25 @@ contract UserManager is Owned {
     }
 
     function _setRole(address _user, bytes32 _role, bool _status) internal onlyContractOwner() returns(bool) {
-        return store.set(roles, bytes32(_user), _role, StorageInterface.toBytes32(_status));
+        return store.set(roles, bytes32(_user), _role, _status.toBytes32());
     }
 
     function _emitAddRole(address _user, bytes32 _role) internal {
-        Emitter(store.get(eventsHistory)).emitAddRole(_user, _role);
+        UserLibrary(getEventsHistory()).emitAddRole(_user, _role);
     }
 
     function _emitRemoveRole(address _user, bytes32 _role) internal {
-        Emitter(store.get(eventsHistory)).emitRemoveRole(_user, _role);
+        UserLibrary(getEventsHistory()).emitRemoveRole(_user, _role);
+    }
+
+    event AddRole(address indexed user, bytes32 indexed role, uint version);
+    event RemoveRole(address indexed user, bytes32 indexed role, uint version);
+    
+    function emitAddRole(address _user, bytes32 _role) {
+        AddRole(_user, _role, _getVersion());
+    }
+
+    function emitRemoveRole(address _user, bytes32 _role) {
+        RemoveRole(_user, _role, _getVersion());
     }
 }
