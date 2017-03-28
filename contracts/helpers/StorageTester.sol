@@ -1,23 +1,25 @@
 pragma solidity 0.4.8;
 
 import '../StorageInterface.sol';
-import '../UsingStorage.sol';
+import '../StorageUser.sol';
 
-contract StorageUser is UsingStorage {
+contract StorageTester is StorageUser {
     StorageInterface.UInt uintVar;
     StorageInterface.Int intVar;
     StorageInterface.Address addressVar;
     StorageInterface.Bool boolVar;
     StorageInterface.Bytes32 bytes32Var;
     StorageInterface.Mapping mappingVar;
+    StorageInterface.Set setVar;
     
-    function StorageUser(Storage _store, bytes32 _crate) UsingStorage(_store, _crate) {
+    function StorageTester(Storage _store, bytes32 _crate) StorageUser(_store, _crate) {
         uintVar.init('uintVar');
         intVar.init('intVar');
         addressVar.init('addressVar');
         boolVar.init('boolVar');
         bytes32Var.init('bytes32Var');
         mappingVar.init('mappingVar');
+        setVar.init('setVar');
     }
 
     function setUInt(uint _value) {
@@ -66,5 +68,25 @@ contract StorageUser is UsingStorage {
 
     function getMapping(bytes32 _key) constant returns(bytes32) {
         return store.get(mappingVar, _key);
+    }
+
+    function addSet(bytes32 _value) {
+        store.add(setVar, _value);
+    }
+
+    function removeSet(bytes32 _value) {
+        store.remove(setVar, _value);
+    }
+
+    function includeSet(bytes32 _value) constant returns(bool) {
+        return store.include(setVar, _value);
+    }
+
+    function countSet() constant returns(uint) {
+        return store.count(setVar);
+    }
+
+    function getSet() constant returns(bytes32[]) {
+        return store.get(setVar);
     }
 }

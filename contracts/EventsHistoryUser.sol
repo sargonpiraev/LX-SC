@@ -1,22 +1,22 @@
 pragma solidity 0.4.8;
 
-import './UsingStorage.sol';
+import './StorageUser.sol';
 
 contract EventsHistoryInterface {
     function versions(address _address) constant returns(uint);
 }
 
 /**
- * @title UserManager Emitter.
+ * @title General EventsHistory user.
  *
  * Contains all the original event emitting function definitions and events.
  * In case of new events needed later, additional emitters can be developed.
  * All the functions is meant to be called using delegatecall.
  */
-contract Emitter is UsingStorage {
+contract EventsHistoryUser is StorageUser {
     StorageInterface.Address eventsHistory;
 
-    function Emitter(Storage _store, bytes32 _crate) UsingStorage(_store, _crate) {
+    function EventsHistoryUser(Storage _store, bytes32 _crate) StorageUser(_store, _crate) {
         eventsHistory.init('eventsHistory');
     }
 
@@ -24,8 +24,8 @@ contract Emitter is UsingStorage {
         return store.get(eventsHistory);
     }
 
-    function _setEventsHistory(address _eventsHistory) internal returns(bool) {
-        return store.set(eventsHistory, _eventsHistory);
+    function _setEventsHistory(address _eventsHistory) internal {
+        store.set(eventsHistory, _eventsHistory);
     }
 
     /**

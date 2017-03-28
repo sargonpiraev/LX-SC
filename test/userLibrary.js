@@ -135,4 +135,29 @@ contract('UserLibrary', function(accounts) {
     .then(() => userLibrary.hasRole(user2, role2))
     .then(asserts.isTrue);
   });
+
+  it('should return all user roles', () => {
+    const user = accounts[1];
+    const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    const role2 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
+    const role3 = '0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
+    return Promise.resolve()
+    .then(() => userLibrary.addRole(user, role))
+    .then(() => userLibrary.addRole(user, role2))
+    .then(() => userLibrary.addRole(user, role3))
+    .then(() => userLibrary.getUserRoles(user))
+    .then(roles => {
+      assert.equal(roles.length, 3);
+      assert.equal(roles[0], role);
+      assert.equal(roles[1], role2);
+      assert.equal(roles[2], role3);
+    })
+    .then(() => userLibrary.removeRole(user, role2))
+    .then(() => userLibrary.getUserRoles(user))
+    .then(roles => {
+      assert.equal(roles.length, 2);
+      assert.equal(roles[0], role);
+      assert.equal(roles[1], role3);
+    });
+  });
 });
