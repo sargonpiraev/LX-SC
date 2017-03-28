@@ -63,7 +63,7 @@ contract('Storage', function(accounts) {
   it('should not store uint values if not allowed', () => {
     const value = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
     return manager.deny()
-    .then(() => storage.setUInt(CRATE, KEY, value))
+    .then(() => asserts.throws(storage.setUInt(CRATE, KEY, value)))
     .then(() => storage.getUInt(CRATE, KEY))
     .then(asserts.equal(0));
   });
@@ -71,7 +71,7 @@ contract('Storage', function(accounts) {
   it('should not store address values if not allowed', () => {
     const value = '0xffffffffffffffffffffffffffffffffffffffff';
     return manager.deny()
-    .then(() => storage.setAddress(CRATE, KEY, value))
+    .then(() => asserts.throws(storage.setAddress(CRATE, KEY, value)))
     .then(() => storage.getAddress(CRATE, KEY))
     .then(asserts.equal(ZERO_ADDRESS));
   });
@@ -79,7 +79,7 @@ contract('Storage', function(accounts) {
   it('should not store bool values if not allowed', () => {
     const value = true;
     return manager.deny()
-    .then(() => storage.setBool(CRATE, KEY, value))
+    .then(() => asserts.throws(storage.setBool(CRATE, KEY, value)))
     .then(() => storage.getBool(CRATE, KEY))
     .then(asserts.equal(false));
   });
@@ -87,7 +87,7 @@ contract('Storage', function(accounts) {
   it('should not store int values if not allowed', () => {
     const value = web3.toBigNumber(2).pow(255).sub(1).mul(-1);
     return manager.deny()
-    .then(() => storage.setInt(CRATE, KEY, value))
+    .then(() => asserts.throws(storage.setInt(CRATE, KEY, value)))
     .then(() => storage.getInt(CRATE, KEY))
     .then(asserts.equal(0));
   });
@@ -95,7 +95,7 @@ contract('Storage', function(accounts) {
   it('should not store bytes32 values if not allowed', () => {
     const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return manager.deny()
-    .then(() => storage.setBytes32(CRATE, KEY, value))
+    .then(() => asserts.throws(storage.setBytes32(CRATE, KEY, value)))
     .then(() => storage.getBytes32(CRATE, KEY))
     .then(asserts.equal(ZERO_BYTES32));
   });
