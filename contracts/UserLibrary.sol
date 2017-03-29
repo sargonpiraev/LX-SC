@@ -70,7 +70,7 @@ contract UserLibrary is EventsHistoryUser, Owned {
         if (!_setRole(_user, _role, true)) {
             return false;
         }
-        _emitAddRole(_user, _role);
+        _emitRoleAdded(_user, _role);
         return true;
     }
 
@@ -78,7 +78,7 @@ contract UserLibrary is EventsHistoryUser, Owned {
         if (!_setRole(_user, _role, false)) {
             return false;
         }
-        _emitRemoveRole(_user, _role);
+        _emitRoleRemoved(_user, _role);
         return true;
     }
 
@@ -87,22 +87,22 @@ contract UserLibrary is EventsHistoryUser, Owned {
         return true;
     }
 
-    function _emitAddRole(address _user, bytes32 _role) internal {
-        UserLibrary(getEventsHistory()).emitAddRole(_user, _role);
+    function _emitRoleAdded(address _user, bytes32 _role) internal {
+        UserLibrary(getEventsHistory()).emitRoleAdded(_user, _role);
     }
 
-    function _emitRemoveRole(address _user, bytes32 _role) internal {
-        UserLibrary(getEventsHistory()).emitRemoveRole(_user, _role);
+    function _emitRoleRemoved(address _user, bytes32 _role) internal {
+        UserLibrary(getEventsHistory()).emitRoleRemoved(_user, _role);
     }
 
-    event AddRole(address indexed user, bytes32 indexed role, uint version);
-    event RemoveRole(address indexed user, bytes32 indexed role, uint version);
+    event RoleAdded(address indexed user, bytes32 indexed role, uint version);
+    event RoleRemoved(address indexed user, bytes32 indexed role, uint version);
     
-    function emitAddRole(address _user, bytes32 _role) {
-        AddRole(_user, _role, _getVersion());
+    function emitRoleAdded(address _user, bytes32 _role) {
+        RoleAdded(_user, _role, _getVersion());
     }
 
-    function emitRemoveRole(address _user, bytes32 _role) {
-        RemoveRole(_user, _role, _getVersion());
+    function emitRoleRemoved(address _user, bytes32 _role) {
+        RoleRemoved(_user, _role, _getVersion());
     }
 }

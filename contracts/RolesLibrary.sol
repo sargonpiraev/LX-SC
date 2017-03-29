@@ -36,32 +36,32 @@ contract RolesLibrary is EventsHistoryUser, Owned {
 
     function addRole(bytes32 _role) onlyContractOwner() returns(bool) {
         store.add(roles, _role);
-        _emitAddRole(_role);
+        _emitRoleAdded(_role);
         return true;
     }
 
     function removeRole(bytes32 _role) onlyContractOwner() returns(bool) {
         store.remove(roles, _role);
-        _emitRemoveRole(_role);
+        _emitRoleRemoved(_role);
         return true;
     }
 
-    function _emitAddRole(bytes32 _role) internal {
-        RolesLibrary(getEventsHistory()).emitAddRole(_role);
+    function _emitRoleAdded(bytes32 _role) internal {
+        RolesLibrary(getEventsHistory()).emitRoleAdded(_role);
     }
 
-    function _emitRemoveRole(bytes32 _role) internal {
-        RolesLibrary(getEventsHistory()).emitRemoveRole(_role);
+    function _emitRoleRemoved(bytes32 _role) internal {
+        RolesLibrary(getEventsHistory()).emitRoleRemoved(_role);
     }
 
-    event AddRole(bytes32 indexed role, uint version);
-    event RemoveRole(bytes32 indexed role, uint version);
+    event RoleAdded(bytes32 indexed role, uint version);
+    event RoleRemoved(bytes32 indexed role, uint version);
     
-    function emitAddRole(bytes32 _role) {
-        AddRole(_role, _getVersion());
+    function emitRoleAdded(bytes32 _role) {
+        RoleAdded(_role, _getVersion());
     }
 
-    function emitRemoveRole(bytes32 _role) {
-        RemoveRole(_role, _getVersion());
+    function emitRoleRemoved(bytes32 _role) {
+        RoleRemoved(_role, _getVersion());
     }
 }

@@ -36,14 +36,14 @@ contract('RolesLibrary', function(accounts) {
     .then(asserts.isTrue);
   });
 
-  it('should emit AddRole event in EventsHistory', () => {
+  it('should emit RoleAdded event in EventsHistory', () => {
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
     .then(() => rolesLibrary.addRole(role))
     .then(result => {
       assert.equal(result.logs.length, 1);
       assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, 'AddRole');
+      assert.equal(result.logs[0].event, 'RoleAdded');
       assert.equal(result.logs[0].args.role, role);
     });
   });
@@ -64,14 +64,14 @@ contract('RolesLibrary', function(accounts) {
     .then(asserts.isFalse);
   });
 
-  it('should emit RemoveRole event in EventsHistory', () => {
+  it('should emit RoleRemoved event in EventsHistory', () => {
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
     .then(() => rolesLibrary.removeRole(role))
     .then(result => {
       assert.equal(result.logs.length, 1);
       assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, 'RemoveRole');
+      assert.equal(result.logs[0].event, 'RoleRemoved');
       assert.equal(result.logs[0].args.role, role);
     });
   });

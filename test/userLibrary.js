@@ -44,7 +44,7 @@ contract('UserLibrary', function(accounts) {
     .then(asserts.isTrue);
   });
 
-  it('should emit AddRole event in EventsHistory', () => {
+  it('should emit RoleAdded event in EventsHistory', () => {
     const user = accounts[1];
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
@@ -53,7 +53,7 @@ contract('UserLibrary', function(accounts) {
     .then(result => {
       assert.equal(result.logs.length, 1);
       assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, 'AddRole');
+      assert.equal(result.logs[0].event, 'RoleAdded');
       assert.equal(result.logs[0].args.user, user);
       assert.equal(result.logs[0].args.role, role);
     });
@@ -78,7 +78,7 @@ contract('UserLibrary', function(accounts) {
     .then(asserts.isFalse);
   });
 
-  it('should emit RemoveRole event in EventsHistory', () => {
+  it('should emit RoleRemoved event in EventsHistory', () => {
     const user = accounts[1];
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
@@ -86,7 +86,7 @@ contract('UserLibrary', function(accounts) {
     .then(result => {
       assert.equal(result.logs.length, 1);
       assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, 'RemoveRole');
+      assert.equal(result.logs[0].event, 'RoleRemoved');
       assert.equal(result.logs[0].args.user, user);
       assert.equal(result.logs[0].args.role, role);
     });
