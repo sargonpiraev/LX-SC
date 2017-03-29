@@ -5,7 +5,10 @@ import './EventsHistoryAndStorageUser.sol';
 
 contract RolesLibrary is EventsHistoryAndStorageUser, Owned {
     StorageInterface.Set roles;
-    
+
+    event RoleAdded(bytes32 indexed role, uint version);
+    event RoleRemoved(bytes32 indexed role, uint version);
+
     function RolesLibrary(Storage _store, bytes32 _crate) EventsHistoryAndStorageUser(_store, _crate) {
         roles.init('roles');
     }
@@ -54,9 +57,6 @@ contract RolesLibrary is EventsHistoryAndStorageUser, Owned {
         RolesLibrary(getEventsHistory()).emitRoleRemoved(_role);
     }
 
-    event RoleAdded(bytes32 indexed role, uint version);
-    event RoleRemoved(bytes32 indexed role, uint version);
-    
     function emitRoleAdded(bytes32 _role) {
         RoleAdded(_role, _getVersion());
     }
