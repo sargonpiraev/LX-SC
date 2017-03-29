@@ -1,7 +1,7 @@
 pragma solidity 0.4.8;
 
 import './Owned.sol';
-import './EventsHistoryUser.sol';
+import './EventsHistoryAndStorageUser.sol';
 
 contract RolesLibraryInterface {
     function count() constant returns(uint);
@@ -9,11 +9,14 @@ contract RolesLibraryInterface {
     function getRole(uint _index) constant returns(bytes32);
 }
 
-contract UserLibrary is EventsHistoryUser, Owned {
+contract UserLibrary is EventsHistoryAndStorageUser, Owned {
     StorageInterface.Mapping roles;
     StorageInterface.Address rolesLibrary;
-    
-    function UserLibrary(Storage _store, bytes32 _crate) EventsHistoryUser(_store, _crate) {
+
+    event RoleAdded(address indexed user, bytes32 indexed role, uint version);
+    event RoleRemoved(address indexed user, bytes32 indexed role, uint version);
+
+    function UserLibrary(Storage _store, bytes32 _crate) EventsHistoryAndStorageUser(_store, _crate) {
         roles.init('roles');
         rolesLibrary.init('rolesLibrary');
     }
@@ -95,9 +98,6 @@ contract UserLibrary is EventsHistoryUser, Owned {
         UserLibrary(getEventsHistory()).emitRoleRemoved(_user, _role);
     }
 
-    event RoleAdded(address indexed user, bytes32 indexed role, uint version);
-    event RoleRemoved(address indexed user, bytes32 indexed role, uint version);
-    
     function emitRoleAdded(address _user, bytes32 _role) {
         RoleAdded(_user, _role, _getVersion());
     }

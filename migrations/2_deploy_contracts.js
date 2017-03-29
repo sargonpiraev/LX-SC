@@ -1,3 +1,4 @@
+const StorageManager = artifacts.require('./StorageManager.sol');
 const Storage = artifacts.require('./Storage.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
 const StorageInterface = artifacts.require('./StorageInterface.sol');
@@ -9,6 +10,7 @@ const UserLibrary = artifacts.require('./UserLibrary.sol');
 module.exports = deployer => {
   let eventsHistory;
   deployer.deploy(ManagerMock)
+  .then(() => deployer.deploy(StorageManager))
   .then(() => deployer.deploy(Storage))
   .then(() => deployer.deploy(StorageInterface))
   .then(() => deployer.link(StorageInterface, [StorageTester, UserLibrary]))
