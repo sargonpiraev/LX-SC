@@ -33,7 +33,7 @@ contract('StorageManager', function(accounts) {
     .then(result => {
       assert.equal(result.logs.length, 1);
       assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, "AccessGiven");
+      assert.equal(result.logs[0].event, 'AccessGiven');
       assert.equal(result.logs[0].args.actor, address);
       assert.equal(result.logs[0].args.role, role);
     });
@@ -46,7 +46,7 @@ contract('StorageManager', function(accounts) {
     .then(result => {
       assert.equal(result.logs.length, 1);
       assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, "AccessBlocked");
+      assert.equal(result.logs[0].event, 'AccessBlocked');
       assert.equal(result.logs[0].args.actor, address);
       assert.equal(result.logs[0].args.role, role);
     });
