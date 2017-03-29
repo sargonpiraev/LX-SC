@@ -1,12 +1,12 @@
 pragma solidity 0.4.8;
 
 import './Owned.sol';
-import './EventsHistoryUser.sol';
+import './EventsHistoryAndStorageUser.sol';
 
-contract RolesLibrary is EventsHistoryUser, Owned {
+contract RolesLibrary is EventsHistoryAndStorageUser, Owned {
     StorageInterface.Set roles;
     
-    function RolesLibrary(Storage _store, bytes32 _crate) EventsHistoryUser(_store, _crate) {
+    function RolesLibrary(Storage _store, bytes32 _crate) EventsHistoryAndStorageUser(_store, _crate) {
         roles.init('roles');
     }
 
