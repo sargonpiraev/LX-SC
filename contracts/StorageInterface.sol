@@ -174,10 +174,14 @@ library StorageInterface {
     function get(Config storage self, Set storage item) internal constant returns(bytes32[]) {
         uint valuesCount = count(self, item);
         bytes32[] memory result = new bytes32[](valuesCount);
-        for (uint i = 1; i <= valuesCount; i++) {
-            result[i-1] = get(self, item.values, bytes32(i));
+        for (uint i = 0; i < valuesCount; i++) {
+            result[i] = get(self, item, i);
         }
         return result;
+    }
+
+    function get(Config storage self, Set storage item, uint _index) internal constant returns(bytes32) {
+        return get(self, item.values, bytes32(_index+1));
     }
 
     function toBool(bytes32 self) constant returns(bool) {
