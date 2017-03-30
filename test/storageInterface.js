@@ -69,9 +69,9 @@ contract('StorageInterface', function(accounts) {
     const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const value2 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     return storageTester.addSet(value)
-    .then(() => storageTester.includeSet(value))
+    .then(() => storageTester.includesSet(value))
     .then(asserts.isTrue)
-    .then(() => storageTester.includeSet(value2))
+    .then(() => storageTester.includesSet(value2))
     .then(asserts.isFalse)
     .then(() => storageTester.countSet())
     .then(asserts.equal(1))
@@ -81,9 +81,9 @@ contract('StorageInterface', function(accounts) {
       assert.equal(set[0], value);
     })
     .then(() => storageTester.addSet(value2))
-    .then(() => storageTester.includeSet(value))
+    .then(() => storageTester.includesSet(value))
     .then(asserts.isTrue)
-    .then(() => storageTester.includeSet(value2))
+    .then(() => storageTester.includesSet(value2))
     .then(asserts.isTrue)
     .then(() => storageTester.countSet())
     .then(asserts.equal(2))
@@ -94,9 +94,9 @@ contract('StorageInterface', function(accounts) {
       assert.equal(set[1], value2);
     })
     .then(() => storageTester.removeSet(value))
-    .then(() => storageTester.includeSet(value))
+    .then(() => storageTester.includesSet(value))
     .then(asserts.isFalse)
-    .then(() => storageTester.includeSet(value2))
+    .then(() => storageTester.includesSet(value2))
     .then(asserts.isTrue)
     .then(() => storageTester.countSet())
     .then(asserts.equal(1))
@@ -106,9 +106,9 @@ contract('StorageInterface', function(accounts) {
       assert.equal(set[0], value2);
     })
     .then(() => storageTester.removeSet(value2))
-    .then(() => storageTester.includeSet(value))
+    .then(() => storageTester.includesSet(value))
     .then(asserts.isFalse)
-    .then(() => storageTester.includeSet(value2))
+    .then(() => storageTester.includesSet(value2))
     .then(asserts.isFalse)
     .then(() => storageTester.countSet())
     .then(asserts.equal(0))

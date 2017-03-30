@@ -106,7 +106,7 @@ library StorageInterface {
     }
 
     function add(Config storage self, Set storage item, bytes32 _value) internal {
-        if (include(self, item, _value)) {
+        if (includes(self, item, _value)) {
             return;
         }
         uint newCount = count(self, item) + 1;
@@ -116,7 +116,7 @@ library StorageInterface {
     }
 
     function remove(Config storage self, Set storage item, bytes32 _value) internal {
-        if (!include(self, item, _value)) {
+        if (!includes(self, item, _value)) {
             return;
         }
         uint lastIndex = count(self, item);
@@ -163,7 +163,7 @@ library StorageInterface {
         return self.store.getBytes32(self.crate, sha3(item.id, _key, _key2, _key3));
     }
 
-    function include(Config storage self, Set storage item, bytes32 _value) internal constant returns(bool) {
+    function includes(Config storage self, Set storage item, bytes32 _value) internal constant returns(bool) {
         return get(self, item.indexes, _value) != 0;
     }
 
@@ -174,10 +174,14 @@ library StorageInterface {
     function get(Config storage self, Set storage item) internal constant returns(bytes32[]) {
         uint valuesCount = count(self, item);
         bytes32[] memory result = new bytes32[](valuesCount);
-        for (uint i = 1; i <= valuesCount; i++) {
-            result[i-1] = get(self, item.values, bytes32(i));
+        for (uint i = 0; i < valuesCount; i++) {
+            result[i] = get(self, item, i);
         }
         return result;
+    }
+
+    function get(Config storage self, Set storage item, uint _index) internal constant returns(bytes32) {
+        return get(self, item.values, bytes32(_index+1));
     }
 
     function toBool(bytes32 self) constant returns(bool) {

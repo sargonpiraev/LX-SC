@@ -4,6 +4,7 @@ const ManagerMock = artifacts.require('./ManagerMock.sol');
 const StorageInterface = artifacts.require('./StorageInterface.sol');
 const StorageTester = artifacts.require('./StorageTester.sol');
 const EventsHistory = artifacts.require('./EventsHistory.sol');
+const RolesLibrary = artifacts.require('./RolesLibrary.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
 
 module.exports = deployer => {
@@ -17,5 +18,6 @@ module.exports = deployer => {
   .then(() => deployer.deploy(EventsHistory))
   .then(() => EventsHistory.deployed())
   .then(instance => eventsHistory = instance)
+  .then(() => deployer.deploy(RolesLibrary, Storage.address, 'RolesLibraryCrate'))
   .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibraryCrate'))
 };

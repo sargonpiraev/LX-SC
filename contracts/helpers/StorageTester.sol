@@ -78,8 +78,8 @@ contract StorageTester is StorageUser {
         store.remove(setVar, _value);
     }
 
-    function includeSet(bytes32 _value) constant returns(bool) {
-        return store.include(setVar, _value);
+    function includesSet(bytes32 _value) constant returns(bool) {
+        return store.includes(setVar, _value);
     }
 
     function countSet() constant returns(uint) {
