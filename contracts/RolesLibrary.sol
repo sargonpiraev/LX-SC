@@ -25,8 +25,8 @@ contract RolesLibrary is EventsHistoryAndStorageUser, Owned {
         return store.count(roles);
     }
 
-    function include(bytes32 _role) constant returns(bool) {
-        return store.include(roles, _role);
+    function includes(bytes32 _role) constant returns(bool) {
+        return store.includes(roles, _role);
     }
 
     function getRoles() constant returns(bytes32[]) {

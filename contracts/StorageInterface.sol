@@ -106,7 +106,7 @@ library StorageInterface {
     }
 
     function add(Config storage self, Set storage item, bytes32 _value) internal {
-        if (include(self, item, _value)) {
+        if (includes(self, item, _value)) {
             return;
         }
         uint newCount = count(self, item) + 1;
@@ -116,7 +116,7 @@ library StorageInterface {
     }
 
     function remove(Config storage self, Set storage item, bytes32 _value) internal {
-        if (!include(self, item, _value)) {
+        if (!includes(self, item, _value)) {
             return;
         }
         uint lastIndex = count(self, item);
@@ -163,7 +163,7 @@ library StorageInterface {
         return self.store.getBytes32(self.crate, sha3(item.id, _key, _key2, _key3));
     }
 
-    function include(Config storage self, Set storage item, bytes32 _value) internal constant returns(bool) {
+    function includes(Config storage self, Set storage item, bytes32 _value) internal constant returns(bool) {
         return get(self, item.indexes, _value) != 0;
     }
 

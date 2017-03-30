@@ -5,7 +5,7 @@ import './EventsHistoryAndStorageUser.sol';
 
 contract RolesLibraryInterface {
     function count() constant returns(uint);
-    function include(bytes32 _role) constant returns(bool);
+    function includes(bytes32 _role) constant returns(bool);
     function getRole(uint _index) constant returns(bytes32);
 }
 
@@ -33,9 +33,9 @@ contract UserLibrary is EventsHistoryAndStorageUser, Owned {
         store.set(rolesLibrary, _rolesLibrary);
     }
 
-    // Will return user role even if it is not present in RolesLibrary.
+    // Will return user role only if it is present in RolesLibrary.
     function hasRole(address _user, bytes32 _role) constant returns(bool) {
-        return store.get(roles, bytes32(_user), _role).toBool();
+        return getRolesLibrary().includes(_role) && store.get(roles, bytes32(_user), _role).toBool();
     }
 
     bytes32[] temp;
@@ -67,7 +67,7 @@ contract UserLibrary is EventsHistoryAndStorageUser, Owned {
 
     // Will add role only if it is present in RolesLibrary.
     function addRole(address _user, bytes32 _role) returns(bool) {
-        if (!getRolesLibrary().include(_role)) {
+        if (!getRolesLibrary().includes(_role)) {
             return false;
         }
         if (!_setRole(_user, _role, true)) {

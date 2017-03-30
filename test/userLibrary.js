@@ -208,7 +208,7 @@ contract('UserLibrary', function(accounts) {
     });
   });
 
-  it('should return user role even if not present in RolesLibrary', () => {
+  it('should return user role only if present in RolesLibrary', () => {
     const user = accounts[1];
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
@@ -216,6 +216,6 @@ contract('UserLibrary', function(accounts) {
     .then(() => userLibrary.addRole(user, role))
     .then(() => rolesLibrary.removeRole(role))
     .then(() => userLibrary.hasRole(user, role))
-    .then(asserts.isTrue);
+    .then(asserts.isFalse);
   });
 });

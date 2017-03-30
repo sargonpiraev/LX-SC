@@ -32,7 +32,7 @@ contract('RolesLibrary', function(accounts) {
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
     .then(() => rolesLibrary.addRole(role))
-    .then(() => rolesLibrary.include(role))
+    .then(() => rolesLibrary.includes(role))
     .then(asserts.isTrue);
   });
 
@@ -51,7 +51,7 @@ contract('RolesLibrary', function(accounts) {
   it('should not have role by default', () => {
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => rolesLibrary.include(role))
+    .then(() => rolesLibrary.includes(role))
     .then(asserts.isFalse);
   });
 
@@ -60,7 +60,7 @@ contract('RolesLibrary', function(accounts) {
     return Promise.resolve()
     .then(() => rolesLibrary.addRole(role))
     .then(() => rolesLibrary.removeRole(role))
-    .then(() => rolesLibrary.include(role))
+    .then(() => rolesLibrary.includes(role))
     .then(asserts.isFalse);
   });
 
@@ -81,7 +81,7 @@ contract('RolesLibrary', function(accounts) {
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
     .then(() => rolesLibrary.addRole(role, {from: nonOwner}))
-    .then(() => rolesLibrary.include(role))
+    .then(() => rolesLibrary.includes(role))
     .then(asserts.isFalse);
   });
 
@@ -91,7 +91,7 @@ contract('RolesLibrary', function(accounts) {
     return Promise.resolve()
     .then(() => rolesLibrary.addRole(role))
     .then(() => rolesLibrary.removeRole(role, {from: nonOwner}))
-    .then(() => rolesLibrary.include(role))
+    .then(() => rolesLibrary.includes(role))
     .then(asserts.isTrue);
   });
 
@@ -101,9 +101,9 @@ contract('RolesLibrary', function(accounts) {
     return Promise.resolve()
     .then(() => rolesLibrary.addRole(role))
     .then(() => rolesLibrary.addRole(role2))
-    .then(() => rolesLibrary.include(role))
+    .then(() => rolesLibrary.includes(role))
     .then(asserts.isTrue)
-    .then(() => rolesLibrary.include(role2))
+    .then(() => rolesLibrary.includes(role2))
     .then(asserts.isTrue);
   });
 
@@ -112,9 +112,9 @@ contract('RolesLibrary', function(accounts) {
     const role2 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     return Promise.resolve()
     .then(() => rolesLibrary.addRole(role))
-    .then(() => rolesLibrary.include(role))
+    .then(() => rolesLibrary.includes(role))
     .then(asserts.isTrue)
-    .then(() => rolesLibrary.include(role2))
+    .then(() => rolesLibrary.includes(role2))
     .then(asserts.isFalse);
   });
 
@@ -139,6 +139,18 @@ contract('RolesLibrary', function(accounts) {
       assert.equal(roles.length, 2);
       assert.equal(roles[0], role);
       assert.equal(roles[1], role3);
+    });
+  });
+
+  it('should not duplicate roles', () => {
+    const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => rolesLibrary.addRole(role))
+    .then(() => rolesLibrary.addRole(role))
+    .then(() => rolesLibrary.getRoles())
+    .then(roles => {
+      assert.equal(roles.length, 1);
+      assert.equal(roles[0], role);
     });
   });
 });
