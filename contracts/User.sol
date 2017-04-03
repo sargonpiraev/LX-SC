@@ -1,34 +1,38 @@
 pragma solidity 0.4.8;
 
-contract User {
-    uint public userId;
-    mapping (address => uint8) public reatingsGiven;
+import "./Owned.sol";
+import "./ProxyUser.sol";
+
+contract User is ProxyUser, Owned {
+    uint id;
+    mapping (address => uint8) reatingsGiven;
     mapping (string => bytes32) ipfsHashes;
 
-    function setData(address _destination, bytes _data, uint _value) {
-        _forward(_destination, _data, _value);
+    function User(uint _id){
+        id = _id;
     }
 
-    function getData(address _destination, bytes _data, uint _value) returns(bytes32) {
-        return _forwardWithReturn(_destination, _data, _value);
+    function getRatingFor(address _otherUser) constant returns(uint8){
+        return reatingsGiven[_otherUser];
     }
 
-    function deleteData(address _destination, bytes _data, uint _value) {
-        _forward(_destination, _data, _value);
-    }
-
-    function _forwardWithReturn(address _destination, bytes _data, uint _value) internal returns(bytes32 result) {
-        bool success;
-        assembly {
-            success := call(div(mul(gas, 63), 64), _destination, _value, add(_data, 32), mload(_data), 0, 32)
-            result := mload(0)
+    function setRatingFor(address _otherUser, uint8 _rate) onlyContractOwner() {
+        if(_rate < 0 || _rate > 10){
+            return;
         }
+        reatingsGiven[_otherUser] = _rate;
     }
 
-    function _forward(address _destination, bytes _data, uint _value) internal{
-        if (!_destination.call.value(_value)(_data)) {
-            throw;
-        }
+    function setData(address _destination, bytes _data, uint _value) onlyContractOwner() {
+        forward(_destination, _data, _value);
+    }
+
+    function getData(address _destination, bytes _data, uint _value) onlyContractOwner() returns(bytes32) {
+        return forwardWithReturn(_destination, _data, _value);
+    }
+
+    function deleteData(address _destination, bytes _data, uint _value) onlyContractOwner() {
+        forward(_destination, _data, _value);
     }
 
 }

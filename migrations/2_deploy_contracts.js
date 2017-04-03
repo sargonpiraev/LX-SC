@@ -5,6 +5,7 @@ const StorageInterface = artifacts.require('./StorageInterface.sol');
 const StorageTester = artifacts.require('./StorageTester.sol');
 const EventsHistory = artifacts.require('./EventsHistory.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
+const User = artifacts.require('./User.sol');
 
 module.exports = deployer => {
   let eventsHistory;
@@ -18,4 +19,5 @@ module.exports = deployer => {
   .then(() => EventsHistory.deployed())
   .then(instance => eventsHistory = instance)
   .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibraryCrate'))
+  .then(() => deployer.deploy(User))
 };
