@@ -12,6 +12,10 @@ contract User is ProxyUser, Owned {
         id = _id;
     }
 
+    function getId() constant returns(uint) {
+        return id;
+    }
+
     function getRatingFor(address _otherUser) constant returns(uint8){
         return reatingsGiven[_otherUser];
     }
