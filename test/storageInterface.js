@@ -117,4 +117,61 @@ contract('StorageInterface', function(accounts) {
       assert.equal(set.length, 0);
     });
   });
+
+  it('should store address set values', () => {
+    const value = '0xffffffffffffffffffffffffffffffffffffffff';
+    const value2 = '0xffffffffffffffffffffffffffffffffffffff00';
+    return storageTester.addAddressesSet(value)
+    .then(() => storageTester.includesAddressesSet(value))
+    .then(asserts.isTrue)
+    .then(() => storageTester.includesAddressesSet(value2))
+    .then(asserts.isFalse)
+    .then(() => storageTester.countAddressesSet())
+    .then(asserts.equal(1))
+    .then(() => storageTester.getAddressesSet())
+    .then(set => {
+      assert.equal(set.length, 1);
+      assert.equal(set[0], value);
+    })
+    .then(() => storageTester.addAddressesSet(value2))
+    .then(() => storageTester.includesAddressesSet(value))
+    .then(asserts.isTrue)
+    .then(() => storageTester.includesAddressesSet(value2))
+    .then(asserts.isTrue)
+    .then(() => storageTester.countAddressesSet())
+    .then(asserts.equal(2))
+    .then(() => storageTester.getAddressesSet())
+    .then(set => {
+      assert.equal(set.length, 2);
+      assert.equal(set[0], value);
+      assert.equal(set[1], value2);
+    })
+    .then(() => storageTester.removeAddressesSet(value))
+    .then(() => storageTester.includesAddressesSet(value))
+    .then(asserts.isFalse)
+    .then(() => storageTester.includesAddressesSet(value2))
+    .then(asserts.isTrue)
+    .then(() => storageTester.countAddressesSet())
+    .then(asserts.equal(1))
+    .then(() => storageTester.getAddressesSet())
+    .then(set => {
+      assert.equal(set.length, 1);
+      assert.equal(set[0], value2);
+    })
+    .then(() => storageTester.removeAddressesSet(value2))
+    .then(() => storageTester.includesAddressesSet(value))
+    .then(asserts.isFalse)
+    .then(() => storageTester.includesAddressesSet(value2))
+    .then(asserts.isFalse)
+    .then(() => storageTester.countAddressesSet())
+    .then(asserts.equal(0))
+    .then(() => storageTester.getAddressesSet())
+    .then(set => {
+      assert.equal(set.length, 0);
+    });
+  });
+
+  it('should not allow repeated variables initialization', () => {
+    return asserts.throws(storageTester.reinit());
+  });
 });

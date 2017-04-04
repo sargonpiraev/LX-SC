@@ -6,6 +6,7 @@ const StorageTester = artifacts.require('./StorageTester.sol');
 const EventsHistory = artifacts.require('./EventsHistory.sol');
 const RolesLibrary = artifacts.require('./RolesLibrary.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
+const ERC20Library = artifacts.require('./ERC20Library.sol');
 
 module.exports = deployer => {
   let eventsHistory;
@@ -20,4 +21,6 @@ module.exports = deployer => {
   .then(instance => eventsHistory = instance)
   .then(() => deployer.deploy(RolesLibrary, Storage.address, 'RolesLibraryCrate'))
   .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibraryCrate'))
+  .then(() => deployer.deploy(ERC20Library, Storage.address, 'ERC20LibraryCrate'))
+  .then(() => true);
 };

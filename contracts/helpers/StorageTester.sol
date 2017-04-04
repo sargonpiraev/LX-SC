@@ -1,6 +1,5 @@
 pragma solidity 0.4.8;
 
-import '../StorageInterface.sol';
 import '../StorageUser.sol';
 
 contract StorageTester is StorageUser {
@@ -11,8 +10,13 @@ contract StorageTester is StorageUser {
     StorageInterface.Bytes32 bytes32Var;
     StorageInterface.Mapping mappingVar;
     StorageInterface.Set setVar;
-    
+    StorageInterface.AddressesSet addressesSetVar;
+
     function StorageTester(Storage _store, bytes32 _crate) StorageUser(_store, _crate) {
+        reinit();
+    }
+
+    function reinit() {
         uintVar.init('uintVar');
         intVar.init('intVar');
         addressVar.init('addressVar');
@@ -20,6 +24,7 @@ contract StorageTester is StorageUser {
         bytes32Var.init('bytes32Var');
         mappingVar.init('mappingVar');
         setVar.init('setVar');
+        addressesSetVar.init('addressesSetVar');
     }
 
     function setUInt(uint _value) {
@@ -88,5 +93,25 @@ contract StorageTester is StorageUser {
 
     function getSet() constant returns(bytes32[]) {
         return store.get(setVar);
+    }
+
+    function addAddressesSet(address _value) {
+        store.add(addressesSetVar, _value);
+    }
+
+    function removeAddressesSet(address _value) {
+        store.remove(addressesSetVar, _value);
+    }
+
+    function includesAddressesSet(address _value) constant returns(bool) {
+        return store.includes(addressesSetVar, _value);
+    }
+
+    function countAddressesSet() constant returns(uint) {
+        return store.count(addressesSetVar);
+    }
+
+    function getAddressesSet() constant returns(address[]) {
+        return store.get(addressesSetVar);
     }
 }
