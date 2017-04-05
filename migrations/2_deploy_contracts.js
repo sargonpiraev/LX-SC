@@ -1,10 +1,12 @@
-const StorageManager = artifacts.require('./StorageManager.sol');
-const Storage = artifacts.require('./Storage.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
 const StorageInterface = artifacts.require('./StorageInterface.sol');
+const ProxyUserTester = artifacts.require('./ProxyUserTester.sol');
+const StorageManager = artifacts.require('./StorageManager.sol');
 const StorageTester = artifacts.require('./StorageTester.sol');
 const EventsHistory = artifacts.require('./EventsHistory.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
+const ManagerMock = artifacts.require('./ManagerMock.sol');
+const ProxyUser = artifacts.require('./ProxyUser.sol');
+const Storage = artifacts.require('./Storage.sol');
 const User = artifacts.require('./User.sol');
 
 module.exports = deployer => {
@@ -20,4 +22,6 @@ module.exports = deployer => {
   .then(instance => eventsHistory = instance)
   .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibraryCrate'))
   .then(() => deployer.deploy(User))
+  .then(() => deployer.deploy(ProxyUser))
+  .then(() => deployer.deploy(ProxyUserTester))
 };
