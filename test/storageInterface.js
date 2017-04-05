@@ -65,6 +65,14 @@ contract('StorageInterface', function(accounts) {
     .then(asserts.equal(value));
   });
 
+  it('should store address => uint mapping values', () => {
+    const key = '0xffffffffffffffffffffffffffffffffffffffff';
+    const value = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
+    return storageTester.setAddressUIntMapping(key, value)
+    .then(() => storageTester.getAddressUIntMapping(key))
+    .then(asserts.equal(value));
+  });
+
   it('should store bytes32 set values', () => {
     const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const value2 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
