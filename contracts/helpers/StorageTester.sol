@@ -9,6 +9,7 @@ contract StorageTester is StorageUser {
     StorageInterface.Bool boolVar;
     StorageInterface.Bytes32 bytes32Var;
     StorageInterface.Mapping mappingVar;
+    StorageInterface.AddressUIntMapping addressUIntMappingVar;
     StorageInterface.Set setVar;
     StorageInterface.AddressesSet addressesSetVar;
 
@@ -23,6 +24,7 @@ contract StorageTester is StorageUser {
         boolVar.init('boolVar');
         bytes32Var.init('bytes32Var');
         mappingVar.init('mappingVar');
+        addressUIntMappingVar.init('addressUIntMappingVar');
         setVar.init('setVar');
         addressesSetVar.init('addressesSetVar');
     }
@@ -73,6 +75,14 @@ contract StorageTester is StorageUser {
 
     function getMapping(bytes32 _key) constant returns(bytes32) {
         return store.get(mappingVar, _key);
+    }
+
+    function setAddressUIntMapping(address _key, uint _value) {
+        store.set(addressUIntMappingVar, _key, _value);
+    }
+
+    function getAddressUIntMapping(address _key) constant returns(uint) {
+        return store.get(addressUIntMappingVar, _key);
     }
 
     function addSet(bytes32 _value) {
