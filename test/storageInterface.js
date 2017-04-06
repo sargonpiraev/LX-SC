@@ -65,13 +65,21 @@ contract('StorageInterface', function(accounts) {
     .then(asserts.equal(value));
   });
 
+  it('should store address => uint mapping values', () => {
+    const key = '0xffffffffffffffffffffffffffffffffffffffff';
+    const value = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
+    return storageTester.setAddressUIntMapping(key, value)
+    .then(() => storageTester.getAddressUIntMapping(key))
+    .then(asserts.equal(value));
+  });
+
   it('should store bytes32 set values', () => {
     const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const value2 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     return storageTester.addSet(value)
-    .then(() => storageTester.includeSet(value))
+    .then(() => storageTester.includesSet(value))
     .then(asserts.isTrue)
-    .then(() => storageTester.includeSet(value2))
+    .then(() => storageTester.includesSet(value2))
     .then(asserts.isFalse)
     .then(() => storageTester.countSet())
     .then(asserts.equal(1))
@@ -81,9 +89,9 @@ contract('StorageInterface', function(accounts) {
       assert.equal(set[0], value);
     })
     .then(() => storageTester.addSet(value2))
-    .then(() => storageTester.includeSet(value))
+    .then(() => storageTester.includesSet(value))
     .then(asserts.isTrue)
-    .then(() => storageTester.includeSet(value2))
+    .then(() => storageTester.includesSet(value2))
     .then(asserts.isTrue)
     .then(() => storageTester.countSet())
     .then(asserts.equal(2))
@@ -94,9 +102,9 @@ contract('StorageInterface', function(accounts) {
       assert.equal(set[1], value2);
     })
     .then(() => storageTester.removeSet(value))
-    .then(() => storageTester.includeSet(value))
+    .then(() => storageTester.includesSet(value))
     .then(asserts.isFalse)
-    .then(() => storageTester.includeSet(value2))
+    .then(() => storageTester.includesSet(value2))
     .then(asserts.isTrue)
     .then(() => storageTester.countSet())
     .then(asserts.equal(1))
@@ -106,9 +114,9 @@ contract('StorageInterface', function(accounts) {
       assert.equal(set[0], value2);
     })
     .then(() => storageTester.removeSet(value2))
-    .then(() => storageTester.includeSet(value))
+    .then(() => storageTester.includesSet(value))
     .then(asserts.isFalse)
-    .then(() => storageTester.includeSet(value2))
+    .then(() => storageTester.includesSet(value2))
     .then(asserts.isFalse)
     .then(() => storageTester.countSet())
     .then(asserts.equal(0))
@@ -116,5 +124,62 @@ contract('StorageInterface', function(accounts) {
     .then(set => {
       assert.equal(set.length, 0);
     });
+  });
+
+  it('should store address set values', () => {
+    const value = '0xffffffffffffffffffffffffffffffffffffffff';
+    const value2 = '0xffffffffffffffffffffffffffffffffffffff00';
+    return storageTester.addAddressesSet(value)
+    .then(() => storageTester.includesAddressesSet(value))
+    .then(asserts.isTrue)
+    .then(() => storageTester.includesAddressesSet(value2))
+    .then(asserts.isFalse)
+    .then(() => storageTester.countAddressesSet())
+    .then(asserts.equal(1))
+    .then(() => storageTester.getAddressesSet())
+    .then(set => {
+      assert.equal(set.length, 1);
+      assert.equal(set[0], value);
+    })
+    .then(() => storageTester.addAddressesSet(value2))
+    .then(() => storageTester.includesAddressesSet(value))
+    .then(asserts.isTrue)
+    .then(() => storageTester.includesAddressesSet(value2))
+    .then(asserts.isTrue)
+    .then(() => storageTester.countAddressesSet())
+    .then(asserts.equal(2))
+    .then(() => storageTester.getAddressesSet())
+    .then(set => {
+      assert.equal(set.length, 2);
+      assert.equal(set[0], value);
+      assert.equal(set[1], value2);
+    })
+    .then(() => storageTester.removeAddressesSet(value))
+    .then(() => storageTester.includesAddressesSet(value))
+    .then(asserts.isFalse)
+    .then(() => storageTester.includesAddressesSet(value2))
+    .then(asserts.isTrue)
+    .then(() => storageTester.countAddressesSet())
+    .then(asserts.equal(1))
+    .then(() => storageTester.getAddressesSet())
+    .then(set => {
+      assert.equal(set.length, 1);
+      assert.equal(set[0], value2);
+    })
+    .then(() => storageTester.removeAddressesSet(value2))
+    .then(() => storageTester.includesAddressesSet(value))
+    .then(asserts.isFalse)
+    .then(() => storageTester.includesAddressesSet(value2))
+    .then(asserts.isFalse)
+    .then(() => storageTester.countAddressesSet())
+    .then(asserts.equal(0))
+    .then(() => storageTester.getAddressesSet())
+    .then(set => {
+      assert.equal(set.length, 0);
+    });
+  });
+
+  it('should not allow repeated variables initialization', () => {
+    return asserts.throws(storageTester.reinit());
   });
 });

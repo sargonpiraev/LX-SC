@@ -1,6 +1,5 @@
 pragma solidity 0.4.8;
 
-import '../StorageInterface.sol';
 import '../StorageUser.sol';
 
 contract StorageTester is StorageUser {
@@ -10,16 +9,24 @@ contract StorageTester is StorageUser {
     StorageInterface.Bool boolVar;
     StorageInterface.Bytes32 bytes32Var;
     StorageInterface.Mapping mappingVar;
+    StorageInterface.AddressUIntMapping addressUIntMappingVar;
     StorageInterface.Set setVar;
-    
+    StorageInterface.AddressesSet addressesSetVar;
+
     function StorageTester(Storage _store, bytes32 _crate) StorageUser(_store, _crate) {
+        reinit();
+    }
+
+    function reinit() {
         uintVar.init('uintVar');
         intVar.init('intVar');
         addressVar.init('addressVar');
         boolVar.init('boolVar');
         bytes32Var.init('bytes32Var');
         mappingVar.init('mappingVar');
+        addressUIntMappingVar.init('addressUIntMappingVar');
         setVar.init('setVar');
+        addressesSetVar.init('addressesSetVar');
     }
 
     function setUInt(uint _value) {
@@ -70,6 +77,14 @@ contract StorageTester is StorageUser {
         return store.get(mappingVar, _key);
     }
 
+    function setAddressUIntMapping(address _key, uint _value) {
+        store.set(addressUIntMappingVar, _key, _value);
+    }
+
+    function getAddressUIntMapping(address _key) constant returns(uint) {
+        return store.get(addressUIntMappingVar, _key);
+    }
+
     function addSet(bytes32 _value) {
         store.add(setVar, _value);
     }
@@ -78,8 +93,8 @@ contract StorageTester is StorageUser {
         store.remove(setVar, _value);
     }
 
-    function includeSet(bytes32 _value) constant returns(bool) {
-        return store.include(setVar, _value);
+    function includesSet(bytes32 _value) constant returns(bool) {
+        return store.includes(setVar, _value);
     }
 
     function countSet() constant returns(uint) {
@@ -88,5 +103,25 @@ contract StorageTester is StorageUser {
 
     function getSet() constant returns(bytes32[]) {
         return store.get(setVar);
+    }
+
+    function addAddressesSet(address _value) {
+        store.add(addressesSetVar, _value);
+    }
+
+    function removeAddressesSet(address _value) {
+        store.remove(addressesSetVar, _value);
+    }
+
+    function includesAddressesSet(address _value) constant returns(bool) {
+        return store.includes(addressesSetVar, _value);
+    }
+
+    function countAddressesSet() constant returns(uint) {
+        return store.count(addressesSetVar);
+    }
+
+    function getAddressesSet() constant returns(address[]) {
+        return store.get(addressesSetVar);
     }
 }
