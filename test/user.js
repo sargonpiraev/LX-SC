@@ -48,7 +48,6 @@ contract('User', function(accounts) {
     .then(ratingReceived => assert.equal(ratingReceived.toNumber(), rating2));
   });
 
-
    it("should not rewrite to invalid rating", () => {
     const rating1 = '5';
     const rating2 = '11';

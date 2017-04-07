@@ -1,24 +1,33 @@
 pragma solidity 0.4.8;
 
 import "./Owned.sol";
-import "./ProxyUser.sol";
 import './EventsHistoryUser.sol';
 
-contract User is EventsHistoryUser, ProxyUser, Owned {
-    mapping (address => uint8) reatingsGiven;
+contract UserProxy {
+    function forward(address destination, bytes data, uint value);
+    function forwardWithReturn(address destination, bytes data, uint value) returns(bytes32 result);
+}
+
+contract User is EventsHistoryUser, Owned {
+    mapping (address => uint8) ratingsGiven;
     mapping (bytes32 => bytes32) ipfsHashes;
-    event RatingGiven(address to, uint8 rating, uint version);
-    event HashAdded(bytes32 key, bytes32 hash, uint version);
+    UserProxy userProxy;
+    event RatingGiven(address indexed to, uint8 rating, uint version);
+    event HashAdded(bytes32 indexed key, bytes32 hash, uint version);
+
+    function setUserProxy(UserProxy _userProxy){
+        userProxy = _userProxy;
+    }
 
     function getRatingFor(address _otherUser) constant returns(uint8){
-        return reatingsGiven[_otherUser];
+        return ratingsGiven[_otherUser];
     }
 
     function setRatingFor(address _otherUser, uint8 _rating) onlyContractOwner() returns(bool) {
-        if(_rating < 0 || _rating > 10){
+        if(_rating > 10){
             return false;
         }
-        reatingsGiven[_otherUser] = _rating;
+        ratingsGiven[_otherUser] = _rating;
         _emitRatingGiven(_otherUser, _rating);
         return true;
     }
@@ -33,16 +42,8 @@ contract User is EventsHistoryUser, ProxyUser, Owned {
         return true;
     }
 
-    function setData(address _destination, bytes _data, uint _value) onlyContractOwner() {
-        forward(_destination, _data, _value);
-    }
-
-    function getData(address _destination, bytes _data, uint _value) onlyContractOwner() returns(bytes32) {
-        return forwardWithReturn(_destination, _data, _value);
-    }
-
-    function deleteData(address _destination, bytes _data, uint _value) onlyContractOwner() {
-        forward(_destination, _data, _value);
+    function setData(address _destination, bytes _data, uint _value) onlyContractOwner()  returns(bytes32){
+        userProxy.forwardWithReturn(_destination, _data, _value);
     }
 
     function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
@@ -68,5 +69,4 @@ contract User is EventsHistoryUser, ProxyUser, Owned {
     function emitHashAdded(bytes32 _key, bytes32 _hash) {
         HashAdded(_key, _hash, _getVersion());
     }
-
 }

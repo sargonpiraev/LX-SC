@@ -1,5 +1,5 @@
 const StorageInterface = artifacts.require('./StorageInterface.sol');
-const ProxyUserTester = artifacts.require('./ProxyUserTester.sol');
+const UserProxyTester = artifacts.require('./UserProxyTester.sol');
 const StorageManager = artifacts.require('./StorageManager.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
 const StorageTester = artifacts.require('./StorageTester.sol');
@@ -9,7 +9,7 @@ const ERC20Library = artifacts.require('./ERC20Library.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
 const Listener = artifacts.require('./Listener.sol');
-const ProxyUser = artifacts.require('./ProxyUser.sol');
+const UserProxy = artifacts.require('./UserProxy.sol');
 const Storage = artifacts.require('./Storage.sol');
 const User = artifacts.require('./User.sol');
 
@@ -26,8 +26,8 @@ module.exports = deployer => {
   .then(() => EventsHistory.deployed())
   .then(instance => eventsHistory = instance)
   .then(() => deployer.deploy(User))
-  .then(() => deployer.deploy(ProxyUser))
-  .then(() => deployer.deploy(ProxyUserTester))
+  .then(() => deployer.deploy(UserProxy))
+  .then(() => deployer.deploy(UserProxyTester))
   .then(() => deployer.deploy(RolesLibrary, Storage.address, 'RolesLibrary'))
   .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibrary'))
   .then(() => deployer.deploy(ERC20Library, Storage.address, 'ERC20Library'))

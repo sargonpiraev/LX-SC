@@ -1,6 +1,6 @@
 pragma solidity 0.4.8;
 
-contract ProxyUserTester {
+contract UserProxyTester {
    
     function functionReturningValue(bytes32 _someInputValue) constant returns(bytes32){
         return _someInputValue;
