@@ -1,4 +1,7 @@
+const UserProxyTester = artifacts.require('./UserProxyTester.sol');
 const EventsHistory = artifacts.require('./EventsHistory.sol');
+const ManagerMock = artifacts.require('./ManagerMock.sol');
+const Storage = artifacts.require('./Storage.sol');
 const Reverter = require('./helpers/reverter');
 const User = artifacts.require('./User.sol');
 
@@ -7,12 +10,21 @@ contract('User', function(accounts) {
   afterEach('revert', reverter.revert);
 
   let user;
+  let tester;
+  let storage;
   let eventsHistory;
   const DEFAULT_BYTES32_VALUE = '0x0000000000000000000000000000000000000000000000000000000000000000';
+  const DEFAULT_ADDRESS_VALUE = '0x0000000000000000000000000000000000000000';
 
   before('setup', () => {
-    return User.deployed()
+    return Storage.deployed()
+    .then(instance => storage = instance)
+    .then(() => ManagerMock.deployed())
+    .then(instance => storage.setManager(instance.address))
+    .then(() => User.deployed())
     .then(instance => user = instance)
+    .then(() => UserProxyTester.deployed())
+    .then(instance => tester = instance)
     .then(() => EventsHistory.deployed())
     .then(instance => eventsHistory = instance)
     .then(() => user.setupEventsHistory(eventsHistory.address))
@@ -153,5 +165,36 @@ contract('User', function(accounts) {
       assert.equal(result.logs[0].args.key, key);
       assert.equal(result.logs[0].args.hash, hash);
     });
+  });
+
+  it('should set proxy', () => {
+    const address = '0xffffffffffffffffffffffffffffffffffffffff';
+    return user.setUserProxy(address)
+    .then(() => user.getUserProxy())
+    .then(result => assert.equal(result, address));
+  });
+
+  it('should not set proxy when called by not-owner', () => {
+    const address = '0xffffffffffffffffffffffffffffffffffffffff';
+    return user.setUserProxy(address, {from: accounts[1]})
+    .then(() => user.getUserProxy())
+    .then(result => assert.equal(result, DEFAULT_ADDRESS_VALUE));
+  });
+
+  it('should set data and return value', () => {
+    const someParameter = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    const data = tester.contract.forward.getData(someParameter);;
+    return user.setUserProxy(tester.address)
+    .then(() => user.setData.call(tester.address, data, 0, false))
+    .then(result => assert.equal(result, '0x3432000000000000000000000000000000000000000000000000000000000000'));
+    //tester as userProxy always returns same number
+  });
+
+   it('should not set data when called by not-owner', () => {
+    const someParameter = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    const data = tester.contract.functionReturningValue.getData(someParameter);;
+    return user.setUserProxy(tester.address)
+    .then(() => user.setData.call(tester.address, data, 0, false, {from: accounts[1]}))
+    .then(result => assert.equal(result, DEFAULT_BYTES32_VALUE));
   });
 });

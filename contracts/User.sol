@@ -1,49 +1,57 @@
 pragma solidity 0.4.8;
 
-import "./Owned.sol";
-import './EventsHistoryUser.sol';
+import './Owned.sol';
+import './EventsHistoryAndStorageUser.sol';
 
 contract UserProxy {
-    function forward(address destination, bytes data, uint value);
-    function forwardWithReturn(address destination, bytes data, uint value) returns(bytes32 result);
+    function forward(address destination, bytes data, uint value, bool throwOnFailedCall) returns(bytes32 result);
 }
 
-contract User is EventsHistoryUser, Owned {
-    mapping (address => uint8) ratingsGiven;
-    mapping (bytes32 => bytes32) ipfsHashes;
+contract User is EventsHistoryAndStorageUser, Owned {
+    StorageInterface.AddressUIntMapping ratingsGiven;
+    StorageInterface.Mapping ipfsHashes;
     UserProxy userProxy;
-    event RatingGiven(address indexed to, uint8 rating, uint version);
+    event RatingGiven(address indexed to, uint rating, uint version);
     event HashAdded(bytes32 indexed key, bytes32 hash, uint version);
 
-    function setUserProxy(UserProxy _userProxy){
+    function User(Storage _store, bytes32 _crate) EventsHistoryAndStorageUser(_store, _crate) {
+        ipfsHashes.init('ipfsHashes');
+        ratingsGiven.init('ratingsGiven');
+    }
+
+    function setUserProxy(UserProxy _userProxy) onlyContractOwner() {
         userProxy = _userProxy;
     }
 
-    function getRatingFor(address _otherUser) constant returns(uint8){
-        return ratingsGiven[_otherUser];
+    function getUserProxy() constant returns(address) {
+        return userProxy;
     }
 
-    function setRatingFor(address _otherUser, uint8 _rating) onlyContractOwner() returns(bool) {
+    function getRatingFor(address _otherUser) constant returns(uint) {
+        return store.get(ratingsGiven, _otherUser);
+    }
+
+    function setRatingFor(address _otherUser, uint _rating) onlyContractOwner() returns(bool) {
         if(_rating > 10){
             return false;
         }
-        ratingsGiven[_otherUser] = _rating;
+        store.set(ratingsGiven, _otherUser, _rating);
         _emitRatingGiven(_otherUser, _rating);
         return true;
     }
 
     function getHashFor(bytes32 _itemName) constant returns(bytes32) {
-        return ipfsHashes[_itemName];
+        return store.get(ipfsHashes, _itemName);
     }
 
     function setHashFor(bytes32 _itemName, bytes32 _itemHash) onlyContractOwner() returns(bool) {
-        ipfsHashes[_itemName] = _itemHash;
+        store.set(ipfsHashes, _itemName, _itemHash);
         _emitHashAdded(_itemName, _itemHash);
         return true;
     }
 
-    function setData(address _destination, bytes _data, uint _value) onlyContractOwner()  returns(bytes32){
-        userProxy.forwardWithReturn(_destination, _data, _value);
+    function setData(address _destination, bytes _data, uint _value, bool _throwOnFailedCall) onlyContractOwner() returns(bytes32){
+        return userProxy.forward(_destination, _data, _value, _throwOnFailedCall);
     }
 
     function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
@@ -54,7 +62,7 @@ contract User is EventsHistoryUser, Owned {
         return true;
     }
 
-    function _emitRatingGiven(address _to, uint8 _rating) internal {
+    function _emitRatingGiven(address _to, uint _rating) internal {
         User(getEventsHistory()).emitRatingGiven(_to, _rating);
     }
 
@@ -62,7 +70,7 @@ contract User is EventsHistoryUser, Owned {
         User(getEventsHistory()).emitHashAdded(_key, _hash);
     }
     
-    function emitRatingGiven(address _to, uint8 _rating) {
+    function emitRatingGiven(address _to, uint _rating) {
         RatingGiven(_to, _rating, _getVersion());
     }
 

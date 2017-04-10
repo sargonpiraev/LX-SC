@@ -25,7 +25,7 @@ module.exports = deployer => {
   .then(() => deployer.deploy(EventsHistory))
   .then(() => EventsHistory.deployed())
   .then(instance => eventsHistory = instance)
-  .then(() => deployer.deploy(User))
+  .then(() => deployer.deploy(User, Storage.address, 'User'))
   .then(() => deployer.deploy(UserProxy))
   .then(() => deployer.deploy(UserProxyTester))
   .then(() => deployer.deploy(RolesLibrary, Storage.address, 'RolesLibrary'))
