@@ -185,7 +185,7 @@ contract('User', function(accounts) {
     const someParameter = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const data = tester.contract.forward.getData(someParameter);;
     return user.setUserProxy(tester.address)
-    .then(() => user.setData.call(tester.address, data, 0, false))
+    .then(() => user.forward.call(tester.address, data, 0, false))
     .then(result => assert.equal(result, '0x3432000000000000000000000000000000000000000000000000000000000000'));
     //tester as userProxy always returns same number
   });
@@ -194,7 +194,7 @@ contract('User', function(accounts) {
     const someParameter = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const data = tester.contract.functionReturningValue.getData(someParameter);;
     return user.setUserProxy(tester.address)
-    .then(() => user.setData.call(tester.address, data, 0, false, {from: accounts[1]}))
+    .then(() => user.forward.call(tester.address, data, 0, false, {from: accounts[1]}))
     .then(result => assert.equal(result, DEFAULT_BYTES32_VALUE));
   });
 });
