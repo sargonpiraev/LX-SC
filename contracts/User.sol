@@ -19,8 +19,9 @@ contract User is EventsHistoryAndStorageUser, Owned {
         ratingsGiven.init('ratingsGiven');
     }
 
-    function setUserProxy(UserProxy _userProxy) onlyContractOwner() {
+    function setUserProxy(UserProxy _userProxy) onlyContractOwner() returns(bool) {
         userProxy = _userProxy;
+        return true;
     }
 
     function getUserProxy() constant returns(address) {
@@ -50,7 +51,7 @@ contract User is EventsHistoryAndStorageUser, Owned {
         return true;
     }
 
-    function setData(address _destination, bytes _data, uint _value, bool _throwOnFailedCall) onlyContractOwner() returns(bytes32){
+    function forward(address _destination, bytes _data, uint _value, bool _throwOnFailedCall) onlyContractOwner() returns(bytes32) {
         return userProxy.forward(_destination, _data, _value, _throwOnFailedCall);
     }
 
