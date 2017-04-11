@@ -52,7 +52,6 @@ contract('StorageManager', function(accounts) {
     });
   });
 
-
   it('should be accessible', () => {
     const address = '0xffffffffffffffffffffffffffffffffffffffff';
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
