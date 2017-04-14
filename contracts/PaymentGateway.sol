@@ -27,7 +27,7 @@ contract PaymentGateway is EventsHistoryAndStorageUser, Owned {
     event FeeSet(address indexed contractAddress, uint feePercent, uint version);
     event Deposited(address indexed contractAddress, address indexed by, uint value, uint version);
     event Withdrawn(address indexed contractAddress, address indexed by, uint value, uint version);
-    event Transferred(address indexed contractAddress, address indexed form, address indexed to, uint value, uint version);
+    event Transferred(address indexed contractAddress, address indexed from, address indexed to, uint value, uint version);
 
     modifier onlySupportedContract(address _contract) {
         if (!getERC20Library().includes(_contract)) {

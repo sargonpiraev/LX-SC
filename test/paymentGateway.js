@@ -172,6 +172,22 @@ contract('PaymentGateway', function(accounts) {
     .then(asserts.equal(0));
   });
 
+  it('should emit Deposited event in EventsHistory', () => {
+    const sender = accounts[6];
+    const value = 1000;
+    return Promise.resolve()
+    .then(() => fakeCoin.mint(sender, value))
+    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+    .then(result => {
+      assert.equal(result.logs.length, 1);
+      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].event, 'Deposited');
+      assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
+      assert.equal(result.logs[0].args.by, sender);
+      assert.equal(result.logs[0].args.value.valueOf(), value);
+    });
+  });
+
   it('should deposit only credited amount', () => {
     const sender = accounts[6];
     const value = 1000;
@@ -251,6 +267,25 @@ contract('PaymentGateway', function(accounts) {
     .then(asserts.equal(result))
     .then(() => fakeCoin.balanceOf(sender))
     .then(asserts.equal(withdraw));
+  });
+
+  it('should emit Withdrawn event in EventsHistory', () => {
+    const sender = accounts[6];
+    const value = 1000;
+    const withdraw = 300;
+    const result = 700;
+    return Promise.resolve()
+    .then(() => fakeCoin.mint(sender, value))
+    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+    .then(() => paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender}))
+    .then(result => {
+      assert.equal(result.logs.length, 1);
+      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].event, 'Withdrawn');
+      assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
+      assert.equal(result.logs[0].args.by, sender);
+      assert.equal(result.logs[0].args.value.valueOf(), withdraw);
+    });
   });
 
   it('should withdraw whole charged amount', () => {
@@ -337,6 +372,38 @@ contract('PaymentGateway', function(accounts) {
     .then(asserts.equal(value));
   });
 
+  it('should emit Transferred event in EventsHistory on internal transfer', () => {
+    const feeAddress = '0x00ffffffffffffffffffffffffffffffffffffff';
+    const feePercent = 100;
+    const sender = accounts[6];
+    const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+    const value = 1000;
+    const transfer = 300;
+    const result = 697;
+    const fee = 3;
+    return Promise.resolve()
+    .then(() => paymentGateway.setFeeAddress(feeAddress))
+    .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
+    .then(() => fakeCoin.mint(sender, value))
+    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+    .then(() => paymentGateway.transfer(sender, receiver, transfer, fakeCoin.address, {from: paymentProcessor}))
+    .then(result => {
+      assert.equal(result.logs.length, 2);
+      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].event, 'Transferred');
+      assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
+      assert.equal(result.logs[0].args.from, sender);
+      assert.equal(result.logs[0].args.to, receiver);
+      assert.equal(result.logs[0].args.value.valueOf(), transfer);
+      assert.equal(result.logs[1].address, eventsHistory.address);
+      assert.equal(result.logs[1].event, 'Transferred');
+      assert.equal(result.logs[1].args.contractAddress, fakeCoin.address);
+      assert.equal(result.logs[1].args.from, sender);
+      assert.equal(result.logs[1].args.to, feeAddress);
+      assert.equal(result.logs[1].args.value.valueOf(), fee);
+    });
+  });
+
   it('should not perform internal transfer by non-paymentProcessor', () => {
     const sender = accounts[6];
     const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
@@ -395,6 +462,51 @@ contract('PaymentGateway', function(accounts) {
     .then(assertInternalBalance(receiver2, fakeCoin.address, receiver2Result))
     .then(assertInternalBalance(sender, fakeCoin.address, result))
     .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, value));
+  });
+
+  it('should emit Transferred events in EventsHistory on internal transfer to many', () => {
+    const feeAddress = '0x00ffffffffffffffffffffffffffffffffffffff';
+    const feePercent = 200;
+    const additionalFee = 100;
+    const sender = accounts[6];
+    const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+    const receiver2 = '0xffffffffffffffffffffffffffffffffffff0000';
+    const value = 1000;
+    const receiverValue = 100;
+    const receiver2Value = 200;
+    const receiverResult = 100;
+    const receiver2Result = 200;
+    const result = 580;
+    const fee = 120;
+    return Promise.resolve()
+    .then(() => paymentGateway.setFeeAddress(feeAddress))
+    .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
+    .then(() => fakeCoin.mint(sender, value))
+    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+    .then(() => paymentGateway.transferToMany(sender, [receiver, receiver2], [receiverValue, receiver2Value], value, additionalFee, fakeCoin.address, {from: paymentProcessor}))
+    .then(result => {
+      assert.equal(result.logs.length, 3);
+      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].event, 'Transferred');
+      assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
+      assert.equal(result.logs[0].args.from, sender);
+      assert.equal(result.logs[0].args.to, receiver);
+      assert.equal(result.logs[0].args.value.valueOf(), receiverValue);
+
+      assert.equal(result.logs[1].address, eventsHistory.address);
+      assert.equal(result.logs[1].event, 'Transferred');
+      assert.equal(result.logs[1].args.contractAddress, fakeCoin.address);
+      assert.equal(result.logs[1].args.from, sender);
+      assert.equal(result.logs[1].args.to, receiver2);
+      assert.equal(result.logs[1].args.value.valueOf(), receiver2Value);
+
+      assert.equal(result.logs[2].address, eventsHistory.address);
+      assert.equal(result.logs[2].event, 'Transferred');
+      assert.equal(result.logs[2].args.contractAddress, fakeCoin.address);
+      assert.equal(result.logs[2].args.from, sender);
+      assert.equal(result.logs[2].args.to, feeAddress);
+      assert.equal(result.logs[2].args.value.valueOf(), fee);
+    });
   });
 
   it('should not perform internal transfer to many by non-paymentProcessor', () => {
@@ -675,6 +787,42 @@ contract('PaymentGateway', function(accounts) {
     .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, totalValue));
   });
 
+  it('should emit Transferred events in EventsHistory on internal transfer from many', () => {
+    const sender = accounts[6];
+    const sender2 = accounts[7];
+    const receiver = '0xffffffffffffffffffffffffffffffffffff0000';
+    const value = 1000;
+    const value2 = 100;
+    const totalValue = 1100;
+    const senderValue = 200;
+    const sender2Value = 70;
+    const receiverResult = 270;
+    const result = 800;
+    const result2 = 30;
+    return Promise.resolve()
+    .then(() => fakeCoin.mint(sender, value))
+    .then(() => fakeCoin.mint(sender2, value2))
+    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+    .then(() => paymentGateway.deposit(value2, fakeCoin.address, {from: sender2}))
+    .then(() => paymentGateway.transferFromMany([sender, sender2], receiver, [senderValue, sender2Value], fakeCoin.address, {from: paymentProcessor}))
+    .then(result => {
+      assert.equal(result.logs.length, 2);
+      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].event, 'Transferred');
+      assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
+      assert.equal(result.logs[0].args.from, sender);
+      assert.equal(result.logs[0].args.to, receiver);
+      assert.equal(result.logs[0].args.value.valueOf(), senderValue);
+
+      assert.equal(result.logs[1].address, eventsHistory.address);
+      assert.equal(result.logs[1].event, 'Transferred');
+      assert.equal(result.logs[1].args.contractAddress, fakeCoin.address);
+      assert.equal(result.logs[1].args.from, sender2);
+      assert.equal(result.logs[1].args.to, receiver);
+      assert.equal(result.logs[1].args.value.valueOf(), sender2Value);
+    });
+  });
+
   it('should not perform internal transfer from many if not enough balance', () => {
     const sender = accounts[6];
     const sender2 = accounts[7];
@@ -858,6 +1006,4 @@ contract('PaymentGateway', function(accounts) {
     .then(assertExternalBalance(feeAddress, fakeCoin.address, 0))
     .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, value));
   });
-
-  // events tests.
 });
