@@ -9,7 +9,7 @@ contract Mock {
     }
 
     uint public expectationsCount;
-    uint public nextExpectation;
+    uint public nextExpectation = 1;
     uint public callsCount;
     mapping(uint => Expect) public expectations;
 
@@ -28,9 +28,6 @@ contract Mock {
     }
 
     function expect(address _from, uint _value, bytes _input, bytes32 _return) {
-        if (nextExpectation == 0) {
-            nextExpectation = 1;
-        }
         expectations[++expectationsCount] = Expect(sha3(_from, _value, _input), _return);
     }
 
@@ -41,6 +38,6 @@ contract Mock {
     }
 
     function expectationsLeft() constant returns(uint) {
-        return (expectationsCount + 1) - nextExpectation;
+        return expectationsCount - (nextExpectation - 1);
     }
 }
