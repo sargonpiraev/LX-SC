@@ -1,8 +1,8 @@
 pragma solidity 0.4.8;
 
-import '../StorageUser.sol';
+import '../StorageAdapter.sol';
 
-contract StorageTester is StorageUser {
+contract StorageTester is StorageAdapter {
     StorageInterface.UInt uintVar;
     StorageInterface.Int intVar;
     StorageInterface.Address addressVar;
@@ -13,7 +13,7 @@ contract StorageTester is StorageUser {
     StorageInterface.Set setVar;
     StorageInterface.AddressesSet addressesSetVar;
 
-    function StorageTester(Storage _store, bytes32 _crate) StorageUser(_store, _crate) {
+    function StorageTester(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) {
         reinit();
     }
 

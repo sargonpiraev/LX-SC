@@ -1,15 +1,15 @@
 pragma solidity 0.4.8;
 
 import './Owned.sol';
-import './EventsHistoryAndStorageUser.sol';
+import './EventsHistoryAndStorageAdapter.sol';
 
-contract ERC20Library is EventsHistoryAndStorageUser, Owned {
+contract ERC20Library is EventsHistoryAndStorageAdapter, Owned {
     StorageInterface.AddressesSet contracts;
 
     event ContractAdded(address indexed contractAddress, uint version);
     event ContractRemoved(address indexed contractAddress, uint version);
 
-    function ERC20Library(Storage _store, bytes32 _crate) EventsHistoryAndStorageUser(_store, _crate) {
+    function ERC20Library(Storage _store, bytes32 _crate) EventsHistoryAndStorageAdapter(_store, _crate) {
         contracts.init('contracts');
     }
 

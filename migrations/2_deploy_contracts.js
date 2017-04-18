@@ -24,7 +24,7 @@ module.exports = deployer => {
   .then(() => deployer.deploy(Storage))
   .then(() => deployer.deploy(StorageInterface))
   .then(() => deployer.link(StorageInterface, [StorageTester, UserLibrary]))
-  .then(() => deployer.deploy(StorageTester, Storage.address, 'StorageUser'))
+  .then(() => deployer.deploy(StorageTester, Storage.address, 'StorageTester'))
   .then(() => deployer.deploy(FakeCoin))
   .then(() => deployer.deploy(EventsHistory))
   .then(() => EventsHistory.deployed())

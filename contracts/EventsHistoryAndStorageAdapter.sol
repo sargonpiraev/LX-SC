@@ -1,5 +1,7 @@
 pragma solidity 0.4.8;
 
+import './StorageAdapter.sol';
+
 contract EventsHistoryInterface {
     function versions(address _address) constant returns(uint);
 }
@@ -11,15 +13,19 @@ contract EventsHistoryInterface {
  * In case of new events needed later, additional emitters can be developed.
  * All the functions is meant to be called using delegatecall.
  */
-contract EventsHistoryUser {
-    address eventsHistory;
+contract EventsHistoryAndStorageAdapter is StorageAdapter {
+    StorageInterface.Address eventsHistory;
+
+    function EventsHistoryAndStorageAdapter(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) {
+        eventsHistory.init('eventsHistory');
+    }
 
     function getEventsHistory() constant returns(address) {
-        return eventsHistory;
+        return store.get(eventsHistory);
     }
 
     function _setEventsHistory(address _eventsHistory) internal {
-        eventsHistory = _eventsHistory;
+        store.set(eventsHistory, _eventsHistory);
     }
 
     /**

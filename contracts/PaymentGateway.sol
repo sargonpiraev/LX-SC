@@ -1,7 +1,7 @@
 pragma solidity 0.4.8;
 
 import './Owned.sol';
-import './EventsHistoryAndStorageUser.sol';
+import './EventsHistoryAndStorageAdapter.sol';
 
 contract ERC20LibraryInterface {
     function includes(address _contract) constant returns(bool);
@@ -16,7 +16,7 @@ contract BalanceHolderInterface {
     function withdraw(address _to, uint _value, address _contract) returns(bool);
 }
 
-contract PaymentGateway is EventsHistoryAndStorageUser, Owned {
+contract PaymentGateway is EventsHistoryAndStorageAdapter, Owned {
     StorageInterface.Address erc2Library;
     StorageInterface.Address feeAddress;
     StorageInterface.Address paymentProcessor;
@@ -43,7 +43,7 @@ contract PaymentGateway is EventsHistoryAndStorageUser, Owned {
         _;
     }
 
-    function PaymentGateway(Storage _store, bytes32 _crate) EventsHistoryAndStorageUser(_store, _crate) {
+    function PaymentGateway(Storage _store, bytes32 _crate) EventsHistoryAndStorageAdapter(_store, _crate) {
         erc2Library.init('erc2Library');
         feeAddress.init('feeAddress');
         paymentProcessor.init('paymentProcessor');
