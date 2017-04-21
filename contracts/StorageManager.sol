@@ -1,9 +1,9 @@
 pragma solidity 0.4.8;
 
 import './Owned.sol';
-import './EventsHistoryUser.sol';
+import './EventsHistoryAdapter.sol';
 
-contract StorageManager is EventsHistoryUser, Owned {
+contract StorageManager is EventsHistoryAdapter, Owned {
     mapping(address => mapping(bytes32 => bool)) internal approvedContracts;
     event AccessGiven(address actor, bytes32 role, uint version);
     event AccessBlocked(address actor, bytes32 role, uint version);

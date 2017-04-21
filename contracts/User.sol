@@ -1,20 +1,20 @@
 pragma solidity 0.4.8;
 
 import './Owned.sol';
-import './EventsHistoryAndStorageUser.sol';
+import './EventsHistoryAndStorageAdapter.sol';
 
 contract UserProxy {
     function forward(address destination, bytes data, uint value, bool throwOnFailedCall) returns(bytes32 result);
 }
 
-contract User is EventsHistoryAndStorageUser, Owned {
+contract User is EventsHistoryAndStorageAdapter, Owned {
     StorageInterface.AddressUIntMapping ratingsGiven;
     StorageInterface.Mapping ipfsHashes;
     UserProxy userProxy;
     event RatingGiven(address indexed to, uint rating, uint version);
     event HashAdded(bytes32 indexed key, bytes32 hash, uint version);
 
-    function User(Storage _store, bytes32 _crate) EventsHistoryAndStorageUser(_store, _crate) {
+    function User(Storage _store, bytes32 _crate) EventsHistoryAndStorageAdapter(_store, _crate) {
         ipfsHashes.init('ipfsHashes');
         ratingsGiven.init('ratingsGiven');
     }
