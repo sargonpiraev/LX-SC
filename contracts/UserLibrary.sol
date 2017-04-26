@@ -96,6 +96,8 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
     uint[] tempCategories;
     uint[] tempSkills;
     function getUserSkills(address _user) constant returns(uint, uint[], uint[]) {
+        tempCategories.length = 0;
+        tempSkills.length = 0;
         uint areas = store.get(skillAreas, _user);
         for (uint area = 1; area <= 0x8000000000000000000000000000000000000000000000000000000000000000; area = area << 2) {
             if (!_hasFlag(areas, area)) {
@@ -115,8 +117,6 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
                 tempSkills.push(store.get(skills, _user, area, category));
             }
         }
-        tempCategories.length = 0;
-        tempSkills.length = 0;
         return (areas, tempCategories, tempSkills);
     }
 
@@ -127,13 +127,13 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
     bytes32[] temp;
     // Will only return roles that are present in RolesLibrary.
     function getUserRoles(address _user) constant returns(bytes32[]) {
+        temp.length = 0;
         bytes32[] memory uniques = _getRoles();
         for (uint i = 0; i < uniques.length; i++) {
             if (hasRole(_user, uniques[i])) {
                 temp.push(uniques[i]);
             }
         }
-        temp.length = 0;
         return temp;
     }
 
