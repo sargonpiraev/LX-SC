@@ -72,8 +72,6 @@ contract SkillsLibrary is EventsHistoryAndStorageAdapter, Owned {
     }
 
     function setCategory(uint _area, uint _category, bytes32 _hash)
-        singleFlag(_area)
-        oddFlag(_area)
         singleFlag(_category)
         oddFlag(_category)
         onlyContractOwner()
@@ -87,10 +85,6 @@ contract SkillsLibrary is EventsHistoryAndStorageAdapter, Owned {
     }
 
     function setSkill(uint _area, uint _category, uint _skill, bytes32 _hash)
-        singleFlag(_area)
-        oddFlag(_area)
-        singleFlag(_category)
-        oddFlag(_category)
         singleFlag(_skill)
         onlyContractOwner()
     returns(bool) {
