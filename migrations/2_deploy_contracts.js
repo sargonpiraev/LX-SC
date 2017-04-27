@@ -12,6 +12,7 @@ const ManagerMock = artifacts.require('./ManagerMock.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
 const RatingsLibrary = artifacts.require('./RatingsLibrary.sol');
 const IPFSLibrary = artifacts.require('./IPFSLibrary.sol');
+const SkillsLibrary = artifacts.require('./SkillsLibrary.sol');
 const Mock = artifacts.require('./Mock.sol');
 const UserProxy = artifacts.require('./UserProxy.sol');
 const Storage = artifacts.require('./Storage.sol');
@@ -33,6 +34,7 @@ module.exports = deployer => {
   .then(() => deployer.deploy(UserProxyTester))
   .then(() => deployer.deploy(RatingsLibrary, Storage.address, 'RatingsLibrary'))
   .then(() => deployer.deploy(IPFSLibrary, Storage.address, 'IPFSLibrary'))
+  .then(() => deployer.deploy(SkillsLibrary, Storage.address, 'SkillsLibrary'))
   .then(() => deployer.deploy(RolesLibrary, Storage.address, 'RolesLibrary'))
   .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibrary'))
   .then(() => deployer.deploy(ERC20Library, Storage.address, 'ERC20Library'))

@@ -15,7 +15,6 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
     StorageInterface.AddressUIntMapping skillAreas;
     StorageInterface.AddressUIntUIntMapping skillCategories;
     StorageInterface.AddressUIntUIntUIntMapping skills;
-    StorageInterface.Address skillsLibrary;
 
     event RoleAdded(address indexed user, bytes32 indexed role, uint version);
     event RoleRemoved(address indexed user, bytes32 indexed role, uint version);
@@ -30,7 +29,6 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         skillAreas.init('skillAreas');
         skillCategories.init('skillCategories');
         skills.init('skills');
-        skillsLibrary.init('skillsLibrary');
     }
 
     function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
@@ -43,10 +41,6 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
 
     function setRolesLibrary(address _rolesLibrary) onlyContractOwner() returns(bool) {
         store.set(rolesLibrary, _rolesLibrary);
-    }
-
-    function setSkillsLibrary(address _skillsLibrary) onlyContractOwner() returns(bool) {
-        store.set(skillsLibrary, _skillsLibrary);
     }
 
     // Will return user role only if it is present in RolesLibrary.
@@ -99,7 +93,7 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         tempCategories.length = 0;
         tempSkills.length = 0;
         uint areas = store.get(skillAreas, _user);
-        for (uint area = 1; area <= 0x8000000000000000000000000000000000000000000000000000000000000000; area = area << 2) {
+        for (uint area = 1; area != 0; area = area << 2) {
             if (!_hasFlag(areas, area)) {
                 continue;
             }
@@ -107,7 +101,7 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
                 continue;
             }
             tempCategories.push(store.get(skillCategories, _user, area));
-            for (uint category = 1; category <= 0x8000000000000000000000000000000000000000000000000000000000000000; category = category << 2) {
+            for (uint category = 1; category != 0; category = category << 2) {
                 if (!_hasFlag(tempCategories[tempCategories.length - 1], category)) {
                     continue;
                 }
@@ -166,12 +160,15 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         return true;
     }
 
-    function setCategory(address _user, uint _area, uint _categories) onlyContractOwner() returns(bool) {
+    function setCategories(address _user, uint _area, uint _categories) onlyContractOwner() returns(bool) {
+        _addArea(_user, _area);
         _setCategories(_user, _area, _categories);
         return true;
     }
 
     function setSkills(address _user, uint _area, uint _category, uint _skills) onlyContractOwner() returns(bool) {
+        _addArea(_user, _area);
+        _addCategory(_user, _area, _category);
         _setSkills(_user, _area, _category, _skills);
         return true;
     }
@@ -180,7 +177,7 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         uint categoriesCounter = 0;
         uint skillsCounter = 0;
         _setAreas(_user, _areas);
-        for (uint area = 1; area <= 0x8000000000000000000000000000000000000000000000000000000000000000; area = area << 2) {
+        for (uint area = 1; area != 0; area = area << 2) {
             if (!_hasFlag(_areas, area)) {
                 continue;
             }
@@ -188,7 +185,7 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
                 continue;
             }
             _setCategories(_user, area, _categories[categoriesCounter]);
-            for (uint category = 1; category <= 0x8000000000000000000000000000000000000000000000000000000000000000; category = category << 2) {
+            for (uint category = 1; category != 0; category = category << 2) {
                 if (!_hasFlag(_categories[categoriesCounter], category)) {
                     continue;
                 }
@@ -207,6 +204,20 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         _setRole(_user, _role, false);
         _emitRoleRemoved(_user, _role);
         return true;
+    }
+
+    function _addArea(address _user, uint _area) internal {
+        if (hasArea(_user, _area)) {
+            return;
+        }
+        _setAreas(_user, store.get(skillAreas, _user) | _area);
+    }
+
+    function _addCategory(address _user, uint _area, uint _category) internal {
+        if (hasCategory(_user, _area, _category)) {
+            return;
+        }
+        _setCategories(_user, _area, store.get(skillCategories, _user, _area) | _category);
     }
 
     function _setAreas(address _user, uint _areas) internal {

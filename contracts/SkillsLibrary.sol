@@ -13,6 +13,28 @@ contract SkillsLibrary is EventsHistoryAndStorageAdapter, Owned {
     event CategorySet(uint area, uint category, bytes32 hash, uint version);
     event SkillSet(uint area, uint category, uint skill, bytes32 hash, uint version);
 
+    modifier singleFlag(uint _flag) {
+        if (!_isSingleFlag(_flag)) {
+            return;
+        }
+        _;
+    }
+
+    modifier oddFlag(uint _flag) {
+        if (!_isOddFlag(_flag)) {
+            return;
+        }
+        _;
+    }
+
+    function _isSingleFlag(uint _flag) constant internal returns(bool) {
+        return _flag != 0 && (_flag & (_flag - 1) == 0);
+    }
+
+    function _isOddFlag(uint _flag) constant internal returns(bool) {
+        return _flag & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa == 0;
+    }
+
     function SkillsLibrary(Storage _store, bytes32 _crate) EventsHistoryAndStorageAdapter(_store, _crate) {
         areas.init('areas');
         categories.init('categories');
@@ -39,19 +61,45 @@ contract SkillsLibrary is EventsHistoryAndStorageAdapter, Owned {
         return store.get(skills, _area, _category, _skill);
     }
 
-    function setArea(uint _area, bytes32 _hash) onlyContractOwner() returns(bool) {
+    function setArea(uint _area, bytes32 _hash)
+        singleFlag(_area)
+        oddFlag(_area)
+        onlyContractOwner()
+    returns(bool) {
         store.set(areas, _area, _hash);
         _emitAreaSet(_area, _hash);
         return true;
     }
 
-    function setCategory(uint _area, uint _category, bytes32 _hash) onlyContractOwner() returns(bool) {
+    function setCategory(uint _area, uint _category, bytes32 _hash)
+        singleFlag(_area)
+        oddFlag(_area)
+        singleFlag(_category)
+        oddFlag(_category)
+        onlyContractOwner()
+    returns(bool) {
+        if (getArea(_area) == 0) {
+            return false;
+        }
         store.set(categories, _area, _category, _hash);
         _emitCategorySet(_area, _category, _hash);
         return true;
     }
 
-    function setSkill(uint _area, uint _category, uint _skill, bytes32 _hash) onlyContractOwner() returns(bool) {
+    function setSkill(uint _area, uint _category, uint _skill, bytes32 _hash)
+        singleFlag(_area)
+        oddFlag(_area)
+        singleFlag(_category)
+        oddFlag(_category)
+        singleFlag(_skill)
+        onlyContractOwner()
+    returns(bool) {
+        if (getArea(_area) == 0) {
+            return false;
+        }
+        if (getCategory(_area, _category) == 0) {
+            return false;
+        }
         store.set(skills, _area, _category, _skill, _hash);
         _emitSkillSet(_area, _category, _skill, _hash);
         return true;
