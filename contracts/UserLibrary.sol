@@ -23,6 +23,47 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
     event SkillCategoriesSet(address indexed user, uint indexed area, uint categories, uint version);
     event SkillsSet(address indexed user, uint indexed area, uint indexed category, uint skills, uint version);
 
+    modifier singleFlag(uint _flag) {
+        if (!_isSingleFlag(_flag)) {
+            return;
+        }
+        _;
+    }
+
+    modifier oddFlag(uint _flag) {
+        if (!_isOddFlag(_flag)) {
+            return;
+        }
+        _;
+    }
+
+    modifier ifEvenThenOddTooFlags(uint _flags) {
+        if (!_ifEvenThenOddTooFlags(_flags)) {
+            return;
+        }
+        _;
+    }
+
+    modifier hasFlags(uint _flags) {
+        if (_flags == 0) {
+            return;
+        }
+        _;
+    }
+
+    function _isSingleFlag(uint _flag) constant internal returns(bool) {
+        return _flag != 0 && (_flag & (_flag - 1) == 0);
+    }
+
+    function _isOddFlag(uint _flag) constant internal returns(bool) {
+        return _flag & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa == 0;
+    }
+
+    function _ifEvenThenOddTooFlags(uint _flags) constant internal returns(bool) {
+        uint flagsEvenOddMask = (_flags & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) >> 1;
+        return (_flags & flagsEvenOddMask) == flagsEvenOddMask;
+    }
+
     function UserLibrary(Storage _store, bytes32 _crate) EventsHistoryAndStorageAdapter(_store, _crate) {
         roles.init('roles');
         rolesLibrary.init('rolesLibrary');
@@ -48,7 +89,11 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         return getRolesLibrary().includes(_role) && store.get(roles, bytes32(_user), _role).toBool();
     }
 
-    function getAreaInfo(address _user, uint _area) constant returns(bool partialArea, bool fullArea) {
+    function getAreaInfo(address _user, uint _area)
+        singleFlag(_area)
+        oddFlag(_area)
+        constant
+    returns(bool partialArea, bool fullArea) {
         uint areas = store.get(skillAreas, _user);
         return (_hasFlag(areas, _area), _hasFlag(areas, _area << 1));
     }
@@ -58,7 +103,11 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         return partial;
     }
 
-    function getCategoryInfo(address _user, uint _area, uint _category) constant returns(bool partialCategory, bool fullCategory) {
+    function getCategoryInfo(address _user, uint _area, uint _category)
+        singleFlag(_category)
+        oddFlag(_category)
+        constant
+    returns(bool partialCategory, bool fullCategory) {
         var (partialArea, fullArea) = getAreaInfo(_user, _area);
         if (!partialArea) {
             return (false, false);
@@ -75,7 +124,7 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         return partial;
     }
 
-    function hasSkill(address _user, uint _area, uint _category, uint _skill) constant returns(bool) {
+    function hasSkill(address _user, uint _area, uint _category, uint _skill) singleFlag(_skill) constant returns(bool) {
         var (partialCategory, fullCategory) = getCategoryInfo(_user, _area, _category);
         if (!partialCategory) {
             return false;
@@ -155,27 +204,46 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         return true;
     }
 
-    function setAreas(address _user, uint _areas) onlyContractOwner() returns(bool) {
-        _setAreas(_user, _areas);
-        return true;
-    }
+    // function setAreas(address _user, uint _areas)
+    //     ifEvenThenOddTooFlags(_areas)
+    //     onlyContractOwner()
+    // returns(bool) {
+    //     _setAreas(_user, _areas);
+    //     return true;
+    // }
 
-    function setCategories(address _user, uint _area, uint _categories) onlyContractOwner() returns(bool) {
-        _addArea(_user, _area);
-        _setCategories(_user, _area, _categories);
-        return true;
-    }
+    // function setCategories(address _user, uint _area, uint _categories)
+    //     singleFlag(_area)
+    //     oddFlag(_area)
+    //     ifEvenThenOddTooFlags(_categories)
+    //     hasFlags(_categories)
+    //     onlyContractOwner()
+    // returns(bool) {
+    //     _addArea(_user, _area);
+    //     _setCategories(_user, _area, _categories);
+    //     return true;
+    // }
 
-    function setSkills(address _user, uint _area, uint _category, uint _skills) onlyContractOwner() returns(bool) {
+    function setSkills(address _user, uint _area, uint _category, uint _skills)
+        singleFlag(_area)
+        oddFlag(_area)
+        singleFlag(_category)
+        oddFlag(_category)
+        hasFlags(_skills)
+        onlyContractOwner()
+    returns(bool) {
         _addArea(_user, _area);
         _addCategory(_user, _area, _category);
         _setSkills(_user, _area, _category, _skills);
         return true;
     }
 
-    function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills)  onlyContractOwner() returns(bool) {
+    function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) onlyContractOwner() returns(bool) {
         uint categoriesCounter = 0;
         uint skillsCounter = 0;
+        if (!_ifEvenThenOddTooFlags(_areas)) {
+            return false;
+        }
         _setAreas(_user, _areas);
         for (uint area = 1; area != 0; area = area << 2) {
             if (!_hasFlag(_areas, area)) {
@@ -183,6 +251,9 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
             }
             if (_hasFlag(_areas, area << 1)) {
                 continue;
+            }
+            if (!_ifEvenThenOddTooFlags(_categories[categoriesCounter])) {
+                throw;
             }
             _setCategories(_user, area, _categories[categoriesCounter]);
             for (uint category = 1; category != 0; category = category << 2) {
