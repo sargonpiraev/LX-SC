@@ -59,6 +59,10 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         return _flag & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa == 0;
     }
 
+    function _isFullOrNull(uint _flags, uint _flag) constant internal returns(bool) {
+        return !_hasFlag(_flags, _flag) || _hasFlag(_flags, _flag << 1);
+    }
+
     function _ifEvenThenOddTooFlags(uint _flags) constant internal returns(bool) {
         uint flagsEvenOddMask = (_flags & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) >> 1;
         return (_flags & flagsEvenOddMask) == flagsEvenOddMask;
@@ -143,18 +147,12 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         tempSkills.length = 0;
         uint areas = store.get(skillAreas, _user);
         for (uint area = 1; area != 0; area = area << 2) {
-            if (!_hasFlag(areas, area)) {
-                continue;
-            }
-            if (_hasFlag(areas, area << 1)) {
+            if (_isFullOrNull(areas, area)) {
                 continue;
             }
             tempCategories.push(store.get(skillCategories, _user, area));
             for (uint category = 1; category != 0; category = category << 2) {
-                if (!_hasFlag(tempCategories[tempCategories.length - 1], category)) {
-                    continue;
-                }
-                if (_hasFlag(tempCategories[tempCategories.length - 1], category << 1)) {
+                if (_isFullOrNull(tempCategories[tempCategories.length - 1], category)) {
                     continue;
                 }
                 tempSkills.push(store.get(skills, _user, area, category));
@@ -204,25 +202,41 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         return true;
     }
 
-    // function setAreas(address _user, uint _areas)
-    //     ifEvenThenOddTooFlags(_areas)
-    //     onlyContractOwner()
-    // returns(bool) {
-    //     _setAreas(_user, _areas);
-    //     return true;
-    // }
+    function setAreas(address _user, uint _areas)
+        ifEvenThenOddTooFlags(_areas)
+        onlyContractOwner()
+    returns(bool) {
+        for (uint area = 1; area != 0; area = area << 2) {
+            if (_isFullOrNull(_areas, area)) {
+                continue;
+            }
+            if (store.get(skillCategories, _user, area) == 0) {
+                return false;
+            }
+        }
+        _setAreas(_user, _areas);
+        return true;
+    }
 
-    // function setCategories(address _user, uint _area, uint _categories)
-    //     singleFlag(_area)
-    //     oddFlag(_area)
-    //     ifEvenThenOddTooFlags(_categories)
-    //     hasFlags(_categories)
-    //     onlyContractOwner()
-    // returns(bool) {
-    //     _addArea(_user, _area);
-    //     _setCategories(_user, _area, _categories);
-    //     return true;
-    // }
+    function setCategories(address _user, uint _area, uint _categories)
+        singleFlag(_area)
+        oddFlag(_area)
+        ifEvenThenOddTooFlags(_categories)
+        hasFlags(_categories)
+        onlyContractOwner()
+    returns(bool) {
+        _addArea(_user, _area);
+        for (uint category = 1; category != 0; category = category << 2) {
+            if (_isFullOrNull(_categories, category)) {
+                continue;
+            }
+            if (store.get(skills, _user, _area, category) == 0) {
+                return false;
+            }
+        }
+        _setCategories(_user, _area, _categories);
+        return true;
+    }
 
     function setSkills(address _user, uint _area, uint _category, uint _skills)
         singleFlag(_area)
@@ -238,30 +252,35 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         return true;
     }
 
+    function addMany(address _user, uint _areas, uint[] _categories, uint[] _skills) onlyContractOwner() returns(bool) {
+        return _setMany(_user, _areas, _categories, _skills, false);
+    }
+
     function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) onlyContractOwner() returns(bool) {
+        return _setMany(_user, _areas, _categories, _skills, true);
+    }
+
+    function _setMany(address _user, uint _areas, uint[] _categories, uint[] _skills, bool _overWrite) internal returns(bool) {
         uint categoriesCounter = 0;
         uint skillsCounter = 0;
         if (!_ifEvenThenOddTooFlags(_areas)) {
             return false;
         }
-        _setAreas(_user, _areas);
+        _setAreas(_user, _overWrite ? _areas : (store.get(skillAreas, _user) | _areas));
         for (uint area = 1; area != 0; area = area << 2) {
-            if (!_hasFlag(_areas, area)) {
-                continue;
-            }
-            if (_hasFlag(_areas, area << 1)) {
+            if (_isFullOrNull(_areas, area)) {
                 continue;
             }
             if (!_ifEvenThenOddTooFlags(_categories[categoriesCounter])) {
                 throw;
             }
-            _setCategories(_user, area, _categories[categoriesCounter]);
+            _setCategories(_user, area, _overWrite ? _categories[categoriesCounter] : (store.get(skillCategories, _user, area) | _categories[categoriesCounter]));
             for (uint category = 1; category != 0; category = category << 2) {
-                if (!_hasFlag(_categories[categoriesCounter], category)) {
+                if (_isFullOrNull(_categories[categoriesCounter], category)) {
                     continue;
                 }
-                if (_hasFlag(_categories[categoriesCounter], category << 1)) {
-                    continue;
+                if (_skills[skillsCounter] == 0) {
+                    throw;
                 }
                 _setSkills(_user, area, category, _skills[skillsCounter]);
                 skillsCounter += 1;
