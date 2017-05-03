@@ -40,6 +40,10 @@ library StorageInterface {
         Mapping innerMapping;
     }
 
+    struct AddressBytes32Bytes32Mapping {
+        Mapping innerMapping;
+    }
+
     struct Set {
         UInt count;
         Mapping indexes;
@@ -100,6 +104,10 @@ library StorageInterface {
         init(self.innerMapping, _id);
     }
 
+    function init(AddressBytes32Bytes32Mapping storage self, bytes32 _id) internal {
+        init(self.innerMapping, _id);
+    }
+
     function init(Set storage self, bytes32 _id) internal {
         init(self.count, sha3(_id, 'count'));
         init(self.indexes, sha3(_id, 'indexes'));
@@ -148,6 +156,10 @@ library StorageInterface {
 
     function set(Config storage self, AddressAddressUIntMapping storage item, address _key, address _key2, uint _value) internal {
         set(self, item.innerMapping, bytes32(_key), bytes32(_key2), bytes32(_value));
+    }
+
+    function set(Config storage self, AddressBytes32Bytes32Mapping storage item, address _key, bytes32 _key2, bytes32 _value) internal {
+        set(self, item.innerMapping, bytes32(_key), _key2, _value);
     }
 
     function add(Config storage self, Set storage item, bytes32 _value) internal {
@@ -222,6 +234,10 @@ library StorageInterface {
 
     function get(Config storage self, AddressAddressUIntMapping storage item, address _key, address _key2) internal constant returns(uint) {
         return uint(get(self, item.innerMapping, bytes32(_key), bytes32(_key2)));
+    }
+
+    function get(Config storage self, AddressBytes32Bytes32Mapping storage item, address _key, bytes32 _key2) internal constant returns(bytes32) {
+        return get(self, item.innerMapping, bytes32(_key), _key2);
     }
 
     function includes(Config storage self, Set storage item, bytes32 _value) internal constant returns(bool) {
