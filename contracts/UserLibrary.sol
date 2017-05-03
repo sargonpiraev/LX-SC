@@ -9,6 +9,41 @@ contract RolesLibraryInterface {
     function getRole(uint _index) constant returns(bytes32);
 }
 
+/**
+ * @title LaborX User Library.
+ *
+ * Skills:
+ * Here we encode 128 different areas, each with 128 different categories
+ * each with 256 different skills, using bit flags starting from the right,
+ * for every user.
+ * Areas and categories use odd bit flags to indicate that entity is
+ * partially filled (area has categories, or category has skills).
+ * Areas and categories use even bit flags to indicate that entity is
+ * fully filled (area has all categories and skills, or category has all skills).
+ * Skills is any bit.
+ * It results in that that:
+ *   all the areas for the user are defined using single uint256.
+ *     all the categories of a single area of user are defined using single uint256.
+ *       all the skills of a single category of user are defined using single uint256.
+ *
+ * 00000001 is the first partial area.
+ * 00000100 is the second partial area.
+ * 00000101 is the first and second partial areas.
+ * 00001101 is the first full and second partial areas.
+ * 00000010 is invalid, because in order to be full area also should be partial.
+ * Same encoding is used for categories.
+ * 
+ * For skills:
+ * 00000001 is the first skill.
+ * 00000010 is the second skill.
+ * 01000011 is the first, second and seventh skill.
+ *
+ * Example skills structure for some user:
+ * 00110001 - Full third area, and partial first area.
+ *   01001101 - First area: partial first and fourth category, full second category.
+ *     11100000 - First category: sixs, senventh and eights skills.
+ *     10001001 - Fourth category: first, fourth and eights skills.
+ */
 contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
     StorageInterface.Mapping roles;
     StorageInterface.Address rolesLibrary;

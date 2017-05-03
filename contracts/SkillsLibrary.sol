@@ -3,6 +3,24 @@ pragma solidity 0.4.8;
 import './Owned.sol';
 import './EventsHistoryAndStorageAdapter.sol';
 
+
+/**
+ * @title LaborX Skills Library.
+ *
+ * Here we encode 128 different areas, each with 128 different categories
+ * each with 256 different skills, using bit flags.
+ * Every entity (area, category, skill) is linked to IPFS file that should
+ * have description of the particular entity.
+ * Areas and categories is an odd bit flags, starting from the right.
+ * 00000001 is the first area or category.
+ * 00000100 is the second area or category.
+ * 01000000 is the fourth area or category.
+ * Even flags are not used for areas and categories.
+ * Skills is any bit, starting from the right.
+ * 00000001 is the first skill.
+ * 00000010 is the second skill.
+ * 01000000 is the seventh skill.
+ */
 contract SkillsLibrary is EventsHistoryAndStorageAdapter, Owned {
     // Mappings of entity to IPFS hash.
     StorageInterface.UIntBytes32Mapping areas;
