@@ -20,8 +20,8 @@ contract RolesLibraryInterface {
  * partially filled (area has categories, or category has skills).
  * Areas and categories use even bit flags to indicate that entity is
  * fully filled (area has all categories and skills, or category has all skills).
- * Skills is any bit.
- * It results in that that:
+ * Skill can be repserented with any bit.
+ * It results in following:
  *   all the areas for the user are defined using single uint256.
  *     all the categories of a single area of user are defined using single uint256.
  *       all the skills of a single category of user are defined using single uint256.
@@ -41,8 +41,8 @@ contract RolesLibraryInterface {
  * Example skills structure for some user:
  * 00110001 - Full third area, and partial first area.
  *   01001101 - First area: partial first and fourth category, full second category.
- *     11100000 - First category: sixs, senventh and eights skills.
- *     10001001 - Fourth category: first, fourth and eights skills.
+ *     11100000 - First category: sixth, senventh and eighth skills.
+ *     10001001 - Fourth category: first, fourth and eighth skills.
  */
 contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
     StorageInterface.Mapping roles;
