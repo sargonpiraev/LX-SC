@@ -29,7 +29,7 @@ contract RolesLibraryInterface {
  * 00000001 is the first partial area.
  * 00000100 is the second partial area.
  * 00000101 is the first and second partial areas.
- * 00001101 is the first full and second partial areas.
+ * 00001101 is the first partial and second full areas.
  * 00000010 is invalid, because in order to be full area also should be partial.
  * Same encoding is used for categories.
  * 
@@ -39,7 +39,7 @@ contract RolesLibraryInterface {
  * 01000011 is the first, second and seventh skill.
  *
  * Example skills structure for some user:
- * 00110001 - Full third area, and partial first area.
+ * 00110001 - Partial first area, and full third area.
  *   01001101 - First area: partial first and fourth category, full second category.
  *     11100000 - First category: sixth, senventh and eighth skills.
  *     10001001 - Fourth category: first, fourth and eighth skills.
@@ -295,13 +295,13 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         return _setMany(_user, _areas, _categories, _skills, true);
     }
 
-    function _setMany(address _user, uint _areas, uint[] _categories, uint[] _skills, bool _overWrite) internal returns(bool) {
+    function _setMany(address _user, uint _areas, uint[] _categories, uint[] _skills, bool _overwrite) internal returns(bool) {
         uint categoriesCounter = 0;
         uint skillsCounter = 0;
         if (!_ifEvenThenOddTooFlags(_areas)) {
             return false;
         }
-        _setAreas(_user, _overWrite ? _areas : (store.get(skillAreas, _user) | _areas));
+        _setAreas(_user, _overwrite ? _areas : (store.get(skillAreas, _user) | _areas));
         for (uint area = 1; area != 0; area = area << 2) {
             if (_isFullOrNull(_areas, area)) {
                 continue;
@@ -309,7 +309,7 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
             if (!_ifEvenThenOddTooFlags(_categories[categoriesCounter])) {
                 throw;
             }
-            _setCategories(_user, area, _overWrite ? _categories[categoriesCounter] : (store.get(skillCategories, _user, area) | _categories[categoriesCounter]));
+            _setCategories(_user, area, _overwrite ? _categories[categoriesCounter] : (store.get(skillCategories, _user, area) | _categories[categoriesCounter]));
             for (uint category = 1; category != 0; category = category << 2) {
                 if (_isFullOrNull(_categories[categoriesCounter], category)) {
                     continue;

@@ -16,7 +16,7 @@ import './EventsHistoryAndStorageAdapter.sol';
  * 00000100 is the second area or category.
  * 01000000 is the fourth area or category.
  * Even flags are not used for areas and categories.
- * Skills is any bit, starting from the right.
+ * Skill can be repserented with any bit, starting from the right.
  * 00000001 is the first skill.
  * 00000010 is the second skill.
  * 01000000 is the seventh skill.
@@ -38,8 +38,8 @@ contract SkillsLibrary is EventsHistoryAndStorageAdapter, Owned {
         _;
     }
 
-    modifier oddFlag(uint _flag) {
-        if (!_isOddFlag(_flag)) {
+    modifier singleOddFlag(uint _flag) {
+        if (!_isSingleFlag(_flag) || !_isOddFlag(_flag)) {
             return;
         }
         _;
@@ -80,8 +80,7 @@ contract SkillsLibrary is EventsHistoryAndStorageAdapter, Owned {
     }
 
     function setArea(uint _area, bytes32 _hash)
-        singleFlag(_area)
-        oddFlag(_area)
+        singleOddFlag(_area)
         onlyContractOwner()
     returns(bool) {
         store.set(areas, _area, _hash);
@@ -90,8 +89,7 @@ contract SkillsLibrary is EventsHistoryAndStorageAdapter, Owned {
     }
 
     function setCategory(uint _area, uint _category, bytes32 _hash)
-        singleFlag(_category)
-        oddFlag(_category)
+        singleOddFlag(_category)
         onlyContractOwner()
     returns(bool) {
         if (getArea(_area) == 0) {
