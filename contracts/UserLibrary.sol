@@ -65,8 +65,8 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         _;
     }
 
-    modifier oddFlag(uint _flag) {
-        if (!_isOddFlag(_flag)) {
+    modifier singleOddFlag(uint _flag) {
+        if (!_isSingleFlag(_flag) || !_isOddFlag(_flag)) {
             return;
         }
         _;
@@ -129,8 +129,7 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
     }
 
     function getAreaInfo(address _user, uint _area)
-        singleFlag(_area)
-        oddFlag(_area)
+        singleOddFlag(_area)
         constant
     returns(bool partialArea, bool fullArea) {
         uint areas = store.get(skillAreas, _user);
@@ -143,8 +142,7 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
     }
 
     function getCategoryInfo(address _user, uint _area, uint _category)
-        singleFlag(_category)
-        oddFlag(_category)
+        singleOddFlag(_category)
         constant
     returns(bool partialCategory, bool fullCategory) {
         var (partialArea, fullArea) = getAreaInfo(_user, _area);
@@ -177,6 +175,8 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
 
     uint[] tempCategories;
     uint[] tempSkills;
+    // If some area of category is full, then we are not looking into it cause observer can safely
+    // assume that everything inside is filled.
     function getUserSkills(address _user) constant returns(uint, uint[], uint[]) {
         tempCategories.length = 0;
         tempSkills.length = 0;
@@ -254,8 +254,7 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
     }
 
     function setCategories(address _user, uint _area, uint _categories)
-        singleFlag(_area)
-        oddFlag(_area)
+        singleOddFlag(_area)
         ifEvenThenOddTooFlags(_categories)
         hasFlags(_categories)
         onlyContractOwner()
@@ -274,10 +273,8 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
     }
 
     function setSkills(address _user, uint _area, uint _category, uint _skills)
-        singleFlag(_area)
-        oddFlag(_area)
-        singleFlag(_category)
-        oddFlag(_category)
+        singleOddFlag(_area)
+        singleOddFlag(_category)
         hasFlags(_skills)
         onlyContractOwner()
     returns(bool) {
@@ -304,22 +301,31 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         _setAreas(_user, _overwrite ? _areas : (store.get(skillAreas, _user) | _areas));
         for (uint area = 1; area != 0; area = area << 2) {
             if (_isFullOrNull(_areas, area)) {
+                // Nothing should be put inside full or empty area.
                 continue;
             }
             if (!_ifEvenThenOddTooFlags(_categories[categoriesCounter])) {
                 throw;
             }
+            if (_categories[categoriesCounter] == 0) {
+                throw;
+            }
+            // Set categories for current partial area.
             _setCategories(_user, area, _overwrite ? _categories[categoriesCounter] : (store.get(skillCategories, _user, area) | _categories[categoriesCounter]));
             for (uint category = 1; category != 0; category = category << 2) {
                 if (_isFullOrNull(_categories[categoriesCounter], category)) {
+                    // Nothing should be put inside full or empty category.
                     continue;
                 }
                 if (_skills[skillsCounter] == 0) {
                     throw;
                 }
+                // Set skills for current partial category.
                 _setSkills(_user, area, category, _skills[skillsCounter]);
+                // Move to next skills.
                 skillsCounter += 1;
             }
+            // Move to next categories.
             categoriesCounter += 1;
         }
         return true;

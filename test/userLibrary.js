@@ -394,6 +394,17 @@ contract('UserLibrary', function(accounts) {
         .then(() => true);
       });
 
+      it('should not set empty user categories', () => {
+        const user = accounts[1];
+        const areas = addFlags(partialFlag(0));
+        const categories = [0];
+        const skills = [];
+        const expectedSkills = [ areas, categories, skills ];
+        return Promise.resolve()
+        .then(() => asserts.throws(userLibrary.setMany(user, areas, categories, skills)))
+        .then(() => true);
+      });
+
       it('should set user skills', () => {
         const user = accounts[1];
         const areas = addFlags(partialFlag(0));

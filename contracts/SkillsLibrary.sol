@@ -7,8 +7,8 @@ import './EventsHistoryAndStorageAdapter.sol';
 /**
  * @title LaborX Skills Library.
  *
- * Here we encode 128 different areas, each with 128 different categories
- * each with 256 different skills, using bit flags.
+ * Here we encode 128 different areas of activity, each with 128 different
+ * categories, each with 256 different skills, using bit flags.
  * Every entity (area, category, skill) is linked to IPFS file that should
  * have description of the particular entity.
  * Areas and categories is an odd bit flags, starting from the right.
@@ -20,6 +20,8 @@ import './EventsHistoryAndStorageAdapter.sol';
  * 00000001 is the first skill.
  * 00000010 is the second skill.
  * 01000000 is the seventh skill.
+ *
+ * Functions always accept a single flag that represents the entity.
  */
 contract SkillsLibrary is EventsHistoryAndStorageAdapter, Owned {
     // Mappings of entity to IPFS hash.
