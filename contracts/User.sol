@@ -1,15 +1,12 @@
 pragma solidity 0.4.8;
 
 import './Owned.sol';
-
-contract UserProxyInterface {
-    function forward(address destination, bytes data, uint value, bool throwOnFailedCall) returns(bytes32 result);
-}
+import './UserProxy.sol';
 
 contract User is Owned {
-    UserProxyInterface userProxy;
+    UserProxy userProxy;
 
-    function setUserProxy(UserProxyInterface _userProxy) onlyContractOwner() returns(bool) {
+    function setUserProxy(UserProxy _userProxy) onlyContractOwner() returns(bool) {
         userProxy = _userProxy;
         return true;
     }
@@ -23,4 +20,5 @@ contract User is Owned {
     }
 
     // Recovery functions should be added here.
+        
 }
