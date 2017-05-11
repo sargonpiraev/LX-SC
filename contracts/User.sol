@@ -1,15 +1,20 @@
 pragma solidity 0.4.8;
 
+import './User.sol';
 import './Owned.sol';
-
-contract UserProxyInterface {
-    function forward(address destination, bytes data, uint value, bool throwOnFailedCall) returns(bytes32 result);
-}
+import './UserProxy.sol';
 
 contract User is Owned {
-    UserProxyInterface userProxy;
+    UserProxy userProxy;
+    address recoveryContract;
 
-    function setUserProxy(UserProxyInterface _userProxy) onlyContractOwner() returns(bool) {
+    modifier onlyRecoveryContract() {
+        if (recoveryContract == msg.sender) {
+            _;
+        }
+    }
+
+    function setUserProxy(UserProxy _userProxy) onlyContractOwner() returns(bool) {
         userProxy = _userProxy;
         return true;
     }
@@ -22,5 +27,14 @@ contract User is Owned {
         return userProxy.forward(_destination, _data, _value, _throwOnFailedCall);
     }
 
-    // Recovery functions should be added here.
+    function setRecoveryContract(address _recoveryContract) onlyContractOwner() returns(bool) {
+        recoveryContract = _recoveryContract;
+        return true;
+    }
+
+    function recoverUser(address newAddress) onlyRecoveryContract() returns(bool) {
+        contractOwner = newAddress;
+        return true;
+    }
+        
 }

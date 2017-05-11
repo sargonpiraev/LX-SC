@@ -20,7 +20,7 @@ contract('UserProxy', function(accounts) {
   it('should forward calls', () => {
     const someParameter = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const data = tester.contract.functionReturningValue.getData(someParameter);
-    return userProxy.forward.call(tester.address, data, false, 0)
+    return userProxy.forward.call(tester.address, data, 0, false)
       .then(result => assert.equal(result, someParameter));
   })
   

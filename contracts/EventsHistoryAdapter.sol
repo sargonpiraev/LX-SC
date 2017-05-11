@@ -1,6 +1,6 @@
 pragma solidity 0.4.8;
 
-contract EventsHistoryInterface {
+contract EventsHistoryInterface_ {
     function versions(address _address) constant returns(uint);
 }
 
@@ -32,6 +32,6 @@ contract EventsHistoryAdapter {
      * @return current context caller version number.
      */
     function _getVersion() constant internal returns(uint) {
-        return EventsHistoryInterface(address(this)).versions(msg.sender);
+        return EventsHistoryInterface_(address(this)).versions(msg.sender);
     }
 }
