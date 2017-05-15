@@ -3,6 +3,7 @@ const UserLibraryMock = artifacts.require('./UserLibraryMock.sol');
 const UserProxyTester = artifacts.require('./UserProxyTester.sol');
 const StorageManager = artifacts.require('./StorageManager.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
+const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
 const RatingsLibrary = artifacts.require('./RatingsLibrary.sol');
 const SkillsLibrary = artifacts.require('./SkillsLibrary.sol');
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
@@ -47,5 +48,6 @@ module.exports = deployer => {
   .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibrary'))
   .then(() => deployer.deploy(ERC20Library, Storage.address, 'ERC20Library'))
   .then(() => deployer.deploy(PaymentGateway, Storage.address, 'PaymentGateway'))
+  .then(() => deployer.deploy(PaymentProcessor))
   .then(() => true);
 };
