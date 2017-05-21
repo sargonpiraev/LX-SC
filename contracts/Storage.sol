@@ -13,6 +13,12 @@ contract Storage is Owned {
         mapping(bytes32 => bool) bools;
         mapping(bytes32 => int) ints;
         mapping(bytes32 => bytes32) bytes32s;
+        mapping(bytes32 => Rate) rates;
+    }
+
+    struct Rate {
+        address ratedBy;
+        uint rate;
     }
 
     mapping(bytes32 => Crate) crates;
@@ -68,5 +74,13 @@ contract Storage is Owned {
 
     function getBytes32(bytes32 _crate, bytes32 _key) constant returns(bytes32) {
         return crates[_crate].bytes32s[_key];
+    }
+
+    function setRates(bytes32 _crate, bytes32 _key, address _value, uint _value2) onlyAllowed(_crate) {
+        crates[_crate].rates[_key] = Rate(_value, _value2);
+    }
+
+    function getRates(bytes32 _crate, bytes32 _key) constant returns(address, uint) {
+        return (crates[_crate].rates[_key].ratedBy, crates[_crate].rates[_key].rate);
     }
 }
