@@ -98,11 +98,23 @@ contract PaymentGateway is EventsHistoryAndStorageAdapter, Owned {
 
     // Will be optimized later if used.
     function transfer(address _from, address _to, uint _value, address _contract) returns(bool) {
+        return transferWithFee(_from, _to, _value, _value, 0, _contract);
+    }
+
+    function transferWithFee(
+        address _from,
+        address _to,
+        uint _value,
+        uint _feeFromValue,
+        uint _additionalFee,
+        address _contract
+    )
+    returns(bool) {
         address[] memory toArray = new address[](1);
         toArray[0] = _to;
         uint[] memory valueArray = new uint[](1);
         valueArray[0] = _value;
-        return transferToMany(_from, toArray, valueArray, _value, 0, _contract);
+        return transferToMany(_from, toArray, valueArray, _feeFromValue, _additionalFee, _contract);
     }
 
     function transferToMany(

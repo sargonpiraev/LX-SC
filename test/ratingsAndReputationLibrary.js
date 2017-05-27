@@ -16,6 +16,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
   let storage;
   let mock;
   let eventsHistory;
+  let userLibrary = web3.eth.contract(UserLibrary.abi).at('0x0');
   let ratingsLibrary;
 
   const assertExpectations = (expected = 0, callsCount = null) => {
@@ -39,7 +40,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(instance => ratingsLibrary = instance)
     .then(() => EventsHistory.deployed())
     .then(instance => eventsHistory = instance)
-    .then(() => UserLibrary.deployed())
+    .then(() => Mock.deployed())
     .then(instance => mock = instance)
     .then(() => ratingsLibrary.setupUserLibrary(mock.address))
     .then(() => ratingsLibrary.setupEventsHistory(eventsHistory.address))
@@ -130,21 +131,98 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(result => assert.equal(result.logs.length, 0));
   });
 
-  it('should set valid client rating', () => {
-    // const rating = 2;
-    // const client = '0xffffffffffffffffffffffffffffffffffffffff';
-    // const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    // return ratingsLibrary.setUserRatingFor(client, rating, {from: SENDER})
-    // .then(result => assert.equal(result.logs.length, 0));
+  it('should set valid rating', () => {
+    const rating = 2;
+    const client = accounts[2];
+    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+    const jobId = 10;
+    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'),  true)
+    .then(() => ratingsLibrary.setRating(worker, rating, jobId, {from: client}))    
+    .then(() => ratingsLibrary.getRating(worker, jobId))
+    .then(result => {
+      assert.equal(result[1], rating);
+      assert.equal(result[0], client);
+    })
+    .then(assertExpectations);
   });
-  it('should set valid worker rating', () => {});
-  it('should set valid worker area rating', () => {});
+
+  it('should set valid worker area rating', () => {
+  });
   it('should set valid worker category rating', () => {});
   it('should set valid worker skill rating', () => {});
-  it('should not set invalid worker rating', () => {});
-  it('should not set invalid client rating', () => {});
+
+  it('should emit "RatingGiven" when valid rating given', () => {
+    const rating = 2;
+    const client = accounts[2];
+    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+    const jobId = 10;
+    return ratingsLibrary.setRating(worker, rating, jobId, {from: client})
+    .then(result => {
+      assert.equal(result.logs.length, 1);
+      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].event, 'RatingGiven');
+      assert.equal(result.logs[0].args.rater, client);
+      assert.equal(result.logs[0].args.to, worker);
+      assert.equal(result.logs[0].args.rating, rating);
+      assert.equal(result.logs[0].args.jobId, jobId);
+    })
+  });
+
+  it('should emit "AreaRatingGiven" when set worker area rating', () => {});
+  it('should emit "CategoryRatingGiven" when set worker category rating', () => {});
+  it('should emit "SkillRatingGiven" when set worker skill rating', () => {});
+  
+  it('should not set invalid rating', () => {
+    const rating = 100500;
+    const client = accounts[2];
+    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+    const jobId = 10;
+    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'),  true)
+    .then(() => ratingsLibrary.setRating(worker, rating, jobId, {from: client}))    
+    .then(result => assert.equal(result.logs.length, 0))
+    .then(() => ratingsLibrary.getRating(worker, jobId))
+    .then(result => {
+      assert.equal(result[1], 0);
+      assert.equal(result[0], 0);
+    })
+    .then(assertExpectations);
+  });
+
   it('should not set invalid worker area rating', () => {});
   it('should not set invalid worker category rating', () => {});
   it('should not set invalid worker skill rating', () => {});
+  it('should not emit "AreaRatingGiven" when set invalid area rating', () => {});
+  it('should not emit "CategoryRatingGiven" when set invalid category rating', () => {});
+  it('should not emit "SkillRatingGiven" when set invalid skill rating', () => {});
+  it('should not set worker area rating if worker doesn\'t have that area', () => {});
+  it('should not set invalid worker category rating if worker doesn\'t have that category', () => {});
+  it('should not set invalid worker skill rating if worker doesn\'t have that skill', () => {});
+  
+  it('should not set rating if doesn\'t have role', () => {
+    const rating = 2;
+    const client = accounts[2];
+    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+    const jobId = 10;
+    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'),  false)
+    .then(() => ratingsLibrary.setRating(worker, rating, jobId, {from: client}))    
+    .then(() => ratingsLibrary.getRating(worker, jobId))
+    .then(result => {
+      assert.equal(result[1], 0);
+      assert.equal(result[0], 0);
+    })
+    .then(assertExpectations);
+  });
+
+  it('should not set worker area rating if doesn\'t have role', () => {});
+  it('should not set worker category rating if doesn\'t have role', () => {});
+  it('should not set worker skill rating if doesn\'t have role', () => {});
+
+
+  it('should store different ratings ', () => {
+
+  })
+
+  //setMany tests
+
 
 });
