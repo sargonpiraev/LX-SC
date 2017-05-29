@@ -19,12 +19,12 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
 
     event UserRatingGiven(address indexed rater, address indexed to, uint rating, uint version);
     event RatingGiven(address indexed rater, address indexed to, int8 rating, uint jobId, uint version);
-    event AreaRatingGiven(address indexed rater, address indexed to, int8 rating, uint _area, uint jobId, uint version);
-    event CategoryRatingGiven(address indexed rater, address indexed to, int8 rating, uint _area, uint _category, uint jobId, uint version);
-    event SkillRatingGiven(address indexed rater, address indexed to, int8 rating, uint _area, uint _category, uint _skill, uint jobId, uint version);
-    event AreaEvaluated(address indexed rater, address indexed to, int8 rating, uint _area, uint version);
-    event CategoryEvaluated(address indexed rater, address indexed to, int8 rating, uint _area, uint _category, uint version);
-    event SkillEvaluated(address indexed rater, address indexed to, int8 rating, uint _area, uint _category, uint _skill, uint version);
+    event AreaRatingGiven(address indexed rater, address indexed to, int8 rating, uint area, uint jobId, uint version);
+    event CategoryRatingGiven(address indexed rater, address indexed to, int8 rating, uint area, uint category, uint jobId, uint version);
+    event SkillRatingGiven(address indexed rater, address indexed to, int8 rating, uint area, uint category, uint skill, uint jobId, uint version);
+    event AreaEvaluated(address indexed rater, address indexed to, int8 rating, uint area, uint version);
+    event CategoryEvaluated(address indexed rater, address indexed to, int8 rating, uint area, uint category, uint version);
+    event SkillEvaluated(address indexed rater, address indexed to, int8 rating, uint area, uint category, uint skill, uint version);
 
     modifier canSetSkillRating(address user) {
         if(!userLibrary.hasRole(user, SKILL_RATE_ROLE)){
@@ -133,11 +133,11 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         return store.get(areaRatingsGiven, _to, _jobId, _area);
     }
 
-    function getAreaRating(address _to, uint _area, address _rater) constant returns(address, int8) {
+    function getAreaEvaluation(address _to, uint _area, address _rater) constant returns(int8) {
         return store.get(areasEvaluated, _to, _area, _rater);
     }
 
-    function setAreaRating(address _to, uint _area, int8 _rating,  uint _jobId) 
+    function setAreaRating(address _to, int8 _rating, uint _area,  uint _jobId) 
         isValidRating(_rating) 
         canSetRating(msg.sender) 
     returns(bool) {
@@ -145,11 +145,11 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
             return false;
         }
         store.set(areaRatingsGiven, _to, _jobId, _area, msg.sender, _rating);
-        _emitAreaRatingGiven(msg.sender, _to, _jobId, _area, _rating);
+        _emitAreaRatingGiven(msg.sender, _to, _rating, _area, _jobId);
         return true;
     }
 
-    function setAreaRating(address _to, uint _area, int8 _rating) 
+    function evaluateArea(address _to, int8 _rating, uint _area) 
         isValidRating(_rating) 
         canSetSkillRating(msg.sender) 
     returns(bool) {
@@ -157,7 +157,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
             return false;
         }
         store.set(areasEvaluated, _to, _area, msg.sender, _rating);
-        _emitAreaEvaluated(msg.sender, _to, _area, _rating);
+        _emitAreaEvaluated(msg.sender, _to, _rating, _area);
         return true;
     }
 
@@ -165,31 +165,31 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         return store.get(categoryRatingsGiven, _to, _jobId, _area, _category);
     }
 
-    function getCategoryRating(address _to, uint _area, uint _category, address _rater) constant returns(address, int8) {
+    function getCategoryEvaluation(address _to, uint _area, uint _category, address _rater) constant returns(int8) {
         return store.get(categoriesEvaluated, _to, _area, _category, _rater);
     }
 
-    function setCategoryRating(address _to, uint _area, uint _category, int8 _rating, uint _jobId) 
-        isValidRating(_rating) 
-        canSetSkillRating(msg.sender) 
-    returns(bool) {
-        if(!userLibrary.hasCategory(_to, _area, _category)){
-            return false;
-        }
-        store.set(categoryRatingsGiven, _to, _jobId, _area, _category, msg.sender, _rating);
-        _emitCategoryRatingGiven(msg.sender, _to, _jobId, _area, _category, _rating);
-        return true;
-    }
-
-    function setCategoryRating(address _to, uint _area, uint _category, int8 _rating) 
+    function setCategoryRating(address _to,  int8 _rating, uint _area, uint _category, uint _jobId) 
         isValidRating(_rating) 
         canSetRating(msg.sender) 
     returns(bool) {
         if(!userLibrary.hasCategory(_to, _area, _category)){
             return false;
         }
+        store.set(categoryRatingsGiven, _to, _jobId, _area, _category, msg.sender, _rating);
+        _emitCategoryRatingGiven(msg.sender, _to, _rating, _area, _category, _jobId);
+        return true;
+    }
+
+    function evaluateCategory(address _to, int8 _rating, uint _area, uint _category) 
+        isValidRating(_rating) 
+        canSetSkillRating(msg.sender) 
+    returns(bool) {
+        if(!userLibrary.hasCategory(_to, _area, _category)){
+            return false;
+        }
         store.set(categoriesEvaluated, _to, _area, _category, msg.sender, _rating);
-        _emitCategoryEvaluated(msg.sender, _to, _area, _category, _rating);
+        _emitCategoryEvaluated(msg.sender, _to, _rating, _area, _category);
         return true;
     }
 
@@ -197,36 +197,48 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         return store.get(skillRatingsGiven, _to, _jobId, _area, _category, _skill);
     }
 
-    function getSkillRating(address _to, uint _area, uint _category, uint _skill, address _rater) constant returns(address, int8) {
+    function getSkillEvaluation(address _to, uint _area, uint _category, uint _skill, address _rater) constant returns(int8) {
         return store.get(skillsEvaluated, _to, _area, _category, _skill,  _rater);
     }
 
-    function setSkillRating(address _to, uint _area, uint _category, uint _skill, int8 _rating,  uint _jobId) 
-        isValidRating(_rating)
-        canSetSkillRating(msg.sender)
-    returns(bool) {
-        if(!userLibrary.hasSkill(_to, _area, _category, _skill)){
-            return false;
-        }
-        store.set(skillRatingsGiven, _to, _jobId, _area, _category, _skill, msg.sender, _rating);
-        _emitSkillRatingGiven(msg.sender, _to, _jobId, _area, _category, _skill, _rating);
-        return true;
-    }
-    
-    function setSkillRating(address _to, uint _area, uint _category, uint _skill, int8 _rating) 
+    function setSkillRating(address _to, int8 _rating, uint _area, uint _category, uint _skill,  uint _jobId) 
         isValidRating(_rating)
         canSetRating(msg.sender)
     returns(bool) {
         if(!userLibrary.hasSkill(_to, _area, _category, _skill)){
             return false;
         }
+        store.set(skillRatingsGiven, _to, _jobId, _area, _category, _skill, msg.sender, _rating);
+        _emitSkillRatingGiven(msg.sender, _to, _rating, _area, _category, _skill, _jobId);
+        return true;
+    }
+    
+    function evaluateSkill(address _to, int8 _rating, uint _area, uint _category, uint _skill) 
+        isValidRating(_rating)
+        canSetSkillRating(msg.sender)
+    returns(bool) {
+        if(!userLibrary.hasSkill(_to, _area, _category, _skill)){
+            return false;
+        }
         store.set(skillsEvaluated, _to, _area, _category, _skill, msg.sender, _rating);
-        _emitSkillEvaluated(msg.sender, _to, _area, _category, _skill, _rating);
+        _emitSkillEvaluated(msg.sender, _to, _rating, _area, _category, _skill);
         return true;
     }
 
+    function evaluateMany(address _to, uint _areas, uint[] _categories, uint[] _skills, int8[] _rating) 
+        canSetSkillRating(msg.sender)
+    returns(bool){
+        return _setMany(_to, _areas, _categories, _skills, _rating, 0);
+    }
+
+    function setManyRatings(address _to, uint _areas, uint[] _categories, uint[] _skills, int8[] _rating,  uint _jobId) 
+        canSetRating(msg.sender)
+    returns(bool){
+        return _setMany(_to, _areas, _categories, _skills, _rating, _jobId);
+    }
+
     
-    function setMany(address _to, uint _areas, uint[] _categories, uint[] _skills, int8[] _rating,  uint _jobId) 
+    function _setMany(address _to, uint _areas, uint[] _categories, uint[] _skills, int8[] _rating,  uint _jobId) 
         canSetSkillRating(msg.sender)
     returns(bool){
         uint categoriesCounter = 0;
@@ -237,7 +249,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         }
         for (uint area = 1; area != 0; area = area << 2) {
             if (_isFullOrNull(_areas, area)) {
-                if(!setAreaRating(_to, area, _rating[ratingCounter++], _jobId)){
+                if(_jobId == 0 ? !evaluateArea(_to, _rating[ratingCounter++], area) : !setAreaRating(_to, _rating[ratingCounter++], area, _jobId)){
                     throw;
                 }
                 continue;
@@ -250,7 +262,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
             }
             for (uint category = 1; category != 0; category = category << 2) {
                 if (_isFullOrNull(_categories[categoriesCounter], category)) {
-                    if(!setCategoryRating(_to, area, category, _rating[ratingCounter++], _jobId)){
+                    if(_jobId == 0 ? !evaluateCategory(_to, _rating[ratingCounter++], area, category) : !setCategoryRating(_to, _rating[ratingCounter++], area, category, _jobId)){
                         throw;
                     }
                     continue;
@@ -258,7 +270,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
                 if (_skills[skillsCounter] == 0) {
                     throw;
                 }
-                if(!setSkillRating(_to, area, category, _skills[skillsCounter], _rating[ratingCounter++], _jobId)){
+                if(_jobId == 0 ? !evaluateSkill(_to, _rating[ratingCounter++], area, category, _skills[skillsCounter]) : !setSkillRating(_to, _rating[ratingCounter++], area, category, _skills[skillsCounter], _jobId)){
                     throw;
                 }
                 // Move to next skill
@@ -278,28 +290,28 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         RatingsAndReputationLibrary(getEventsHistory()).emitUserRatingGiven(_rater, _to, _rating);
     }
 
-    function _emitAreaRatingGiven(address _rater, address _to, uint _jobId, uint _area, int8 _rating) internal {
-        RatingsAndReputationLibrary(getEventsHistory()).emitAreaRatingGiven(_rater, _to, _jobId, _area, _rating);
+    function _emitAreaRatingGiven(address _rater, address _to, int8 _rating, uint _area, uint _jobId) internal {
+        RatingsAndReputationLibrary(getEventsHistory()).emitAreaRatingGiven(_rater, _to, _rating, _area, _jobId);
     }
 
-    function _emitCategoryRatingGiven(address _rater, address _to, uint _jobId, uint _area, uint _category, int8 _rating) internal {
-        RatingsAndReputationLibrary(getEventsHistory()).emitCategoryRatingGiven(_rater, _to, _jobId, _area, _category, _rating);
+    function _emitCategoryRatingGiven(address _rater, address _to, int8 _rating, uint _area, uint _category, uint _jobId) internal {
+        RatingsAndReputationLibrary(getEventsHistory()).emitCategoryRatingGiven(_rater, _to, _rating, _area, _category, _jobId);
+    }
+    
+    function _emitSkillRatingGiven(address _rater, address _to, int8 _rating, uint _area, uint _category, uint _skill, uint _jobId) internal {
+        RatingsAndReputationLibrary(getEventsHistory()).emitSkillRatingGiven(_rater, _to, _rating, _area, _category, _skill, _jobId);
     }
 
-    function _emitSkillRatingGiven(address _rater, address _to, uint _jobId, uint _area, uint _category, uint _skill, int8 _rating) internal {
-        RatingsAndReputationLibrary(getEventsHistory()).emitSkillRatingGiven(_rater, _to, _jobId, _area, _category, _skill, _rating);
+    function _emitAreaEvaluated(address _rater, address _to, int8 _rating, uint _area) internal {
+        RatingsAndReputationLibrary(getEventsHistory()).emitAreaEvaluated(_rater, _to, _rating, _area);
     }
 
-    function _emitAreaEvaluated(address _rater, address _to, uint _area, int8 _rating) internal {
-        RatingsAndReputationLibrary(getEventsHistory()).emitAreaEvaluated(_rater, _to, _area, _rating);
+    function _emitCategoryEvaluated(address _rater, address _to, int8 _rating, uint _area, uint _category) internal {
+        RatingsAndReputationLibrary(getEventsHistory()).emitCategoryEvaluated(_rater, _to, _rating, _area, _category);
     }
 
-    function _emitCategoryEvaluated(address _rater, address _to, uint _area, uint _category, int8 _rating) internal {
-        RatingsAndReputationLibrary(getEventsHistory()).emitCategoryEvaluated(_rater, _to, _area, _category, _rating);
-    }
-
-    function _emitSkillEvaluated(address _rater, address _to, uint _area, uint _category, uint _skill, int8 _rating) internal {
-        RatingsAndReputationLibrary(getEventsHistory()).emitSkillEvaluated(_rater, _to, _area, _category, _skill, _rating);
+    function _emitSkillEvaluated(address _rater, address _to, int8 _rating, uint _area, uint _category, uint _skill) internal {
+        RatingsAndReputationLibrary(getEventsHistory()).emitSkillEvaluated(_rater, _to, _rating, _area, _category, _skill);
     }
 
     function emitRatingGiven(address _rater, address _to, uint _jobId, int8 _rating) {
@@ -310,27 +322,27 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         UserRatingGiven(_rater, _to, _rating, _getVersion());
     }
     
-    function emitAreaRatingGiven(address _rater, address _to, uint _jobId, uint _area, int8 _rating) {
+    function emitAreaRatingGiven(address _rater, address _to, int8 _rating, uint _area, uint _jobId) {
         AreaRatingGiven(_rater, _to, _rating, _area, _jobId, _getVersion());
     }
 
-    function emitCategoryRatingGiven(address _rater, address _to, uint _jobId, uint _area, uint _category, int8 _rating) {
-        CategoryRatingGiven(_rater, _to, _rating, _jobId, _area, _category, _getVersion());
+    function emitCategoryRatingGiven(address _rater, address _to, int8 _rating, uint _area, uint _category, uint _jobId) {
+        CategoryRatingGiven(_rater, _to, _rating, _area, _category, _jobId, _getVersion());
     }
 
-    function emitSkillRatingGiven(address _rater, address _to, uint _jobId, uint _area, uint _category, uint _skill, int8 _rating) {
-        SkillRatingGiven(_rater, _to, _rating, _jobId, _area, _category, _skill, _getVersion());
+    function emitSkillRatingGiven(address _rater, address _to, int8 _rating, uint _area, uint _category, uint _skill, uint _jobId) {
+        SkillRatingGiven(_rater, _to, _rating, _area, _category, _skill, _jobId,_getVersion());
     }
 
-    function emitAreaEvaluated(address _rater, address _to, uint _area, int8 _rating) {
+    function emitAreaEvaluated(address _rater, address _to, int8 _rating, uint _area) {
         AreaEvaluated(_rater, _to, _rating, _area, _getVersion());
     }
 
-    function emitCategoryEvaluated(address _rater, address _to, uint _area, uint _category, int8 _rating) {
+    function emitCategoryEvaluated(address _rater, address _to, int8 _rating, uint _area, uint _category) {
         CategoryEvaluated(_rater, _to, _rating, _area, _category, _getVersion());
     }
 
-    function emitSkillEvaluated(address _rater, address _to, uint _area, uint _category, uint _skill, int8 _rating) {
+    function emitSkillEvaluated(address _rater, address _to, int8 _rating, uint _area, uint _category, uint _skill) {
         SkillEvaluated(_rater, _to, _rating, _area, _category, _skill, _getVersion());
     }
 }

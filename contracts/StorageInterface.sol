@@ -360,10 +360,6 @@ library StorageInterface {
         return self.store.getInt(self.crate, item.id);
     }
 
-    function get(Config storage self, Int8 storage item) internal constant returns(int8) {
-        return self.store.getInt8(self.crate, item.id);
-    }
-
     function get(Config storage self, Address storage item) internal constant returns(address) {
         return self.store.getAddress(self.crate, item.id);
     }
@@ -382,6 +378,10 @@ library StorageInterface {
 
     function getAddressInt8(Config storage self, Mapping storage item, bytes32 _key) internal constant returns(address, int8) {
         return self.store.getAddressInt8(self.crate, sha3(item.id, _key));
+    }
+
+    function getInt8(Config storage self, Mapping storage item, bytes32 _key) internal constant returns(int8) {
+        return self.store.getInt8(self.crate, sha3(item.id, _key));
     }
 
     function get(Config storage self, Mapping storage item, bytes32 _key, bytes32 _key2) internal constant returns(bytes32) {
@@ -416,16 +416,16 @@ library StorageInterface {
         return getAddressInt8(self, item.innerMapping, sha3(bytes32(_key), bytes32(_key2), bytes32(_key3), bytes32(_key4)));
     }
 
-    function get(Config storage self, AddressUIntAddressInt8Mapping storage item, address _key, uint _key2, address _key3) internal constant returns(address, int8) {
-        return getAddressInt8(self, item.innerMapping, sha3(bytes32(_key), bytes32(_key2), bytes32(_key3)));
+    function get(Config storage self, AddressUIntAddressInt8Mapping storage item, address _key, uint _key2, address _key3) internal constant returns(int8) {
+        return getInt8(self, item.innerMapping, sha3(bytes32(_key), bytes32(_key2), bytes32(_key3)));
     }
 
-    function get(Config storage self, AddressUIntUIntAddressInt8Mapping storage item, address _key, uint _key2, uint _key3, address _key4) internal constant returns(address, int8) {
-        return getAddressInt8(self, item.innerMapping, sha3(bytes32(_key), bytes32(_key2), bytes32(_key3), bytes32(_key4)));
+    function get(Config storage self, AddressUIntUIntAddressInt8Mapping storage item, address _key, uint _key2, uint _key3, address _key4) internal constant returns(int8) {
+        return getInt8(self, item.innerMapping, sha3(bytes32(_key), bytes32(_key2), bytes32(_key3), bytes32(_key4)));
     }
 
-    function get(Config storage self, AddressUIntUIntUIntAddressInt8Mapping storage item, address _key, uint _key2, uint _key3, uint _key4, address _key5) internal constant returns(address, int8) {
-        return getAddressInt8(self, item.innerMapping, sha3(bytes32(_key), bytes32(_key2), bytes32(_key3), bytes32(_key4), bytes32(_key5)));
+    function get(Config storage self, AddressUIntUIntUIntAddressInt8Mapping storage item, address _key, uint _key2, uint _key3, uint _key4, address _key5) internal constant returns(int8) {
+        return getInt8(self, item.innerMapping, sha3(bytes32(_key), bytes32(_key2), bytes32(_key3), bytes32(_key4), bytes32(_key5)));
     }
 
     function get(Config storage self, AddressUIntUIntUIntUIntStructAddressInt8Mapping storage item, address _key, uint _key2, uint _key3, uint _key4, uint _key5) internal constant returns(address, int8) {
