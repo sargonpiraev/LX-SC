@@ -3,7 +3,7 @@ const Asserts = require('./helpers/asserts');
 const Storage = artifacts.require('./Storage.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
 const ERC20Library = artifacts.require('./ERC20Library.sol');
-const EventsHistory = artifacts.require('./EventsHistory.sol');
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 
 contract('ERC20Library', function(accounts) {
   const reverter = new Reverter(web3);
@@ -11,7 +11,7 @@ contract('ERC20Library', function(accounts) {
 
   const asserts = Asserts(assert);
   let storage;
-  let eventsHistory;
+  let multiEventsHistory;
   let erc20Library;
 
   before('setup', () => {
@@ -21,10 +21,10 @@ contract('ERC20Library', function(accounts) {
     .then(instance => storage.setManager(instance.address))
     .then(() => ERC20Library.deployed())
     .then(instance => erc20Library = instance)
-    .then(() => EventsHistory.deployed())
-    .then(instance => eventsHistory = instance)
-    .then(() => erc20Library.setupEventsHistory(eventsHistory.address))
-    .then(() => eventsHistory.addVersion(erc20Library.address, '_', '_'))
+    .then(() => MultiEventsHistory.deployed())
+    .then(instance => multiEventsHistory = instance)
+    .then(() => erc20Library.setupEventsHistory(multiEventsHistory.address))
+    .then(() => multiEventsHistory.authorize(erc20Library.address))
     .then(reverter.snapshot);
   });
 
@@ -36,13 +36,13 @@ contract('ERC20Library', function(accounts) {
     .then(asserts.isTrue);
   });
 
-  it('should emit ContractAdded event in EventsHistory', () => {
+  it('should emit ContractAdded event in MultiEventsHistory', () => {
     const contract = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
     .then(() => erc20Library.addContract(contract))
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'ContractAdded');
       assert.equal(result.logs[0].args.contractAddress, contract);
     });
@@ -64,13 +64,13 @@ contract('ERC20Library', function(accounts) {
     .then(asserts.isFalse);
   });
 
-  it('should emit ContractRemoved event in EventsHistory', () => {
+  it('should emit ContractRemoved event in MultiEventsHistory', () => {
     const contract = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
     .then(() => erc20Library.removeContract(contract))
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'ContractRemoved');
       assert.equal(result.logs[0].args.contractAddress, contract);
     });
