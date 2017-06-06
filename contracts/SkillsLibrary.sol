@@ -2,6 +2,7 @@ pragma solidity 0.4.8;
 
 import './Owned.sol';
 import './EventsHistoryAndStorageAdapter.sol';
+import './MultiEventsHistoryAdapter.sol';
 
 
 /**
@@ -23,15 +24,15 @@ import './EventsHistoryAndStorageAdapter.sol';
  *
  * Functions always accept a single flag that represents the entity.
  */
-contract SkillsLibrary is EventsHistoryAndStorageAdapter, Owned {
+contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Owned {
     // Mappings of entity to IPFS hash.
     StorageInterface.UIntBytes32Mapping areas;
     StorageInterface.UIntUIntBytes32Mapping categories;
     StorageInterface.UIntUIntUIntBytes32Mapping skills;
 
-    event AreaSet(uint area, bytes32 hash, uint version);
-    event CategorySet(uint area, uint category, bytes32 hash, uint version);
-    event SkillSet(uint area, uint category, uint skill, bytes32 hash, uint version);
+    event AreaSet(address indexed self, uint area, bytes32 hash);
+    event CategorySet(address indexed self, uint area, uint category, bytes32 hash);
+    event SkillSet(address indexed self, uint area, uint category, uint skill, bytes32 hash);
 
     modifier singleFlag(uint _flag) {
         if (!_isSingleFlag(_flag)) {
@@ -55,7 +56,7 @@ contract SkillsLibrary is EventsHistoryAndStorageAdapter, Owned {
         return _flag & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa == 0;
     }
 
-    function SkillsLibrary(Storage _store, bytes32 _crate) EventsHistoryAndStorageAdapter(_store, _crate) {
+    function SkillsLibrary(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) {
         areas.init('areas');
         categories.init('categories');
         skills.init('skills');
@@ -130,14 +131,14 @@ contract SkillsLibrary is EventsHistoryAndStorageAdapter, Owned {
     }
 
     function emitAreaSet(uint _area, bytes32 _hash) {
-        AreaSet(_area, _hash, _getVersion());
+        AreaSet(_self(), _area, _hash);
     }
 
     function emitCategorySet(uint _area, uint _category, bytes32 _hash) {
-        CategorySet(_area, _category, _hash, _getVersion());
+        CategorySet(_self(), _area, _category, _hash);
     }
 
     function emitSkillSet(uint _area, uint _category, uint _skill, bytes32 _hash) {
-        SkillSet(_area, _category, _skill, _hash, _getVersion());
+        SkillSet(_self(), _area, _category, _skill, _hash);
     }
 }

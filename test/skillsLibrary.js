@@ -3,7 +3,7 @@ const Asserts = require('./helpers/asserts');
 const Storage = artifacts.require('./Storage.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
 const SkillsLibrary = artifacts.require('./SkillsLibrary.sol');
-const EventsHistory = artifacts.require('./EventsHistory.sol');
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 
 contract('SkillsLibrary', function(accounts) {
   const reverter = new Reverter(web3);
@@ -11,7 +11,7 @@ contract('SkillsLibrary', function(accounts) {
 
   const asserts = Asserts(assert);
   let storage;
-  let eventsHistory;
+  let multiEventsHistory;
   let skillsLibrary;
 
   const getFlag = index => {
@@ -35,10 +35,10 @@ contract('SkillsLibrary', function(accounts) {
     .then(instance => storage.setManager(instance.address))
     .then(() => SkillsLibrary.deployed())
     .then(instance => skillsLibrary = instance)
-    .then(() => EventsHistory.deployed())
-    .then(instance => eventsHistory = instance)
-    .then(() => skillsLibrary.setupEventsHistory(eventsHistory.address))
-    .then(() => eventsHistory.addVersion(skillsLibrary.address, '_', '_'))
+    .then(() => MultiEventsHistory.deployed())
+    .then(instance => multiEventsHistory = instance)
+    .then(() => skillsLibrary.setupEventsHistory(multiEventsHistory.address))
+    .then(() => multiEventsHistory.authorize(skillsLibrary.address))
     .then(reverter.snapshot);
   });
 
@@ -116,7 +116,7 @@ contract('SkillsLibrary', function(accounts) {
     .then(() => skillsLibrary.setArea(area, hash))
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'AreaSet');
       equal(result.logs[0].args.area, area);
       equal(result.logs[0].args.hash, hash);
@@ -231,7 +231,7 @@ contract('SkillsLibrary', function(accounts) {
     .then(() => skillsLibrary.setCategory(area, category, hash))
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'CategorySet');
       equal(result.logs[0].args.area, area);
       equal(result.logs[0].args.category, category);
@@ -371,7 +371,7 @@ contract('SkillsLibrary', function(accounts) {
     .then(() => skillsLibrary.setSkill(area, category, skill, hash))
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'SkillSet');
       equal(result.logs[0].args.area, area);
       equal(result.logs[0].args.category, category);
