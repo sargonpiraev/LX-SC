@@ -1,14 +1,15 @@
 pragma solidity 0.4.8;
 
 import './Owned.sol';
-import './EventsHistoryAndStorageAdapter.sol';
+import './StorageAdapter.sol';
+import './MultiEventsHistoryAdapter.sol';
 
-contract IPFSLibrary is EventsHistoryAndStorageAdapter, Owned {
+contract IPFSLibrary is StorageAdapter, MultiEventsHistoryAdapter, Owned {
     StorageInterface.AddressBytes32Bytes32Mapping ipfsHashes;
 
-    event HashSet(address indexed setter, bytes32 indexed key, bytes32 hash, uint version);
+    event HashSet(address indexed self, address indexed setter, bytes32 indexed key, bytes32 hash);
 
-    function IPFSLibrary(Storage _store, bytes32 _crate) EventsHistoryAndStorageAdapter(_store, _crate) {
+    function IPFSLibrary(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) {
         ipfsHashes.init('ipfsHashes');
     }
 
@@ -35,6 +36,6 @@ contract IPFSLibrary is EventsHistoryAndStorageAdapter, Owned {
     }
 
     function emitHashSet(address _from, bytes32 _itemName, bytes32 _itemHash) {
-        HashSet(_from, _itemName, _itemHash, _getVersion());
+        HashSet(_self(), _from, _itemName, _itemHash);
     }
 }

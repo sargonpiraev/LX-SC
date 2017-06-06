@@ -3,7 +3,7 @@ const Asserts = require('./helpers/asserts');
 const Storage = artifacts.require('./Storage.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
 const IPFSLibrary = artifacts.require('./IPFSLibrary.sol');
-const EventsHistory = artifacts.require('./EventsHistory.sol');
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 
 contract('IPFSLibrary', function(accounts) {
   const reverter = new Reverter(web3);
@@ -12,7 +12,7 @@ contract('IPFSLibrary', function(accounts) {
   const asserts = Asserts(assert);
   const SENDER = accounts[1];
   let storage;
-  let eventsHistory;
+  let multiEventsHistory;
   let ipfsLibrary;
 
   before('setup', () => {
@@ -22,10 +22,10 @@ contract('IPFSLibrary', function(accounts) {
     .then(instance => storage.setManager(instance.address))
     .then(() => IPFSLibrary.deployed())
     .then(instance => ipfsLibrary = instance)
-    .then(() => EventsHistory.deployed())
-    .then(instance => eventsHistory = instance)
-    .then(() => ipfsLibrary.setupEventsHistory(eventsHistory.address))
-    .then(() => eventsHistory.addVersion(ipfsLibrary.address, '_', '_'))
+    .then(() => MultiEventsHistory.deployed())
+    .then(instance => multiEventsHistory = instance)
+    .then(() => ipfsLibrary.setupEventsHistory(multiEventsHistory.address))
+    .then(() => multiEventsHistory.authorize(ipfsLibrary.address))
     .then(reverter.snapshot);
   });
 
@@ -79,7 +79,7 @@ contract('IPFSLibrary', function(accounts) {
     return ipfsLibrary.setHash(key, hash, {from: SENDER})
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'HashSet');
       assert.equal(result.logs[0].args.setter, SENDER);
       assert.equal(result.logs[0].args.key, key);
