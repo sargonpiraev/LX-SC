@@ -52,6 +52,26 @@ library StorageInterface {
         Mapping innerMapping;
     }
 
+    struct UIntAddressMapping {
+        Mapping innerMapping;
+    }
+
+    struct UIntAddressAddressMapping {
+        Mapping innerMapping;
+    }
+
+    struct UIntAddressUIntMapping {
+        Mapping innerMapping;
+    }
+
+    struct UIntUIntMapping {
+        Mapping innerMapping;
+    }
+
+    struct UIntEnumMapping {
+        Mapping innerMapping;
+    }
+
     struct UIntBytes32Mapping {
         Mapping innerMapping;
     }
@@ -140,6 +160,26 @@ library StorageInterface {
         init(self.innerMapping, _id);
     }
 
+    function init(UIntAddressMapping storage self, bytes32 _id) internal {
+        init(self.innerMapping, _id);
+    }
+
+    function init(UIntAddressAddressMapping storage self, bytes32 _id) internal {
+        init(self.innerMapping, _id);
+    }
+
+    function init(UIntAddressUIntMapping storage self, bytes32 _id) internal {
+        init(self.innerMapping, _id);
+    }
+
+    function init(UIntUIntMapping storage self, bytes32 _id) internal {
+        init(self.innerMapping, _id);
+    }
+
+    function init(UIntEnumMapping storage self, bytes32 _id) internal {
+        init(self.innerMapping, _id);
+    }
+
     function init(UIntUIntBytes32Mapping storage self, bytes32 _id) internal {
         init(self.innerMapping, _id);
     }
@@ -212,6 +252,26 @@ library StorageInterface {
 
     function set(Config storage self, UIntBytes32Mapping storage item, uint _key, bytes32 _value) internal {
         set(self, item.innerMapping, bytes32(_key), _value);
+    }
+
+    function set(Config storage self, UIntAddressMapping storage item, uint _key, address _value) internal {
+        set(self, item.innerMapping, bytes32(_key), bytes32(_value));
+    }
+
+    function set(Config storage self, UIntAddressAddressMapping storage item, uint _key, address _key2, address _value) internal {
+        set(self, item.innerMapping, bytes32(_key), bytes32(_key2), bytes32(_value));
+    }
+
+    function set(Config storage self, UIntAddressUIntMapping storage item, uint _key, address _key2, uint _value) internal {
+        set(self, item.innerMapping, bytes32(_key), bytes32(_key2), bytes32(_value));
+    }
+
+    function set(Config storage self, UIntUIntMapping storage item, uint _key, uint _value) internal {
+        set(self, item.innerMapping, bytes32(_key), bytes32(_value));
+    }
+
+    function set(Config storage self, UIntEnumMapping storage item, uint _key, uint8 _value) internal {
+        set(self, item.innerMapping, bytes32(_key), bytes32(_value));
     }
 
     function set(Config storage self, UIntUIntBytes32Mapping storage item, uint _key, uint _key2, bytes32 _value) internal {
@@ -310,6 +370,26 @@ library StorageInterface {
 
     function get(Config storage self, UIntBytes32Mapping storage item, uint _key) internal constant returns(bytes32) {
         return get(self, item.innerMapping, bytes32(_key));
+    }
+
+    function get(Config storage self, UIntAddressMapping storage item, uint _key) internal constant returns(address) {
+        return address(get(self, item.innerMapping, bytes32(_key)));
+    }
+
+    function get(Config storage self, UIntAddressAddressMapping storage item, uint _key, address _key2) internal constant returns(address) {
+        return address(get(self, item.innerMapping, bytes32(_key), bytes32(_key)));
+    }
+
+    function get(Config storage self, UIntAddressUIntMapping storage item, uint _key, address _key2) internal constant returns(uint) {
+        return uint(get(self, item.innerMapping, bytes32(_key), bytes32(_key2)));
+    }
+
+    function get(Config storage self, UIntUIntMapping storage item, uint _key) internal constant returns(uint) {
+        return uint(get(self, item.innerMapping, bytes32(_key)));
+    }
+
+    function get(Config storage self, UIntEnumMapping storage item, uint _key) internal constant returns(uint8) {
+        return uint8(get(self, item.innerMapping, bytes32(_key)));
     }
 
     function get(Config storage self, UIntUIntBytes32Mapping storage item, uint _key, uint _key2) internal constant returns(bytes32) {

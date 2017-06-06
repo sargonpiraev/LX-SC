@@ -4,7 +4,7 @@ import './Owned.sol';
 
 contract PaymentGatewayInterface {
     function transferWithFee(address _from, address _to, uint _value, uint _feeFromValue, uint _additionalFee, address _contract) returns(bool);
-    function transferToMany(address _from, address[] _to, uint[] _value, uint _feeFromValue, uint _additionalFee, address _contract) returns(bool);
+    function transferAll(address _from, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee, address _contract) returns(bool);
 }
 
 contract PaymentProcessor is Owned {
@@ -59,13 +59,13 @@ contract PaymentProcessor is Owned {
         onlyJobController()
         onlyApproved(_operationId)
     returns(bool) {
-        return paymentGateway.transferWithFee(_from, msg.sender, _value, 0, 0, _contract);
+        return paymentGateway.transferWithFee(_from, address(_operationId), _value, 0, 0, _contract);
     }
 
-    function releasePayment(bytes32 _operationId, address[] _to, uint[] _value, uint _feeFromValue, uint _additionalFee, address _contract)
+    function releasePayment(bytes32 _operationId, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee, address _contract)
         onlyJobController()
         onlyApproved(_operationId)
     returns(bool) {
-        return paymentGateway.transferToMany(msg.sender, _to, _value, _feeFromValue, _additionalFee, _contract);
+        return paymentGateway.transferAll(address(_operationId), _to, _value, _change, _feeFromValue, _additionalFee, _contract);
     }
 }

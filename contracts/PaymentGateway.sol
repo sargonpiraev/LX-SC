@@ -147,6 +147,35 @@ contract PaymentGateway is EventsHistoryAndStorageAdapter, Owned {
         return true;
     }
 
+    function transferAll(
+        address _from,
+        address _to,
+        uint _value,
+        address _change,
+        uint _feeFromValue,
+        uint _additionalFee,
+        address _contract
+    )
+        onlyPaymentProcessor()
+        onlySupportedContract(_contract)
+    returns(bool) {
+        uint total = _value;
+        _addBalance(_to, _value, _contract);
+        _emitTransferred(_from, _to, _value, _contract);
+        uint fee = _safeAdd(calculateFee(_feeFromValue, _contract), _additionalFee);
+        if (fee > 0 && getFeeAddress() != 0x0) {
+            _addBalance(getFeeAddress(), fee, _contract);
+            _emitTransferred(_from, getFeeAddress(), fee, _contract);
+            total = _safeAdd(total, fee);
+        }
+        uint change = _safeSub(getBalance(_from, _contract), total);
+        if (change != 0) {
+            _addBalance(_change, change, _contract);
+            _emitTransferred(_from, _change, change, _contract);
+        }
+        return true;
+    }
+
     function transferFromMany(
         address[] _from,
         address _to,

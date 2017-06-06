@@ -162,6 +162,10 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
     }
 
     function hasSkill(address _user, uint _area, uint _category, uint _skill) singleFlag(_skill) constant returns(bool) {
+        return hasSkills(_user, _area, _category, _skill);
+    }
+
+    function hasSkills(address _user, uint _area, uint _category, uint _skills) constant returns(bool) {
         var (partialCategory, fullCategory) = getCategoryInfo(_user, _area, _category);
         if (!partialCategory) {
             return false;
@@ -170,7 +174,7 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
             return true;
         }
         uint userSkills = store.get(skills, _user, _area, _category);
-        return _hasFlag(userSkills, _skill);
+        return _hasFlags(userSkills, _skills);
     }
 
     uint[] tempCategories;
@@ -198,6 +202,10 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
 
     function _hasFlag(uint _flags, uint _flag) internal constant returns(bool) {
         return _flags & _flag != 0;
+    }
+
+    function _hasFlags(uint _flags, uint _flagsToCheck) internal constant returns(bool) {
+        return _flags & _flagsToCheck == _flagsToCheck;
     }
 
     bytes32[] temp;

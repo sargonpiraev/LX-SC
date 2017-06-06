@@ -9,6 +9,7 @@ const SkillsLibrary = artifacts.require('./SkillsLibrary.sol');
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const StorageTester = artifacts.require('./StorageTester.sol');
 const EventsHistory = artifacts.require('./EventsHistory.sol');
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const RolesLibrary = artifacts.require('./RolesLibrary.sol');
 const ERC20Library = artifacts.require('./ERC20Library.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
@@ -38,6 +39,7 @@ module.exports = deployer => {
   .then(() => deployer.deploy(StorageTester, Storage.address, 'StorageTester'))
   .then(() => deployer.deploy(FakeCoin))
   .then(() => deployer.deploy(EventsHistory))
+  .then(() => deployer.deploy(MultiEventsHistory))
   .then(() => deployer.deploy(UserProxy))
   .then(() => deployer.deploy(UserProxyTester))
   .then(() => deployer.deploy(UserFactory))
