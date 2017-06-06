@@ -7,7 +7,7 @@ const FakeCoin = artifacts.require('./FakeCoin.sol');
 const ERC20Library = artifacts.require('./ERC20Library.sol');
 const ERC20Interface = artifacts.require('./ERC20Interface.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
-const EventsHistory = artifacts.require('./EventsHistory.sol');
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 
 contract('PaymentGateway', function(accounts) {
   const reverter = new Reverter(web3);
@@ -15,7 +15,7 @@ contract('PaymentGateway', function(accounts) {
 
   const asserts = Asserts(assert);
   let storage;
-  let eventsHistory;
+  let multiEventsHistory;
   let erc20Library;
   let erc20Interface = web3.eth.contract(ERC20Interface.abi).at('0x0');
   let fakeCoin;
@@ -50,16 +50,16 @@ contract('PaymentGateway', function(accounts) {
     .then(instance => erc20Library = instance)
     .then(() => PaymentGateway.deployed())
     .then(instance => paymentGateway = instance)
-    .then(() => EventsHistory.deployed())
-    .then(instance => eventsHistory = instance)
-    .then(() => erc20Library.setupEventsHistory(eventsHistory.address))
+    .then(() => MultiEventsHistory.deployed())
+    .then(instance => multiEventsHistory = instance)
+    .then(() => erc20Library.setupEventsHistory(multiEventsHistory.address))
     .then(() => erc20Library.addContract(fakeCoin.address))
-    .then(() => paymentGateway.setupEventsHistory(eventsHistory.address))
+    .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
     .then(() => paymentGateway.setERC20Library(erc20Library.address))
     .then(() => paymentGateway.setPaymentProcessor(paymentProcessor))
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
     .then(() => balanceHolder.setPaymentGateway(paymentGateway.address))
-    .then(() => eventsHistory.addVersion(paymentGateway.address, '_', '_'))
+    .then(() => multiEventsHistory.authorize(paymentGateway.address))
     .then(reverter.snapshot);
   });
 
@@ -134,16 +134,16 @@ contract('PaymentGateway', function(accounts) {
     .then(asserts.equal(feePercent2));
   });
 
-  it('should emit FeeSet event in EventsHistory', () => {
+  it('should emit FeeSet event in MultiEventsHistory', () => {
     const feePercent = 1333;
     return Promise.resolve()
     .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
       assert.equal(result.logs[0].args.feePercent, 1333);
-      assert.equal(result.logs[0].args.version, 1);
+      assert.equal(result.logs[0].args.self, paymentGateway.address);
     });
   });
 
@@ -172,7 +172,7 @@ contract('PaymentGateway', function(accounts) {
     .then(asserts.equal(0));
   });
 
-  it('should emit Deposited event in EventsHistory', () => {
+  it('should emit Deposited event in MultiEventsHistory', () => {
     const sender = accounts[6];
     const value = 1000;
     return Promise.resolve()
@@ -180,7 +180,7 @@ contract('PaymentGateway', function(accounts) {
     .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'Deposited');
       assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
       assert.equal(result.logs[0].args.by, sender);
@@ -269,7 +269,7 @@ contract('PaymentGateway', function(accounts) {
     .then(asserts.equal(withdraw));
   });
 
-  it('should emit Withdrawn event in EventsHistory', () => {
+  it('should emit Withdrawn event in MultiEventsHistory', () => {
     const sender = accounts[6];
     const value = 1000;
     const withdraw = 300;
@@ -280,7 +280,7 @@ contract('PaymentGateway', function(accounts) {
     .then(() => paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender}))
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'Withdrawn');
       assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
       assert.equal(result.logs[0].args.by, sender);
@@ -372,7 +372,7 @@ contract('PaymentGateway', function(accounts) {
     .then(asserts.equal(value));
   });
 
-  it('should emit Transferred event in EventsHistory on internal transfer', () => {
+  it('should emit Transferred event in MultiEventsHistory on internal transfer', () => {
     const feeAddress = '0x00ffffffffffffffffffffffffffffffffffffff';
     const feePercent = 100;
     const sender = accounts[6];
@@ -389,13 +389,13 @@ contract('PaymentGateway', function(accounts) {
     .then(() => paymentGateway.transfer(sender, receiver, transfer, fakeCoin.address, {from: paymentProcessor}))
     .then(result => {
       assert.equal(result.logs.length, 2);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'Transferred');
       assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
       assert.equal(result.logs[0].args.from, sender);
       assert.equal(result.logs[0].args.to, receiver);
       assert.equal(result.logs[0].args.value.valueOf(), transfer);
-      assert.equal(result.logs[1].address, eventsHistory.address);
+      assert.equal(result.logs[1].address, multiEventsHistory.address);
       assert.equal(result.logs[1].event, 'Transferred');
       assert.equal(result.logs[1].args.contractAddress, fakeCoin.address);
       assert.equal(result.logs[1].args.from, sender);
@@ -464,7 +464,7 @@ contract('PaymentGateway', function(accounts) {
     .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, value));
   });
 
-  it('should emit Transferred events in EventsHistory on internal transfer to many', () => {
+  it('should emit Transferred events in MultiEventsHistory on internal transfer to many', () => {
     const feeAddress = '0x00ffffffffffffffffffffffffffffffffffffff';
     const feePercent = 200;
     const additionalFee = 100;
@@ -486,21 +486,21 @@ contract('PaymentGateway', function(accounts) {
     .then(() => paymentGateway.transferToMany(sender, [receiver, receiver2], [receiverValue, receiver2Value], value, additionalFee, fakeCoin.address, {from: paymentProcessor}))
     .then(result => {
       assert.equal(result.logs.length, 3);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'Transferred');
       assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
       assert.equal(result.logs[0].args.from, sender);
       assert.equal(result.logs[0].args.to, receiver);
       assert.equal(result.logs[0].args.value.valueOf(), receiverValue);
 
-      assert.equal(result.logs[1].address, eventsHistory.address);
+      assert.equal(result.logs[1].address, multiEventsHistory.address);
       assert.equal(result.logs[1].event, 'Transferred');
       assert.equal(result.logs[1].args.contractAddress, fakeCoin.address);
       assert.equal(result.logs[1].args.from, sender);
       assert.equal(result.logs[1].args.to, receiver2);
       assert.equal(result.logs[1].args.value.valueOf(), receiver2Value);
 
-      assert.equal(result.logs[2].address, eventsHistory.address);
+      assert.equal(result.logs[2].address, multiEventsHistory.address);
       assert.equal(result.logs[2].event, 'Transferred');
       assert.equal(result.logs[2].args.contractAddress, fakeCoin.address);
       assert.equal(result.logs[2].args.from, sender);
@@ -787,7 +787,7 @@ contract('PaymentGateway', function(accounts) {
     .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, totalValue));
   });
 
-  it('should emit Transferred events in EventsHistory on internal transfer from many', () => {
+  it('should emit Transferred events in MultiEventsHistory on internal transfer from many', () => {
     const sender = accounts[6];
     const sender2 = accounts[7];
     const receiver = '0xffffffffffffffffffffffffffffffffffff0000';
@@ -807,14 +807,14 @@ contract('PaymentGateway', function(accounts) {
     .then(() => paymentGateway.transferFromMany([sender, sender2], receiver, [senderValue, sender2Value], fakeCoin.address, {from: paymentProcessor}))
     .then(result => {
       assert.equal(result.logs.length, 2);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'Transferred');
       assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
       assert.equal(result.logs[0].args.from, sender);
       assert.equal(result.logs[0].args.to, receiver);
       assert.equal(result.logs[0].args.value.valueOf(), senderValue);
 
-      assert.equal(result.logs[1].address, eventsHistory.address);
+      assert.equal(result.logs[1].address, multiEventsHistory.address);
       assert.equal(result.logs[1].event, 'Transferred');
       assert.equal(result.logs[1].args.contractAddress, fakeCoin.address);
       assert.equal(result.logs[1].args.from, sender2);

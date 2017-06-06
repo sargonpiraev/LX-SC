@@ -1,7 +1,8 @@
 pragma solidity 0.4.8;
 
 import './Owned.sol';
-import './EventsHistoryAndStorageAdapter.sol';
+import './StorageAdapter.sol';
+import './MultiEventsHistoryAdapter.sol';
 
 contract ERC20LibraryInterface {
     function includes(address _contract) constant returns(bool);
@@ -16,7 +17,7 @@ contract BalanceHolderInterface {
     function withdraw(address _to, uint _value, address _contract) returns(bool);
 }
 
-contract PaymentGateway is EventsHistoryAndStorageAdapter, Owned {
+contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Owned {
     StorageInterface.Address erc2Library;
     StorageInterface.Address feeAddress;
     StorageInterface.Address paymentProcessor;
@@ -24,10 +25,10 @@ contract PaymentGateway is EventsHistoryAndStorageAdapter, Owned {
     StorageInterface.Address balanceHolder;
     StorageInterface.AddressAddressUIntMapping balances; // contract => user => balance
 
-    event FeeSet(address indexed contractAddress, uint feePercent, uint version);
-    event Deposited(address indexed contractAddress, address indexed by, uint value, uint version);
-    event Withdrawn(address indexed contractAddress, address indexed by, uint value, uint version);
-    event Transferred(address indexed contractAddress, address indexed from, address indexed to, uint value, uint version);
+    event FeeSet(address indexed self, address indexed contractAddress, uint feePercent);
+    event Deposited(address indexed self, address indexed contractAddress, address indexed by, uint value);
+    event Withdrawn(address indexed self, address indexed contractAddress, address indexed by, uint value);
+    event Transferred(address indexed self, address indexed contractAddress, address from, address indexed to, uint value);
 
     modifier onlySupportedContract(address _contract) {
         if (!getERC20Library().includes(_contract)) {
@@ -43,7 +44,7 @@ contract PaymentGateway is EventsHistoryAndStorageAdapter, Owned {
         _;
     }
 
-    function PaymentGateway(Storage _store, bytes32 _crate) EventsHistoryAndStorageAdapter(_store, _crate) {
+    function PaymentGateway(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) {
         erc2Library.init('erc2Library');
         feeAddress.init('feeAddress');
         paymentProcessor.init('paymentProcessor');
@@ -305,18 +306,18 @@ contract PaymentGateway is EventsHistoryAndStorageAdapter, Owned {
     }
 
     function emitFeeSet(uint _feePercent, address _contract) {
-        FeeSet(_contract, _feePercent, _getVersion());
+        FeeSet(_self(), _contract, _feePercent);
     }
 
     function emitDeposited(address _by, uint _value, address _contract) {
-        Deposited(_contract, _by, _value, _getVersion());
+        Deposited(_self(), _contract, _by, _value);
     }
 
     function emitWithdrawn(address _by, uint _value, address _contract) {
-        Withdrawn(_contract, _by, _value, _getVersion());
+        Withdrawn(_self(), _contract, _by, _value);
     }
 
     function emitTransferred(address _from, address _to, uint _value, address _contract) {
-        Transferred(_contract, _from, _to, _value, _getVersion());
+        Transferred(_self(), _contract, _from, _to, _value);
     }
 }
