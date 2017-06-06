@@ -1,21 +1,21 @@
 const Reverter = require('./helpers/reverter');
 const StorageManager = artifacts.require('./StorageManager.sol');
-const EventsHistory = artifacts.require('./EventsHistory.sol');
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 
 contract('StorageManager', function(accounts) {
   const reverter = new Reverter(web3);
   afterEach('revert', reverter.revert);
 
   let storageManager;
-  let eventsHistory;
+  let multiEventsHistory;
 
   before('setup', () => {
     return StorageManager.deployed()
     .then(instance => storageManager = instance)
-    .then(() => EventsHistory.deployed())
-    .then(instance => eventsHistory = instance)
-    .then(() => storageManager.setupEventsHistory(eventsHistory.address))
-    .then(() => eventsHistory.addVersion(storageManager.address, '_', '_'))
+    .then(() => MultiEventsHistory.deployed())
+    .then(instance => multiEventsHistory = instance)
+    .then(() => storageManager.setupEventsHistory(multiEventsHistory.address))
+    .then(() => multiEventsHistory.authorize(storageManager.address))
     .then(reverter.snapshot);
   });
 
@@ -32,7 +32,7 @@ contract('StorageManager', function(accounts) {
     return storageManager.giveAccess(address, role)
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'AccessGiven');
       assert.equal(result.logs[0].args.actor, address);
       assert.equal(result.logs[0].args.role, role);
@@ -45,7 +45,7 @@ contract('StorageManager', function(accounts) {
     return storageManager.blockAccess(address, role)
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'AccessBlocked');
       assert.equal(result.logs[0].args.actor, address);
       assert.equal(result.logs[0].args.role, role);
