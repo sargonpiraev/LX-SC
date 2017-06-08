@@ -11,6 +11,7 @@ const StorageTester = artifacts.require('./StorageTester.sol');
 const EventsHistory = artifacts.require('./EventsHistory.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const RolesLibrary = artifacts.require('./RolesLibrary.sol');
+const Roles2Library = artifacts.require('./Roles2Library.sol');
 const ERC20Library = artifacts.require('./ERC20Library.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
 const UserFactory = artifacts.require('./UserFactory.sol');
@@ -47,6 +48,7 @@ module.exports = deployer => {
   .then(() => deployer.deploy(IPFSLibrary, Storage.address, 'IPFSLibrary'))
   .then(() => deployer.deploy(SkillsLibrary, Storage.address, 'SkillsLibrary'))
   .then(() => deployer.deploy(RolesLibrary, Storage.address, 'RolesLibrary'))
+  .then(() => deployer.deploy(Roles2Library, Storage.address, 'Roles2Library'))
   .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibrary'))
   .then(() => deployer.deploy(ERC20Library, Storage.address, 'ERC20Library'))
   .then(() => deployer.deploy(PaymentGateway, Storage.address, 'PaymentGateway'))
