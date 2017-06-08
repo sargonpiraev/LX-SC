@@ -32,8 +32,8 @@ contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         return true;
     }
 
-    function getUserRoles(address _who) constant returns(bytes32) {
-        return store.get(userRoles, _who);
+    function getUserRoles(address _user) constant returns(bytes32) {
+        return store.get(userRoles, _user);
     }
 
     function getCapabilityRoles(address _code, bytes4 _sig) constant returns(bytes32) {
@@ -51,20 +51,34 @@ contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         return (_input ^ bytes32(uint(-1)));
     }
 
-    function setRootUser(address _who, bool _enabled) onlyContractOwner() returns(bool) {
-        store.set(rootUsers, _who, _enabled);
+    function setRootUser(address _user, bool _enabled) onlyContractOwner() returns(bool) {
+        store.set(rootUsers, _user, _enabled);
         return true;
     }
 
-    function setUserRole(address _who, uint8 _role, bool _enabled) onlyContractOwner() returns(bool) {
-        bytes32 lastRoles = getUserRoles(_who);
+    function addUserRole(address _user, uint8 _role) returns(bool) {
+        if (hasUserRole(_user, _role)) {
+            return false;
+        }
+        return setUserRole(_user, _role, true);
+    }
+
+    function removeUserRole(address _user, uint8 _role) returns(bool) {
+        if (!hasUserRole(_user, _role)) {
+            return false;
+        }
+        return setUserRole(_user, _role, false);
+    }
+
+    function setUserRole(address _user, uint8 _role, bool _enabled) onlyContractOwner() returns(bool) {
+        bytes32 lastRoles = getUserRoles(_user);
         bytes32 shifted = _shift(_role);
         if (_enabled) {
-            store.set(userRoles, _who, lastRoles | shifted);
-            _emitRoleAdded(_who, _role);
+            store.set(userRoles, _user, lastRoles | shifted);
+            _emitRoleAdded(_user, _role);
         } else {
-            store.set(userRoles, _who, lastRoles & bitNot(shifted));
-            _emitRoleRemoved(_who, _role);
+            store.set(userRoles, _user, lastRoles & bitNot(shifted));
+            _emitRoleRemoved(_user, _role);
         }
         return true;
     }
@@ -77,6 +91,14 @@ contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
             _emitPublicCapabilityRemoved(_code, _sig);
         }
         return true;
+    }
+
+    function addRoleCapability(uint8 _role, address _code, bytes4 _sig) returns(bool) {
+        return setRoleCapability(_role, _code, _sig, true);
+    }
+
+    function removeRoleCapability(uint8 _role, address _code, bytes4 _sig) returns(bool) {
+        return setRoleCapability(_role, _code, _sig, false);
     }
 
     function setRoleCapability(uint8 _role, address _code, bytes4 _sig, bool _enabled) onlyContractOwner() returns(bool) {
@@ -92,28 +114,28 @@ contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         return true;
     }
 
-    function isUserRoot(address _who) constant returns(bool) {
-        return store.get(rootUsers, _who);
+    function isUserRoot(address _user) constant returns(bool) {
+        return store.get(rootUsers, _user);
     }
 
     function isCapabilityPublic(address _code, bytes4 _sig) constant returns(bool) {
         return store.get(publicCapabilities, _code, _sig);
     }
 
-    function hasUserRole(address _who, uint8 _role) constant returns (bool) {
-        return bytes32(0) != getUserRoles(_who) & _shift(_role);
+    function hasUserRole(address _user, uint8 _role) constant returns (bool) {
+        return bytes32(0) != getUserRoles(_user) & _shift(_role);
     }
 
     function _shift(uint8 _role) constant internal returns(bytes32) {
         return bytes32(uint(uint(2) ** uint(_role)));
     }
 
-    function _emitRoleAdded(address _who, uint8 _role) internal {
-        Roles2Library(getEventsHistory()).emitRoleAdded(_who, _role);
+    function _emitRoleAdded(address _user, uint8 _role) internal {
+        Roles2Library(getEventsHistory()).emitRoleAdded(_user, _role);
     }
 
-    function _emitRoleRemoved(address _who, uint8 _role) internal {
-        Roles2Library(getEventsHistory()).emitRoleRemoved(_who, _role);
+    function _emitRoleRemoved(address _user, uint8 _role) internal {
+        Roles2Library(getEventsHistory()).emitRoleRemoved(_user, _role);
     }
 
     function _emitCapabilityAdded(address _code, bytes4 _sig, uint8 _role) internal {
@@ -132,12 +154,12 @@ contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         Roles2Library(getEventsHistory()).emitPublicCapabilityRemoved(_code, _sig);
     }
 
-    function emitRoleAdded(address _who, uint8 _role) {
-        RoleAdded(_self(), _who, _role);
+    function emitRoleAdded(address _user, uint8 _role) {
+        RoleAdded(_self(), _user, _role);
     }
 
-    function emitRoleRemoved(address _who, uint8 _role) {
-        RoleRemoved(_self(), _who, _role);
+    function emitRoleRemoved(address _user, uint8 _role) {
+        RoleRemoved(_self(), _user, _role);
     }
 
     function emitCapabilityAdded(address _code, bytes4 _sig, uint8 _role) {
