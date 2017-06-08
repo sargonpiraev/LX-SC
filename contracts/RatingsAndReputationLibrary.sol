@@ -249,8 +249,12 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         }
         for (uint area = 1; area != 0; area = area << 2) {
             if (_isFullOrNull(_areas, area)) {
-                if(_jobId == 0 ? !evaluateArea(_to, _rating[ratingCounter++], area) : !setAreaRating(_to, _rating[ratingCounter++], area, _jobId)){
-                    throw;
+                if(_jobId == 0){
+                    if(!evaluateArea(_to, _rating[ratingCounter++], area)){
+                        throw;
+                    } else if( !setAreaRating(_to, _rating[ratingCounter++], area, _jobId)){
+                            throw;
+                    }
                 }
                 continue;
             }
@@ -262,17 +266,25 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
             }
             for (uint category = 1; category != 0; category = category << 2) {
                 if (_isFullOrNull(_categories[categoriesCounter], category)) {
-                    if(_jobId == 0 ? !evaluateCategory(_to, _rating[ratingCounter++], area, category) : !setCategoryRating(_to, _rating[ratingCounter++], area, category, _jobId)){
-                        throw;
+                    if(_jobId == 0){
+                        if(!evaluateCategory(_to, _rating[ratingCounter++], area, category)){
+                            throw;
+                        } else if (!setCategoryRating(_to, _rating[ratingCounter++], area, category, _jobId)){
+                            throw;
+                        }
                     }
                     continue;
                 }
                 if (_skills[skillsCounter] == 0) {
                     throw;
                 }
-                if(_jobId == 0 ? !evaluateSkill(_to, _rating[ratingCounter++], area, category, _skills[skillsCounter]) : !setSkillRating(_to, _rating[ratingCounter++], area, category, _skills[skillsCounter], _jobId)){
-                    throw;
-                }
+                if(_jobId == 0){
+                        if(!evaluateSkill(_to, _rating[ratingCounter++], area, category, _skills[skillsCounter])){
+                            throw;
+                        } else if (!setSkillRating(_to, _rating[ratingCounter++], area, category, _skills[skillsCounter], _jobId)){
+                            throw;
+                        }
+                    }
                 // Move to next skill
                 skillsCounter += 1;
             }
