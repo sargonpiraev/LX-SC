@@ -40,11 +40,11 @@ contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         return store.get(capabilityRoles, _code, _sig);
     }
 
-    function canCall(address _caller, address _code, bytes4 _sig) constant returns(bool) {
-        if (isUserRoot(_caller) || isCapabilityPublic(_code, _sig)) {
+    function canCall(address _user, address _code, bytes4 _sig) constant returns(bool) {
+        if (isUserRoot(_user) || isCapabilityPublic(_code, _sig)) {
             return true;
         }
-        return bytes32(0) != getUserRoles(_caller) & getCapabilityRoles(_code, _sig);
+        return bytes32(0) != getUserRoles(_user) & getCapabilityRoles(_code, _sig);
     }
 
     function bitNot(bytes32 _input) constant returns(bytes32) {

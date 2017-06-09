@@ -167,6 +167,65 @@ contract('Roles2Library', function(accounts) {
       .then(asserts.equal('0x8000000000000000000000000000002000000000000000000000000000000000'))
       .then(() => true);
     });
+
+    it('should not allow to call by default', () => {
+      const user = accounts[1];
+      const code = '0xffffffffffffffffffffffffffffffffffffffff';
+      const sig = '0xffffffff';
+      return Promise.resolve()
+      .then(() => rolesLibrary.canCall(user, code, sig))
+      .then(asserts.isFalse)
+      .then(() => true);
+    });
+
+    it('should not allow to call if has role without capability', () => {
+      const user = accounts[1];
+      const role = 255;
+      const code = '0xffffffffffffffffffffffffffffffffffffffff';
+      const sig = '0xffffffff';
+      const sig2 = '0xffffff00';
+      return Promise.resolve()
+      .then(() => rolesLibrary.addRoleCapability(role, code, sig2))
+      .then(() => rolesLibrary.addUserRole(user, role))
+      .then(() => rolesLibrary.canCall(user, code, sig))
+      .then(asserts.isFalse)
+      .then(() => true);
+    });
+
+    it('should allow to call if user is root', () => {
+      const user = accounts[1];
+      const code = '0xffffffffffffffffffffffffffffffffffffffff';
+      const sig = '0xffffffff';
+      return Promise.resolve()
+      .then(() => rolesLibrary.setRootUser(user, true))
+      .then(() => rolesLibrary.canCall(user, code, sig))
+      .then(asserts.isTrue)
+      .then(() => true);
+    });
+
+    it('should allow to call if capability is public', () => {
+      const user = accounts[1];
+      const code = '0xffffffffffffffffffffffffffffffffffffffff';
+      const sig = '0xffffffff';
+      return Promise.resolve()
+      .then(() => rolesLibrary.setPublicCapability(code, sig, true))
+      .then(() => rolesLibrary.canCall(user, code, sig))
+      .then(asserts.isTrue)
+      .then(() => true);
+    });
+
+    it('should allow to call if has role with capability', () => {
+      const user = accounts[1];
+      const role = 255;
+      const code = '0xffffffffffffffffffffffffffffffffffffffff';
+      const sig = '0xffffffff';
+      return Promise.resolve()
+      .then(() => rolesLibrary.addRoleCapability(role, code, sig))
+      .then(() => rolesLibrary.addUserRole(user, role))
+      .then(() => rolesLibrary.canCall(user, code, sig))
+      .then(asserts.isTrue)
+      .then(() => true);
+    });
   });
 
   it('should add capability', () => {
