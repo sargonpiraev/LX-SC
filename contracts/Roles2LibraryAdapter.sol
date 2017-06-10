@@ -5,7 +5,7 @@ contract Roles2LibraryInterface {
 }
 
 contract Roles2LibraryAdapter {
-    Roles2LibraryInterface roles2library;
+    Roles2LibraryInterface roles2Library;
 
     modifier auth() {
         if (!_isAuthorized(msg.sender, msg.sig)) {
@@ -14,15 +14,22 @@ contract Roles2LibraryAdapter {
         _;
     }
 
-    function setRoles2Library(address _roles2Library) returns(bool);
+    function Roles2LibraryAdapter(address _roles2Library) {
+        roles2Library = Roles2LibraryInterface(_roles2Library);
+    }
+
+    function setRoles2Library(Roles2LibraryInterface _roles2Library) auth() returns(bool) {
+        roles2Library = _roles2Library;
+        return true;
+    }
 
     function _isAuthorized(address _src, bytes4 _sig) internal returns(bool) {
         if (_src == address(this)) {
             return true;
         }
-        if (address(roles2library) == 0) {
+        if (address(roles2Library) == 0) {
             return false;
         }
-        return roles2library.canCall(_src, this, _sig);
+        return roles2Library.canCall(_src, this, _sig);
     }
 }

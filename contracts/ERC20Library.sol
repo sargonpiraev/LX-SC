@@ -1,20 +1,23 @@
 pragma solidity 0.4.8;
 
-import './Owned.sol';
+import './Roles2LibraryAdapter.sol';
 import './StorageAdapter.sol';
 import './MultiEventsHistoryAdapter.sol';
 
-contract ERC20Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
+contract ERC20Library is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     StorageInterface.AddressesSet contracts;
 
     event ContractAdded(address indexed self, address indexed contractAddress);
     event ContractRemoved(address indexed self, address indexed contractAddress);
 
-    function ERC20Library(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) {
+    function ERC20Library(Storage _store, bytes32 _crate, address _roles2Library)
+        StorageAdapter(_store, _crate)
+        Roles2LibraryAdapter(_roles2Library)
+    {
         contracts.init('contracts');
     }
 
-    function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
+    function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
         if (getEventsHistory() != 0x0) {
             return false;
         }
@@ -38,13 +41,13 @@ contract ERC20Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         return store.get(contracts, _index);
     }
 
-    function addContract(address _address) onlyContractOwner() returns(bool) {
+    function addContract(address _address) auth() returns(bool) {
         store.add(contracts, _address);
         _emitContractAdded(_address);
         return true;
     }
 
-    function removeContract(address _address) onlyContractOwner() returns(bool) {
+    function removeContract(address _address) auth() returns(bool) {
         store.remove(contracts, _address);
         _emitContractRemoved(_address);
         return true;

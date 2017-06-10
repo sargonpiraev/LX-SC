@@ -3,6 +3,7 @@ const Asserts = require('./helpers/asserts');
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const Mock = artifacts.require('./Mock.sol');
 const ERC20Interface = artifacts.require('./ERC20Interface.sol');
+const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 
 contract('BalanceHolder', function(accounts) {
   const reverter = new Reverter(web3);
@@ -10,6 +11,7 @@ contract('BalanceHolder', function(accounts) {
 
   const asserts = Asserts(assert);
   let erc20Interface = web3.eth.contract(ERC20Interface.abi).at('0x0');
+  let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
   let paymentGatewayAddress = accounts[5];
   let mock;
   let balanceHolder;
@@ -26,12 +28,16 @@ contract('BalanceHolder', function(accounts) {
     };
   };
 
+  const ignoreAuth = (enabled = true) => {
+    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
+  };
+
   before('setup', () => {
     return Mock.deployed()
     .then(instance => mock = instance)
     .then(() => BalanceHolder.deployed())
     .then(instance => balanceHolder = instance)
-    .then(() => balanceHolder.setPaymentGateway(paymentGatewayAddress))
+    .then(() => ignoreAuth())
     .then(reverter.snapshot);
   });
 
@@ -93,7 +99,7 @@ contract('BalanceHolder', function(accounts) {
     .then(asserts.isFalse);
   });
 
-  it('should not set payment gateway if not allowed', () => {
+  it.skip('should not set payment gateway if not allowed', () => {
     const paymentGateway = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
     .then(() => balanceHolder.setPaymentGateway(paymentGateway, {from: accounts[1]}))
@@ -101,7 +107,7 @@ contract('BalanceHolder', function(accounts) {
     .then(asserts.equal(paymentGatewayAddress));
   });
 
-  it('should not call transferFrom on deposit if not allowed', () => {
+  it.skip('should not call transferFrom on deposit if not allowed', () => {
     const sender = '0xffffffffffffffffffffffffffffffffffffffff';
     const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
@@ -110,7 +116,45 @@ contract('BalanceHolder', function(accounts) {
     .then(assertExpectations(1, 0));
   });
 
-  it('should not call transfer on withdraw if not allowed', () => {
+  it('should check auth on deposit', () => {
+    const caller = accounts[1];
+    const sender = '0xffffffffffffffffffffffffffffffffffffffff';
+    const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      balanceHolder.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        caller,
+        balanceHolder.address,
+        balanceHolder.contract.deposit.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => balanceHolder.deposit(sender, value, mock.address, {from: caller}))
+    .then(assertExpectations());
+  });
+
+  it('should check auth on withdraw', () => {
+    const caller = accounts[1];
+    const sender = '0xffffffffffffffffffffffffffffffffffffffff';
+    const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      balanceHolder.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        caller,
+        balanceHolder.address,
+        balanceHolder.contract.withdraw.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => balanceHolder.withdraw(sender, value, mock.address, {from: caller}))
+    .then(assertExpectations());
+  });
+
+  it.skip('should not call transfer on withdraw if not allowed', () => {
     const receiver = '0xffffffffffffffffffffffffffffffffffffffff';
     const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()

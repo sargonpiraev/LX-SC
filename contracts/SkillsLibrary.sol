@@ -1,6 +1,6 @@
 pragma solidity 0.4.8;
 
-import './Owned.sol';
+import './Roles2LibraryAdapter.sol';
 import './EventsHistoryAndStorageAdapter.sol';
 import './MultiEventsHistoryAdapter.sol';
 
@@ -24,7 +24,7 @@ import './MultiEventsHistoryAdapter.sol';
  *
  * Functions always accept a single flag that represents the entity.
  */
-contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Owned {
+contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     // Mappings of entity to IPFS hash.
     StorageInterface.UIntBytes32Mapping areas;
     StorageInterface.UIntUIntBytes32Mapping categories;
@@ -56,13 +56,16 @@ contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         return _flag & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa == 0;
     }
 
-    function SkillsLibrary(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) {
+    function SkillsLibrary(Storage _store, bytes32 _crate, address _roles2Library)
+        StorageAdapter(_store, _crate)
+        Roles2LibraryAdapter(_roles2Library)
+    {
         areas.init('areas');
         categories.init('categories');
         skills.init('skills');
     }
 
-    function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
+    function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
         if (getEventsHistory() != 0x0) {
             return false;
         }
@@ -84,7 +87,7 @@ contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Owned {
 
     function setArea(uint _area, bytes32 _hash)
         singleOddFlag(_area)
-        onlyContractOwner()
+        auth()
     returns(bool) {
         store.set(areas, _area, _hash);
         _emitAreaSet(_area, _hash);
@@ -93,7 +96,7 @@ contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Owned {
 
     function setCategory(uint _area, uint _category, bytes32 _hash)
         singleOddFlag(_category)
-        onlyContractOwner()
+        auth()
     returns(bool) {
         if (getArea(_area) == 0) {
             return false;
@@ -105,7 +108,7 @@ contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Owned {
 
     function setSkill(uint _area, uint _category, uint _skill, bytes32 _hash)
         singleFlag(_skill)
-        onlyContractOwner()
+        auth()
     returns(bool) {
         if (getArea(_area) == 0) {
             return false;
