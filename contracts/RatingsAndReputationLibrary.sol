@@ -69,10 +69,6 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         return _flag & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa == 0;
     }
 
-    function _isFullOrNull(uint _flags, uint _flag) constant internal returns(bool) {
-        return !_hasFlag(_flags, _flag) || _hasFlag(_flags, _flag << 1);
-    }
-
     function _ifEvenThenOddTooFlags(uint _flags) constant internal returns(bool) {
         uint flagsEvenOddMask = (_flags & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) >> 1;
         return (_flags & flagsEvenOddMask) == flagsEvenOddMask;
@@ -237,56 +233,90 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         return _setMany(_to, _areas, _categories, _skills, _rating, _jobId);
     }
 
-    
-    function _setMany(address _to, uint _areas, uint[] _categories, uint[] _skills, int8[] _rating,  uint _jobId) 
-        canSetSkillRating(msg.sender)
-    returns(bool){
+    event DebugEvent(uint area, uint category, uint skill);
+    function _setMany(address _to, uint _areas, uint[] _categories, uint[] _skills, int8[] _rating,  uint _jobId) returns(bool) {
         uint categoriesCounter = 0;
         uint skillsCounter = 0;
         uint ratingCounter = 0;
+        //check that areas have correct format
         if (!_ifEvenThenOddTooFlags(_areas)) {
             return false;
         }
         for (uint area = 1; area != 0; area = area << 2) {
-            if (_isFullOrNull(_areas, area)) {
-                if(_jobId == 0){
-                    if(!evaluateArea(_to, _rating[ratingCounter++], area)){
-                        throw;
-                    } else if( !setAreaRating(_to, _rating[ratingCounter++], area, _jobId)){
-                            throw;
-                    }
-                }
+            if (!_hasFlag(_areas, area)){
                 continue;
             }
+            //check if area is full
+            if (_hasFlag(_areas, area << 1)) { 
+                //exit if user doesn't have this area
+                if(!userLibrary.hasArea(_to, area)){
+                    throw;
+                }
+                //check for correct input rating
+                if(_rating[ratingCounter] > 10 || _rating[ratingCounter] < 0){
+                    throw;
+                }
+                // if(_jobId == 0){
+                    // store.set(areasEvaluated, _to, area, msg.sender, _rating[ratingCounter]);
+                    // _emitAreaEvaluated(msg.sender, _to, _rating[ratingCounter++], area);
+                // } else {
+                    store.set(areaRatingsGiven, _to, _jobId, area, msg.sender, _rating[ratingCounter]);
+                    _emitAreaRatingGiven(msg.sender, _to, _rating[ratingCounter++], area, _jobId);
+                // }
+                //area is full, no need to go further to category checks
+                continue;
+            }
+            //check that category has correct format
             if (!_ifEvenThenOddTooFlags(_categories[categoriesCounter])) {
                 throw;
             }
+            //check that category is not empty
             if (_categories[categoriesCounter] == 0) {
                 throw;
             }
+            //iterating through category to setup skills
             for (uint category = 1; category != 0; category = category << 2) {
-                if (_isFullOrNull(_categories[categoriesCounter], category)) {
-                    if(_jobId == 0){
-                        if(!evaluateCategory(_to, _rating[ratingCounter++], area, category)){
-                            throw;
-                        } else if (!setCategoryRating(_to, _rating[ratingCounter++], area, category, _jobId)){
-                            throw;
-                        }
-                    }
+                if (!_hasFlag(_categories[categoriesCounter], category)){
                     continue;
                 }
+                //check if category is full
+                if (_hasFlag(_categories[categoriesCounter], category << 1)) {
+                    //check is user has this category
+                    if(!userLibrary.hasCategory(_to, area, category)){
+                        throw;
+                    }
+                    //check for correct input rating
+                    if(_rating[ratingCounter] > 10 || _rating[ratingCounter] < 0) {
+                        throw;
+                    }
+                    // if(_jobId == 0){
+                        // store.set(categoriesEvaluated, _to, area, category, msg.sender, _rating[ratingCounter]);
+                        // _emitCategoryEvaluated(msg.sender, _to, _rating[ratingCounter++], area, category);
+                    // } else {
+                        store.set(categoryRatingsGiven, _to, _jobId, area, category, msg.sender, _rating[ratingCounter]);
+                        _emitCategoryRatingGiven(msg.sender, _to, _rating[ratingCounter++], area, category, _jobId);
+                    // }
+                    //exit when full category set
+                    continue;
+                }
+                //check that skill is not empty
                 if (_skills[skillsCounter] == 0) {
                     throw;
                 }
-                if(_jobId == 0){
-                        if(!evaluateSkill(_to, _rating[ratingCounter++], area, category, _skills[skillsCounter])){
-                            throw;
-                        } else if (!setSkillRating(_to, _rating[ratingCounter++], area, category, _skills[skillsCounter], _jobId)){
-                            throw;
-                        }
-                    }
+                //check that user has this skill
+                if (!userLibrary.hasSkill(_to, area, category, _skills[skillsCounter])){
+                    throw;
+                }
+                // if(_jobId == 0){
+                    // store.set(skillsEvaluated, _to, area, category, _skills[skillsCounter], msg.sender, _rating[ratingCounter]);
+                    // _emitSkillEvaluated(msg.sender, _to, _rating[ratingCounter++], area, category, _skills[skillsCounter]);
+                // } else {
+                    store.set(skillRatingsGiven, _to, _jobId, area, category, _skills[skillsCounter], msg.sender, _rating[ratingCounter]);
+                    _emitSkillRatingGiven(msg.sender, _to, _rating[ratingCounter++], area, category, _skills[skillsCounter], _jobId);
+                // }
                 // Move to next skill
                 skillsCounter += 1;
+                
             }
             // Move to next category set
             categoriesCounter += 1;
