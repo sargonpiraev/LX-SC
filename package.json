@@ -25,7 +25,6 @@
   "homepage": "https://github.com/ChronoBank/LX-SC#readme",
   "dependencies": {
     "bluebird": "^3.5.0",
-    "ethereum-input-data-decoder": "0.0.2",
     "ethereumjs-testrpc": "^3.0.3",
     "truffle": "3.2.1"
   }
