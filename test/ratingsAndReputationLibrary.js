@@ -1071,7 +1071,46 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(assertExpectations);
   })
 
-  it('should set many evaluations', () => {})
+  it('should set many evaluations', () => {
+    const areas = getFlag(4).add(getEvenFlag(5)).add(getFlag(5));
+    const categories = [getFlag(7).add(getEvenFlag(9)).add(getFlag(9)).add(getFlag(10)).add(getFlag(25))];
+    const skills = [getFlag(9), getFlag(12), getFlag(13).add(getEvenFlag(23))];
+    const ratings = [9, 8, 7, 6, 5];
+    const client = accounts[2];
+    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+    const jobId = 10;
+    // const decoder = new InputDataDecoder(UserLibrary.abi);
+    // console.log("decoded input");
+    // console.log(decoder.decodeData('0x7e441048000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000400'));
+    // console.log(decoder.decodeData('0xcfba0279000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000040000'));
+    // console.log(decoder.decodeData('0xcfba0279000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000001000000'));
+    // console.log(decoder.decodeData('0xcfba0279000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000400008000000'));
+    // console.log(decoder.decodeData('0x5fce627e000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee0000000000000000000000000000000000000000000000000000000000000400'));
+    // console.log('skill1', worker, getFlag(4).toString(16), getFlag(7).toString(16), getFlag(9).toString(16));
+    // console.log('category', worker, getFlag(4).toString(16), getFlag(5).toString(16));
+    // console.log('skill2', worker, getFlag(4).toString(16), getFlag(25).toString(16), getFlag(12).toString(16));
+    // console.log('skill3', worker, getFlag(4).toString(16), getFlag(10).toString(16), getFlag(13).add(getEvenFlag(23)).toString(16));
+    // console.log('area', worker, getFlag(5).toString(16));
+    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'skillRater'), true)
+    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(7), getFlag(9)),  true))
+    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, getFlag(4), getFlag(9)),  true))
+    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(10), getFlag(12)),  true))
+    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(25), getFlag(13).add(getEvenFlag(23))),  true))
+    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, getFlag(5)),  true))
+    // function setManyRatings(address _to, uint _areas, uint[] _categories, uint[] _skills, int8[] _rating,  uint _jobId) 
+    .then(() => ratingsLibrary.evaluateMany(worker, areas, categories, skills, ratings, {from: client}))    
+    .then(() => ratingsLibrary.getSkillEvaluation(worker, getFlag(4), getFlag(7), getFlag(9), client))
+    .then(result => assert.equal(result.valueOf(), ratings[0]))
+    .then(() => ratingsLibrary.getCategoryEvaluation(worker, getFlag(4), getFlag(9), client))
+    .then(result => assert.equal(result.valueOf(), ratings[1]))
+    .then(() => ratingsLibrary.getSkillEvaluation(worker, getFlag(4), getFlag(10), getFlag(12), client))
+    .then(result => assert.equal(result.valueOf(), ratings[2]))
+    .then(() => ratingsLibrary.getSkillEvaluation(worker, getFlag(4), getFlag(25), getFlag(13).add(getEvenFlag(23)), client))
+    .then(result => assert.equal(result.valueOf(), ratings[3]))
+    .then(() => ratingsLibrary.getAreaEvaluation(worker, getFlag(5), client))
+    .then(result => assert.equal(result.valueOf(), ratings[4]))
+    .then(assertExpectations);
+  })
 
   //Here should be more test for cheking jobId
 
