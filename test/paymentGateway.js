@@ -8,6 +8,11 @@ const ERC20Library = artifacts.require('./ERC20Library.sol');
 const ERC20Interface = artifacts.require('./ERC20Interface.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
+const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const Mock = artifacts.require('./Mock.sol');
+
+const helpers = require('./helpers/helpers');
+
 
 contract('PaymentGateway', function(accounts) {
   const reverter = new Reverter(web3);
@@ -22,6 +27,24 @@ contract('PaymentGateway', function(accounts) {
   let paymentGateway;
   let balanceHolder;
   let paymentProcessor = accounts[5];
+  let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
+  let mock;
+
+  const assertExpectations = (expected = 0, callsCount = null) => {
+    let expectationsCount;
+    return () => {
+      return mock.expectationsLeft()
+      .then(asserts.equal(expected))
+      .then(() => mock.expectationsCount())
+      .then(result => expectationsCount = result)
+      .then(() => mock.callsCount())
+      .then(result => asserts.equal(callsCount === null ? expectationsCount : callsCount)(result));
+    };
+  };
+
+  const ignoreAuth = (enabled = true) => {
+    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
+  };
 
   const assertInternalBalance = (address, coinAddress, expectedValue) => {
     return (actualValue) => {
@@ -38,7 +61,10 @@ contract('PaymentGateway', function(accounts) {
   };
 
   before('setup', () => {
-    return Storage.deployed()
+    return Mock.deployed()
+    .then(instance => mock = instance)
+    .then(() => ignoreAuth())
+    .then(() => Storage.deployed())
     .then(instance => storage = instance)
     .then(() => ManagerMock.deployed())
     .then(instance => storage.setManager(instance.address))
@@ -56,11 +82,65 @@ contract('PaymentGateway', function(accounts) {
     .then(() => erc20Library.addContract(fakeCoin.address))
     .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
     .then(() => paymentGateway.setERC20Library(erc20Library.address))
-    .then(() => paymentGateway.setPaymentProcessor(paymentProcessor))
+    //.then(() => paymentGateway.setPaymentProcessor(paymentProcessor))
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
-    .then(() => balanceHolder.setPaymentGateway(paymentGateway.address))
+    //.then(() => balanceHolder.setPaymentGateway(paymentGateway.address))
     .then(() => multiEventsHistory.authorize(paymentGateway.address))
     .then(reverter.snapshot);
+  });
+
+  it('should check auth on setup event history', () => {
+    const caller = accounts[1];
+    const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      paymentGateway.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        caller,
+        paymentGateway.address,
+        paymentGateway.contract.setupEventsHistory.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => paymentGateway.setupEventsHistory(newAddress, {from: caller}))
+    .then(assertExpectations());
+  });
+
+  it('should check auth on setting ERC20 library', () => {
+    const caller = accounts[1];
+    const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      paymentGateway.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        caller,
+        paymentGateway.address,
+        paymentGateway.contract.setERC20Library.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => paymentGateway.setERC20Library(newAddress, {from: caller}))
+    .then(assertExpectations());
+  });
+
+  it('should check auth on setting balance holder', () => {
+    const caller = accounts[1];
+    const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      paymentGateway.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        caller,
+        paymentGateway.address,
+        paymentGateway.contract.setBalanceHolder.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => paymentGateway.setBalanceHolder(newAddress, {from: caller}))
+    .then(assertExpectations());
   });
 
   it('should set fee address', () => {
@@ -71,7 +151,7 @@ contract('PaymentGateway', function(accounts) {
     .then(asserts.equal(feeAddress));
   });
 
-  it('should not set fee address if not allowed', () => {
+  it.skip('should not set fee address if not allowed', () => {
     const feeAddress = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
     .then(() => paymentGateway.setFeeAddress(feeAddress, {from: accounts[1]}))
@@ -79,20 +159,24 @@ contract('PaymentGateway', function(accounts) {
     .then(asserts.equal('0x0000000000000000000000000000000000000000'));
   });
 
-  it('should set payment processor', () => {
-    const newPaymentProcessor = '0xffffffffffffffffffffffffffffffffffffffff';
+  it('should check auth on setting fee', () => {
+    const caller = accounts[1];
+    const feeAddress = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => paymentGateway.setPaymentProcessor(newPaymentProcessor))
-    .then(() => paymentGateway.getPaymentProcessor())
-    .then(asserts.equal(newPaymentProcessor));
-  });
-
-  it('should not set payment processor if not allowed', () => {
-    const newPaymentProcessor = '0xffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => paymentGateway.setPaymentProcessor(newPaymentProcessor, {from: accounts[1]}))
-    .then(() => paymentGateway.getPaymentProcessor())
-    .then(asserts.equal(paymentProcessor));
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      paymentGateway.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        caller,
+        paymentGateway.address,
+        paymentGateway.contract.setFeeAddress.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => paymentGateway.setFeeAddress(feeAddress, {from: caller}))
+    .then(assertExpectations())
+    .then(() => paymentGateway.getFeeAddress())
+    .then(asserts.equal('0x0000000000000000000000000000000000000000'));
   });
 
   it('should set fee percent', () => {
@@ -103,10 +187,30 @@ contract('PaymentGateway', function(accounts) {
     .then(asserts.equal(feePercent));
   });
 
-  it('should not set fee percent if not allowed', () => {
+  it.skip('should not set fee percent if not allowed', () => {
     const feePercent = 1333;
     return Promise.resolve()
     .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address, {from: accounts[1]}))
+    .then(() => paymentGateway.getFeePercent(fakeCoin.address))
+    .then(asserts.equal(0));
+  });
+
+  it('should check auth on setting fee percent', () => {
+    const caller = accounts[1];
+    const feePercent = 1333;
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      paymentGateway.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        caller,
+        paymentGateway.address,
+        paymentGateway.contract.setFeePercent.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address, {from: caller}))
+    .then(assertExpectations())
     .then(() => paymentGateway.getFeePercent(fakeCoin.address))
     .then(asserts.equal(0));
   });
@@ -404,14 +508,25 @@ contract('PaymentGateway', function(accounts) {
     });
   });
 
-  it('should not perform internal transfer by non-paymentProcessor', () => {
+  it('should check auth on internal transfer', () => {
     const sender = accounts[6];
     const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
     const value = 1000;
     return Promise.resolve()
     .then(() => fakeCoin.mint(sender, value))
     .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => paymentGateway.transfer(sender, receiver, value, fakeCoin.address))
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      paymentGateway.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        sender,
+        paymentGateway.address,
+        paymentGateway.contract.transfer.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => paymentGateway.transfer(sender, receiver, value, fakeCoin.address, {from: sender}))
+    .then(assertExpectations())
     .then(() => paymentGateway.getBalance(receiver, fakeCoin.address))
     .then(asserts.equal(0))
     .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
@@ -509,7 +624,7 @@ contract('PaymentGateway', function(accounts) {
     });
   });
 
-  it('should not perform internal transfer to many by non-paymentProcessor', () => {
+  it('should check auth on internal transfer to many', () => {
     const sender = accounts[6];
     const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
     const receiver2 = '0xffffffffffffffffffffffffffffffffffff0000';
@@ -522,7 +637,21 @@ contract('PaymentGateway', function(accounts) {
     return Promise.resolve()
     .then(() => fakeCoin.mint(sender, value))
     .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => paymentGateway.transferToMany(sender, [receiver, receiver2], [receiverValue, receiver2Value], 0, 0, fakeCoin.address))
+    .then(() => ignoreAuth(false))
+    .then(() => {
+        const expectedSig = helpers.getSig("transferToMany(address,address[],uint256[],uint256,uint256,address)");
+        return mock.expect(
+          paymentGateway.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            sender,
+            paymentGateway.address,
+            expectedSig
+          ), 0)
+      }
+    )
+    .then(() => paymentGateway.transferToMany(sender, [receiver, receiver2], [receiverValue, receiver2Value], 0, 0, fakeCoin.address, {from: sender}))
+    .then(assertExpectations())
     .then(assertInternalBalance(receiver, fakeCoin.address, receiverResult))
     .then(assertInternalBalance(receiver2, fakeCoin.address, receiver2Result))
     .then(assertInternalBalance(sender, fakeCoin.address, result))

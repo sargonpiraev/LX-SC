@@ -51,7 +51,7 @@ module.exports = deployer => {
   .then(() => deployer.deploy(Roles2Library, Storage.address, 'Roles2Library'))
   .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibrary'))
   .then(() => deployer.deploy(ERC20Library, Storage.address, 'ERC20Library', Mock.address))
-  .then(() => deployer.deploy(PaymentGateway, Storage.address, 'PaymentGateway'))
+  .then(() => deployer.deploy(PaymentGateway, Storage.address, 'PaymentGateway', Mock.address))
   .then(() => deployer.deploy(PaymentProcessor))
   .then(() => true);
 };

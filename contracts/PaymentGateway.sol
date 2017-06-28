@@ -1,6 +1,6 @@
 pragma solidity 0.4.8;
 
-import './Owned.sol';
+import './Roles2LibraryAdapter.sol';
 import './StorageAdapter.sol';
 import './MultiEventsHistoryAdapter.sol';
 
@@ -17,10 +17,9 @@ contract BalanceHolderInterface {
     function withdraw(address _to, uint _value, address _contract) returns(bool);
 }
 
-contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Owned {
+contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     StorageInterface.Address erc2Library;
     StorageInterface.Address feeAddress;
-    StorageInterface.Address paymentProcessor;
     StorageInterface.AddressUIntMapping fees; // 10000 is 100%.
     StorageInterface.Address balanceHolder;
     StorageInterface.AddressAddressUIntMapping balances; // contract => user => balance
@@ -37,23 +36,18 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         _;
     }
 
-    modifier onlyPaymentProcessor {
-        if (msg.sender != getPaymentProcessor()) {
-            return;
-        }
-        _;
-    }
-
-    function PaymentGateway(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) {
+    function PaymentGateway(Storage _store, bytes32 _crate, address _roles2Library)
+        StorageAdapter(_store, _crate)
+        Roles2LibraryAdapter(_roles2Library)
+    {
         erc2Library.init('erc2Library');
         feeAddress.init('feeAddress');
-        paymentProcessor.init('paymentProcessor');
         fees.init('fees');
         balanceHolder.init('balanceHolder');
         balances.init('balances');
     }
 
-    function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
+    function setupEventsHistory(address _eventsHistory) auth() returns(bool) {  // only owner
         if (getEventsHistory() != 0x0) {
             return false;
         }
@@ -61,28 +55,23 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         return true;
     }
 
-    function setERC20Library(address _erc20Library) onlyContractOwner() returns(bool) {
+    function setERC20Library(address _erc20Library) auth() returns(bool) {  // only owner
         store.set(erc2Library, _erc20Library);
         return true;
     }
 
-    function setFeeAddress(address _feeAddress) onlyContractOwner() returns(bool) {
-        store.set(feeAddress, _feeAddress);
-        return true;
-    }
-
-    function setPaymentProcessor(address _paymentProcessor) onlyContractOwner() returns(bool) {
-        store.set(paymentProcessor, _paymentProcessor);
-        return true;
-    }
-
-    function setBalanceHolder(address _balanceHolder) onlyContractOwner() returns(bool) {
+    function setBalanceHolder(address _balanceHolder) auth() returns(bool) {  // only owner
         store.set(balanceHolder, _balanceHolder);
         return true;
     }
 
+    function setFeeAddress(address _feeAddress) auth() returns(bool) {  // only owner
+        store.set(feeAddress, _feeAddress);
+        return true;
+    }
+
     function setFeePercent(uint _feePercent, address _contract)
-        onlyContractOwner()
+        auth()  // only owner
         onlySupportedContract(_contract)
     returns(bool) {
         if (_feePercent >= 10000) {
@@ -126,7 +115,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         uint _additionalFee,
         address _contract
     )
-        onlyPaymentProcessor()
+        auth()  // only payment processor
         onlySupportedContract(_contract)
     returns(bool) {
         if (_to.length != _value.length) {
@@ -157,7 +146,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         uint _additionalFee,
         address _contract
     )
-        onlyPaymentProcessor()
+        auth()  // only payment processor
         onlySupportedContract(_contract)
     returns(bool) {
         uint total = _value;
@@ -183,7 +172,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         uint[] _value,
         address _contract
     )
-        onlyPaymentProcessor()
+        auth()  // only payment processor
         onlySupportedContract(_contract)
     returns(bool) {
         if (_from.length != _value.length) {
@@ -279,10 +268,6 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Owned {
 
     function getFeeAddress() constant returns(address) {
         return store.get(feeAddress);
-    }
-
-    function getPaymentProcessor() constant returns(address) {
-        return store.get(paymentProcessor);
     }
 
     function getBalanceHolder() constant returns(BalanceHolderInterface) {
