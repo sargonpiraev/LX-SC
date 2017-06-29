@@ -1,19 +1,22 @@
 pragma solidity 0.4.8;
 
-import './Owned.sol';
+import './Roles2LibraryAdapter.sol';
 import './StorageAdapter.sol';
 import './MultiEventsHistoryAdapter.sol';
 
-contract IPFSLibrary is StorageAdapter, MultiEventsHistoryAdapter, Owned {
+contract IPFSLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     StorageInterface.AddressBytes32Bytes32Mapping ipfsHashes;
 
     event HashSet(address indexed self, address indexed setter, bytes32 indexed key, bytes32 hash);
 
-    function IPFSLibrary(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) {
+    function IPFSLibrary(Storage _store, bytes32 _crate, address _roles2Library)
+        StorageAdapter(_store, _crate)
+        Roles2LibraryAdapter(_roles2Library)
+    {
         ipfsHashes.init('ipfsHashes');
     }
 
-    function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
+    function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
         if (getEventsHistory() != 0x0) {
             return false;
         }

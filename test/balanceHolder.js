@@ -13,8 +13,8 @@ contract('BalanceHolder', function(accounts) {
   let erc20Interface = web3.eth.contract(ERC20Interface.abi).at('0x0');
   let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
   let paymentGatewayAddress = accounts[5];
-  let mock;
   let balanceHolder;
+  let mock;
 
   const assertExpectations = (expected = 0, callsCount = null) => {
     let expectationsCount;

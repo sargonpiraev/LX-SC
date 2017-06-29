@@ -1,24 +1,16 @@
 pragma solidity 0.4.8;
 
-import './Owned.sol';
+import './Roles2LibraryAdapter.sol';
 
 contract PaymentGatewayInterface {
     function transferWithFee(address _from, address _to, uint _value, uint _feeFromValue, uint _additionalFee, address _contract) returns(bool);
     function transferAll(address _from, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee, address _contract) returns(bool);
 }
 
-contract PaymentProcessor is Owned {
+contract PaymentProcessor is Roles2LibraryAdapter {
     PaymentGatewayInterface public paymentGateway;
-    address public jobController;
     bool public serviceMode = false;
     mapping(bytes32 => bool) public approved;
-
-    modifier onlyJobController {
-        if (msg.sender != jobController) {
-            return;
-        }
-        _;
-    }
 
     modifier onlyApproved(bytes32 _operationId) {
         if (serviceMode && !approved[_operationId]) {
@@ -30,40 +22,42 @@ contract PaymentProcessor is Owned {
         }
     }
 
-    function setPaymentGateway(PaymentGatewayInterface _paymentGateway) onlyContractOwner() returns(bool) {
+    function PaymentProcessor(address _roles2Library) Roles2LibraryAdapter(_roles2Library) {}
+
+
+    // Only contract owner
+    function setPaymentGateway(PaymentGatewayInterface _paymentGateway) auth() returns(bool) {
         paymentGateway = _paymentGateway;
         return true;
     }
 
-    function setJobController(address _jobController) onlyContractOwner() returns(bool) {
-        jobController = _jobController;
-        return true;
-    }
-
-    function enableServiceMode() onlyContractOwner() returns(bool) {
+    // Only contract owner
+    function enableServiceMode() auth() returns(bool) {
         serviceMode = true;
         return true;
     }
 
-    function disableServiceMode() onlyContractOwner() returns(bool) {
+    // Only contract owner
+    function disableServiceMode() auth() returns(bool) {
         serviceMode = false;
         return true;
     }
 
-    function approve(bytes32 _operationId) onlyContractOwner() returns(bool) {
+    // Only contract owner
+    function approve(bytes32 _operationId) auth() returns(bool) {
         approved[_operationId] = true;
         return true;
     }
 
     function lockPayment(bytes32 _operationId, address _from, uint _value, address _contract)
-        onlyJobController()
+        auth()  // Only job controller
         onlyApproved(_operationId)
     returns(bool) {
         return paymentGateway.transferWithFee(_from, address(_operationId), _value, 0, 0, _contract);
     }
 
     function releasePayment(bytes32 _operationId, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee, address _contract)
-        onlyJobController()
+        auth()  // Only job controller
         onlyApproved(_operationId)
     returns(bool) {
         return paymentGateway.transferAll(address(_operationId), _to, _value, _change, _feeFromValue, _additionalFee, _contract);

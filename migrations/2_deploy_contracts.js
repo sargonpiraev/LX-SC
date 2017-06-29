@@ -45,13 +45,13 @@ module.exports = deployer => {
   .then(() => deployer.deploy(UserProxyTester))
   .then(() => deployer.deploy(UserFactory))
   .then(() => deployer.deploy(RatingsLibrary, Storage.address, 'RatingsLibrary'))
-  .then(() => deployer.deploy(IPFSLibrary, Storage.address, 'IPFSLibrary'))
+  .then(() => deployer.deploy(IPFSLibrary, Storage.address, 'IPFSLibrary', Mock.address))
   .then(() => deployer.deploy(SkillsLibrary, Storage.address, 'SkillsLibrary', Mock.address))
   .then(() => deployer.deploy(RolesLibrary, Storage.address, 'RolesLibrary'))
   .then(() => deployer.deploy(Roles2Library, Storage.address, 'Roles2Library'))
   .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibrary'))
   .then(() => deployer.deploy(ERC20Library, Storage.address, 'ERC20Library', Mock.address))
   .then(() => deployer.deploy(PaymentGateway, Storage.address, 'PaymentGateway', Mock.address))
-  .then(() => deployer.deploy(PaymentProcessor))
+  .then(() => deployer.deploy(PaymentProcessor, Mock.address))
   .then(() => true);
 };
