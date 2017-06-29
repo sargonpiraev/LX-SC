@@ -69,7 +69,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
   });
 
   it('should not be able to set invalid user rating', () => {
-    const rating = 33;
+    const rating = -3;
     const address = '0xffffffffffffffffffffffffffffffffffffffff';
     return ratingsLibrary.setUserRating(address, rating, {from: SENDER})
     .then(() => ratingsLibrary.getUserRating(SENDER, address))
