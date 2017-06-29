@@ -14,10 +14,10 @@ contract Storage is Owned {
         mapping(bytes32 => int) ints;
         mapping(bytes32 => uint8) uint8s;
         mapping(bytes32 => bytes32) bytes32s;
-        mapping(bytes32 => AddressInt8) addressInt8s;
+        mapping(bytes32 => AddressUInt8) addressUInt8s;
     }
 
-    struct AddressInt8 {
+    struct AddressUInt8 {
         address ratedBy;
         uint8 rate;
     }
@@ -69,11 +69,11 @@ contract Storage is Owned {
         return crates[_crate].ints[_key];
     }
 
-    function setInt8(bytes32 _crate, bytes32 _key, uint8 _value) onlyAllowed(_crate) {
+    function setUInt8(bytes32 _crate, bytes32 _key, uint8 _value) onlyAllowed(_crate) {
         crates[_crate].uint8s[_key] = _value;
     }
 
-    function getInt8(bytes32 _crate, bytes32 _key) constant returns(uint8) {
+    function getUInt8(bytes32 _crate, bytes32 _key) constant returns(uint8) {
         return crates[_crate].uint8s[_key];
     }
 
@@ -85,11 +85,11 @@ contract Storage is Owned {
         return crates[_crate].bytes32s[_key];
     }
 
-    function setAddressInt8(bytes32 _crate, bytes32 _key, address _value, uint8 _value2) onlyAllowed(_crate) {
-        crates[_crate].addressInt8s[_key] = AddressInt8(_value, _value2);
+    function setAddressUInt8(bytes32 _crate, bytes32 _key, address _value, uint8 _value2) onlyAllowed(_crate) {
+        crates[_crate].addressUInt8s[_key] = AddressUInt8(_value, _value2);
     }
 
-    function getAddressInt8(bytes32 _crate, bytes32 _key) constant returns(address, uint8) {
-        return (crates[_crate].addressInt8s[_key].ratedBy, crates[_crate].addressInt8s[_key].rate);
+    function getAddressUInt8(bytes32 _crate, bytes32 _key) constant returns(address, uint8) {
+        return (crates[_crate].addressUInt8s[_key].ratedBy, crates[_crate].addressUInt8s[_key].rate);
     }
 }

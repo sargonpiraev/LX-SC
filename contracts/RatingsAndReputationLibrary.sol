@@ -6,13 +6,13 @@ import './EventsHistoryAndStorageAdapter.sol';
 
 contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
     StorageInterface.AddressAddressUIntMapping userRatingsGiven;
-    StorageInterface.AddressUIntStructAddressInt8Mapping ratingsGiven;
-    StorageInterface.AddressUIntUIntStructAddressInt8Mapping areaRatingsGiven;
-    StorageInterface.AddressUIntUIntUIntStructAddressInt8Mapping categoryRatingsGiven;
-    StorageInterface.AddressUIntUIntUIntUIntStructAddressInt8Mapping skillRatingsGiven;
-    StorageInterface.AddressUIntAddressInt8Mapping areasEvaluated;
-    StorageInterface.AddressUIntUIntAddressInt8Mapping categoriesEvaluated;
-    StorageInterface.AddressUIntUIntUIntAddressInt8Mapping skillsEvaluated;
+    StorageInterface.AddressUIntStructAddressUInt8Mapping ratingsGiven;
+    StorageInterface.AddressUIntUIntStructAddressUInt8Mapping areaRatingsGiven;
+    StorageInterface.AddressUIntUIntUIntStructAddressUInt8Mapping categoryRatingsGiven;
+    StorageInterface.AddressUIntUIntUIntUIntStructAddressUInt8Mapping skillRatingsGiven;
+    StorageInterface.AddressUIntAddressUInt8Mapping areasEvaluated;
+    StorageInterface.AddressUIntUIntAddressUInt8Mapping categoriesEvaluated;
+    StorageInterface.AddressUIntUIntUIntAddressUInt8Mapping skillsEvaluated;
     bytes32 public constant SKILL_RATE_ROLE = "skillRater";
     bytes32 public constant RATE_ROLE = "simpleRater";
     UserLibrary userLibrary;
@@ -38,35 +38,6 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
           return;  
         }
         _;
-    }
-
-    modifier isValidRating(uint8 _rating){
-        if(_rating > 10) {
-            return;  
-        }
-        _;
-    }
-
-    modifier singleFlag(uint _flag) {
-        if (!_isSingleFlag(_flag)) {
-            return;
-        }
-        _;
-    }
-
-    modifier singleOddFlag(uint _flag) {
-        if (!_isSingleFlag(_flag) || !_isOddFlag(_flag)) {
-            return;
-        }
-        _;
-    }
-
-    function _isSingleFlag(uint _flag) constant internal returns(bool) {
-        return _flag != 0 && (_flag & (_flag - 1) == 0);
-    }
-
-    function _isOddFlag(uint _flag) constant internal returns(bool) {
-        return _flag & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa == 0;
     }
 
     function _ifEvenThenOddTooFlags(uint _flags) constant internal returns(bool) {
@@ -117,9 +88,11 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
     }
 
     function setRating(address _to, uint8 _rating,  uint _jobId)
-        isValidRating(_rating) 
         canSetRating(msg.sender) 
     returns(bool) {
+        if(_rating > 10) {
+            return false;  
+        }
         store.set(ratingsGiven, _to, _jobId, msg.sender, _rating);
         _emitRatingGiven(msg.sender, _to, _jobId, _rating);
         return true;
@@ -139,7 +112,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         return _setAreaRating(_to, _rating, _area, _jobId, false);
     }
 
-    function _setAreaRating(address _to, uint8 _rating, uint _area,  uint _jobId, bool _throws) returns(bool) {
+    function _setAreaRating(address _to, uint8 _rating, uint _area,  uint _jobId, bool _throws) internal returns(bool) {
         if((_rating > 10) || !userLibrary.hasArea(_to, _area)) { 
             if(_throws) {
                 throw;
@@ -158,7 +131,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         return _evaluateArea(_to, _rating, _area, false);
     }
 
-    function _evaluateArea(address _to, uint8 _rating, uint _area, bool _throws) returns(bool) {
+    function _evaluateArea(address _to, uint8 _rating, uint _area, bool _throws) internal returns(bool) {
         if((_rating > 10) || !userLibrary.hasArea(_to, _area)) { 
             if(_throws) {
                 throw;
@@ -185,7 +158,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         return _setCategoryRating(_to, _rating, _area, _category, _jobId, false);
     }
 
-    function _setCategoryRating(address _to,  uint8 _rating, uint _area, uint _category, uint _jobId, bool _throws) returns(bool) {
+    function _setCategoryRating(address _to,  uint8 _rating, uint _area, uint _category, uint _jobId, bool _throws) internal returns(bool) {
         if((_rating > 10) || !userLibrary.hasCategory(_to, _area, _category)) { 
             if(_throws) {
                 throw;
@@ -204,7 +177,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         return _evaluateCategory(_to, _rating, _area, _category, false);
     }
 
-    function _evaluateCategory(address _to, uint8 _rating, uint _area, uint _category, bool _throws) returns(bool) {
+    function _evaluateCategory(address _to, uint8 _rating, uint _area, uint _category, bool _throws) internal returns(bool) {
         if((_rating > 10) || !userLibrary.hasCategory(_to, _area, _category)) { 
             if(_throws) {
                 throw;
@@ -231,7 +204,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         return _setSkillRating(_to, _rating, _area, _category, _skill, _jobId, false);
     }
     
-    function _setSkillRating(address _to, uint8 _rating, uint _area, uint _category, uint _skill,  uint _jobId, bool _throws) returns(bool) {
+    function _setSkillRating(address _to, uint8 _rating, uint _area, uint _category, uint _skill,  uint _jobId, bool _throws) internal returns(bool) {
         if((_rating > 10) || !userLibrary.hasSkill(_to, _area, _category, _skill)) { 
             if(_throws) {
                 throw;
@@ -250,7 +223,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         return _evaluateSkill(_to, _rating, _area, _category, _skill, false);
     }
 
-    function _evaluateSkill(address _to, uint8 _rating, uint _area, uint _category, uint _skill, bool _throws) returns(bool) {
+    function _evaluateSkill(address _to, uint8 _rating, uint _area, uint _category, uint _skill, bool _throws) internal returns(bool) {
         if((_rating > 10) || !userLibrary.hasSkill(_to, _area, _category, _skill)) { 
             if(_throws) {
                 throw;
@@ -336,8 +309,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
             }
             //check if area is full
             if (_hasFlag(_areas, area << 1)) { 
-                _setAreaRating(_to,  _rating[ratingCounter], area, _jobId, true);
-                ratingCounter++;
+                _setAreaRating(_to,  _rating[ratingCounter++], area, _jobId, true);
                 //area is full, no need to go further to category checks
                 continue;
             }
@@ -356,8 +328,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
                 }
                 //check if category is full
                 if (_hasFlag(_categories[categoriesCounter], category << 1)) {
-                    _setCategoryRating(_to, _rating[ratingCounter], area, category, _jobId, true);
-                    ratingCounter++;
+                    _setCategoryRating(_to, _rating[ratingCounter++], area, category, _jobId, true);
                     //exit when full category set
                     continue;
                 }
@@ -365,8 +336,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
                 if (_skills[skillsCounter] == 0) {
                     throw;
                 }
-                _setSkillRating(_to, _rating[ratingCounter], area, category,  _skills[skillsCounter], _jobId, true);
-                ratingCounter++;
+                _setSkillRating(_to, _rating[ratingCounter++], area, category,  _skills[skillsCounter], _jobId, true);
                 // Move to next skill
                 skillsCounter += 1;
             }

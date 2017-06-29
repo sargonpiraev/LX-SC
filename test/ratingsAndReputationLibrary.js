@@ -1063,7 +1063,6 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     const ratings = [9, 8, 7, 6, 5];
     const client = accounts[2];
     const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const jobId = 10;
     return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'skillRater'), true)
     .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(7), getFlag(9)),  true))
     .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, getFlag(4), getFlag(9)),  true))
@@ -1091,7 +1090,6 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     const ratings = [9, 8, 7, 6, 5];
     const client = accounts[2];
     const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const jobId = 10;
     return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'skillRater'), false)
     .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(7), getFlag(9)),  true))
     .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, getFlag(4), getFlag(9)),  true))
@@ -1119,7 +1117,6 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     const ratings = [9, 8, 7, 6, 5];
     const client = accounts[2];
     const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const jobId = 10;
     return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'skillRater'), true)
     .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(7), getFlag(9)),  true))
     .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, getFlag(4), getFlag(9)),  true))
