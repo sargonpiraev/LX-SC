@@ -1,9 +1,9 @@
 const Reverter = require('./helpers/reverter');
 const Asserts = require('./helpers/asserts');
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
-const Mock = artifacts.require('./Mock.sol');
 const ERC20Interface = artifacts.require('./ERC20Interface.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const Mock = artifacts.require('./Mock.sol');
 
 contract('BalanceHolder', function(accounts) {
   const reverter = new Reverter(web3);
@@ -11,9 +11,9 @@ contract('BalanceHolder', function(accounts) {
 
   const asserts = Asserts(assert);
   let erc20Interface = web3.eth.contract(ERC20Interface.abi).at('0x0');
-  let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
   let paymentGatewayAddress = accounts[5];
   let balanceHolder;
+  let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
   let mock;
 
   const assertExpectations = (expected = 0, callsCount = null) => {

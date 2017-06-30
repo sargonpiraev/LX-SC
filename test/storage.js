@@ -2,6 +2,8 @@ const Reverter = require('./helpers/reverter');
 const Asserts = require('./helpers/asserts');
 const Storage = artifacts.require('./Storage.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
+const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const Mock = artifacts.require('./Mock.sol');
 
 contract('Storage', function(accounts) {
   const reverter = new Reverter(web3);
@@ -12,17 +14,55 @@ contract('Storage', function(accounts) {
   let manager;
   const KEY = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
   const CRATE = 'SomeCrate';
+  let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
+  let mock;
 
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
   const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
+  const assertExpectations = (expected = 0, callsCount = null) => {
+    let expectationsCount;
+    return () => {
+      return mock.expectationsLeft()
+      .then(asserts.equal(expected))
+      .then(() => mock.expectationsCount())
+      .then(result => expectationsCount = result)
+      .then(() => mock.callsCount())
+      .then(result => asserts.equal(callsCount === null ? expectationsCount : callsCount)(result));
+    };
+  };
+
+  const ignoreAuth = (enabled = true) => {
+    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
+  };
+
   before('setup', () => {
-    return Storage.deployed()
+    return Mock.deployed()
+    .then(instance => mock = instance)
+    .then(() => ignoreAuth())
+    .then(() => Storage.deployed())
     .then(instance => storage = instance)
     .then(() => ManagerMock.deployed())
     .then(instance => manager = instance)
     .then(() => storage.setManager(manager.address))
     .then(reverter.snapshot);
+  });
+
+  it('should check auth on setting a manager', () => {
+    const caller = accounts[1];
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      storage.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        caller,
+        storage.address,
+        storage.contract.setManager.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => storage.setManager(manager.address, {from: caller}))
+    .then(assertExpectations());
   });
 
   it('should store uint values', () => {

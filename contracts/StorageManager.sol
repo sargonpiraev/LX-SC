@@ -1,14 +1,16 @@
 pragma solidity 0.4.8;
 
-import './Owned.sol';
+import './Roles2LibraryAdapter.sol';
 import './MultiEventsHistoryAdapter.sol';
 
-contract StorageManager is MultiEventsHistoryAdapter, Owned {
+contract StorageManager is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     mapping(address => mapping(bytes32 => bool)) internal approvedContracts;
     event AccessGiven(address indexed self, address actor, bytes32 role);
     event AccessBlocked(address indexed self, address actor, bytes32 role);
 
-    function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
+    function StorageManager(address _roles2Library) Roles2LibraryAdapter(_roles2Library) {}
+
+    function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
         if (getEventsHistory() != 0x0) {
             return false;
         }
@@ -16,13 +18,13 @@ contract StorageManager is MultiEventsHistoryAdapter, Owned {
         return true;
     }
 
-    function giveAccess(address _actor, bytes32 _role) onlyContractOwner() returns(bool) {
+    function giveAccess(address _actor, bytes32 _role) auth() returns(bool) {
         approvedContracts[_actor][_role] = true;
         _emitAccessGiven(_actor, _role);
         return true;
     }
 
-    function blockAccess(address _actor, bytes32 _role) onlyContractOwner() returns(bool) {
+    function blockAccess(address _actor, bytes32 _role) auth() returns(bool) {
         approvedContracts[_actor][_role] = false;
         _emitAccessBlocked(_actor, _role);
         return true;
@@ -39,7 +41,7 @@ contract StorageManager is MultiEventsHistoryAdapter, Owned {
     function _emitAccessBlocked(address _user, bytes32 _role) internal {
         StorageManager(getEventsHistory()).emitAccessBlocked(_user, _role);
     }
-    
+
     function emitAccessGiven(address _user, bytes32 _role) {
         AccessGiven(_self(), _user, _role);
     }

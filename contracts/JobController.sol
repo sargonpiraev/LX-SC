@@ -203,6 +203,14 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         return true;
     }
 
+    function getJobClient(uint _jobId) constant returns(address) {
+        return store.get(jobClient, _jobId);
+    }
+
+    function getJobWorker(uint _jobId) constant returns(address) {
+        return store.get(jobWorker, _jobId);
+    }
+
     function _emitJobPosted(uint _jobId, address _client, uint _skillsArea, uint _skillsCategory, uint _skills, bytes32 _detailsIPFSHash) internal {
         JobController(getEventsHistory()).emitJobPosted(_jobId, _client, _skillsArea, _skillsCategory, _skills, _detailsIPFSHash);
     }

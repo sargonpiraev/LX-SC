@@ -4,6 +4,8 @@ const Storage = artifacts.require('./Storage.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
 const RatingsLibrary = artifacts.require('./RatingsLibrary.sol');
 const EventsHistory = artifacts.require('./EventsHistory.sol');
+const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const Mock = artifacts.require('./Mock.sol');
 
 contract('RatingsLibrary', function(accounts) {
   const reverter = new Reverter(web3);
@@ -14,9 +16,30 @@ contract('RatingsLibrary', function(accounts) {
   let storage;
   let eventsHistory;
   let ratingsLibrary;
+  let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
+  let mock;
+
+  const assertExpectations = (expected = 0, callsCount = null) => {
+    let expectationsCount;
+    return () => {
+      return mock.expectationsLeft()
+      .then(asserts.equal(expected))
+      .then(() => mock.expectationsCount())
+      .then(result => expectationsCount = result)
+      .then(() => mock.callsCount())
+      .then(result => asserts.equal(callsCount === null ? expectationsCount : callsCount)(result));
+    };
+  };
+
+  const ignoreAuth = (enabled = true) => {
+    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
+  };
 
   before('setup', () => {
-    return Storage.deployed()
+    return Mock.deployed()
+    .then(instance => mock = instance)
+    .then(() => ignoreAuth())
+    .then(() => Storage.deployed())
     .then(instance => storage = instance)
     .then(() => ManagerMock.deployed())
     .then(instance => storage.setManager(instance.address))

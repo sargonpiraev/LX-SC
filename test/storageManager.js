@@ -1,22 +1,64 @@
 const Reverter = require('./helpers/reverter');
+const Asserts = require('./helpers/asserts');
 const StorageManager = artifacts.require('./StorageManager.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
+const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const Mock = artifacts.require('./Mock.sol');
 
 contract('StorageManager', function(accounts) {
   const reverter = new Reverter(web3);
   afterEach('revert', reverter.revert);
 
+  const asserts = Asserts(assert);
   let storageManager;
   let multiEventsHistory;
+  let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
+  let mock;
+
+  const assertExpectations = (expected = 0, callsCount = null) => {
+    let expectationsCount;
+    return () => {
+      return mock.expectationsLeft()
+      .then(asserts.equal(expected))
+      .then(() => mock.expectationsCount())
+      .then(result => expectationsCount = result)
+      .then(() => mock.callsCount())
+      .then(result => asserts.equal(callsCount === null ? expectationsCount : callsCount)(result));
+    };
+  };
+
+  const ignoreAuth = (enabled = true) => {
+    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
+  };
 
   before('setup', () => {
-    return StorageManager.deployed()
+    return Mock.deployed()
+    .then(instance => mock = instance)
+    .then(() => ignoreAuth())
+    .then(() => StorageManager.deployed())
     .then(instance => storageManager = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
     .then(() => storageManager.setupEventsHistory(multiEventsHistory.address))
     .then(() => multiEventsHistory.authorize(storageManager.address))
     .then(reverter.snapshot);
+  });
+
+  it('should check auth on setup event history', () => {
+    const caller = accounts[1];
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      storageManager.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        caller,
+        storageManager.address,
+        storageManager.contract.setupEventsHistory.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => storageManager.setupEventsHistory(multiEventsHistory.address, {from: caller}))
+    .then(assertExpectations());
   });
 
   it('should not be accessible when empty', () => {
@@ -122,11 +164,47 @@ contract('StorageManager', function(accounts) {
     .then(result => assert.isFalse(result));
   });
 
-  it('should not modify access when callen by not-owner', () => {
+  it('should check auth on giving an access', () => {
+    const caller = accounts[1];
     const address = '0xffffffffffffffffffffffffffffffffffffffff';
     const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-    return storageManager.giveAccess(address, role, {from: accounts[1]})
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      storageManager.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        caller,
+        storageManager.address,
+        storageManager.contract.giveAccess.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => storageManager.giveAccess(address, role, {from: caller}))
+    .then(assertExpectations())
     .then(() => storageManager.isAllowed(address, role))
     .then(result => assert.isFalse(result));
   });
+
+  it('should check auth on blocking an access', () => {
+    const caller = accounts[1];
+    const address = '0xffffffffffffffffffffffffffffffffffffffff';
+    const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => storageManager.giveAccess(address, role))
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      storageManager.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        caller,
+        storageManager.address,
+        storageManager.contract.blockAccess.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => storageManager.blockAccess(address, role, {from: caller}))
+    .then(assertExpectations())
+    .then(() => storageManager.isAllowed(address, role))
+    .then(result => assert.isTrue(result));
+  });
+
 });

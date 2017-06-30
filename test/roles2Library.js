@@ -3,7 +3,9 @@ const Asserts = require('./helpers/asserts');
 const Storage = artifacts.require('./Storage.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Roles2Library = artifacts.require('./Roles2Library.sol');
+const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
+const Mock = artifacts.require('./Mock.sol');
 
 contract('Roles2Library', function(accounts) {
   const reverter = new Reverter(web3);
@@ -13,9 +15,18 @@ contract('Roles2Library', function(accounts) {
   let storage;
   let multiEventsHistory;
   let rolesLibrary;
+  let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
+  let mock;
+
+  const ignoreAuth = (enabled = true) => {
+    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
+  };
 
   before('setup', () => {
-    return Storage.deployed()
+    return Mock.deployed()
+    .then(instance => mock = instance)
+    .then(() => ignoreAuth())
+    .then(() => Storage.deployed())
     .then(instance => storage = instance)
     .then(() => ManagerMock.deployed())
     .then(instance => storage.setManager(instance.address))
