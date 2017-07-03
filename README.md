@@ -13,3 +13,9 @@ $ npm install
 $ npm run testrpc
 $ npm run test
 ```
+
+# Contract Interactions Diagram
+
+![Contract Interactions][contract_interactions]
+
+[contract_interactions]: https://raw.githubusercontent.com/ChronoBank/LX-SC/master/contract_interactions.png
