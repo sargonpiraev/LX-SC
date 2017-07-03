@@ -4,9 +4,11 @@ const Storage = artifacts.require('./Storage.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
 const RolesLibrary = artifacts.require('./RolesLibrary.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
-const EventsHistory = artifacts.require('./EventsHistory.sol');
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Mock = artifacts.require('./Mock.sol');
+
+const helpers = require('./helpers/helpers');
 
 contract('UserLibrary', function(accounts) {
   const reverter = new Reverter(web3);
@@ -14,13 +16,25 @@ contract('UserLibrary', function(accounts) {
 
   const asserts = Asserts(assert);
   let storage;
-  let eventsHistory;
+  let multiEventsHistory;
   let rolesLibrary;
   let userLibrary;
   let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
   let mock;
 
   const FROM_NON_OWNER = { from: accounts[5] };
+
+  const assertExpectations = (expected = 0, callsCount = null) => {
+    let expectationsCount;
+    return () => {
+      return mock.expectationsLeft()
+      .then(asserts.equal(expected))
+      .then(() => mock.expectationsCount())
+      .then(result => expectationsCount = result)
+      .then(() => mock.callsCount())
+      .then(result => asserts.equal(callsCount === null ? expectationsCount : callsCount)(result));
+    };
+  };
 
   const ignoreAuth = (enabled = true) => {
     return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
@@ -38,200 +52,29 @@ contract('UserLibrary', function(accounts) {
     .then(instance => rolesLibrary = instance)
     .then(() => UserLibrary.deployed())
     .then(instance => userLibrary = instance)
-    .then(() => EventsHistory.deployed())
-    .then(instance => eventsHistory = instance)
-    .then(() => rolesLibrary.setupEventsHistory(eventsHistory.address))
-    .then(() => userLibrary.setRolesLibrary(rolesLibrary.address))
-    .then(() => userLibrary.setupEventsHistory(eventsHistory.address))
-    .then(() => eventsHistory.addVersion(userLibrary.address, '_', '_'))
+    .then(() => MultiEventsHistory.deployed())
+    .then(instance => multiEventsHistory = instance)
+    .then(() => userLibrary.setupEventsHistory(multiEventsHistory.address))
+    .then(() => multiEventsHistory.authorize(userLibrary.address))
     .then(reverter.snapshot);
   });
 
-  describe('Roles', function() {
-    it('should add user role', () => {
-      const user = accounts[1];
-      const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-      return Promise.resolve()
-      .then(() => rolesLibrary.addRole(role))
-      .then(() => userLibrary.addRole(user, role))
-      .then(() => userLibrary.hasRole(user, role))
-      .then(asserts.isTrue);
-    });
-
-    it('should emit RoleAdded event in EventsHistory', () => {
-      const user = accounts[1];
-      const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-      return Promise.resolve()
-      .then(() => rolesLibrary.addRole(role))
-      .then(() => userLibrary.addRole(user, role))
-      .then(result => {
-        assert.equal(result.logs.length, 1);
-        assert.equal(result.logs[0].address, eventsHistory.address);
-        assert.equal(result.logs[0].event, 'RoleAdded');
-        assert.equal(result.logs[0].args.user, user);
-        assert.equal(result.logs[0].args.role, role);
-      });
-    });
-
-    it('should not have user role by default', () => {
-      const user = accounts[1];
-      const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-      return Promise.resolve()
-      .then(() => userLibrary.hasRole(user, role))
-      .then(asserts.isFalse);
-    });
-
-    it('should remove user role', () => {
-      const user = accounts[1];
-      const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-      return Promise.resolve()
-      .then(() => rolesLibrary.addRole(role))
-      .then(() => userLibrary.addRole(user, role))
-      .then(() => userLibrary.removeRole(user, role))
-      .then(() => userLibrary.hasRole(user, role))
-      .then(asserts.isFalse);
-    });
-
-    it('should emit RoleRemoved event in EventsHistory', () => {
-      const user = accounts[1];
-      const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-      return Promise.resolve()
-      .then(() => userLibrary.removeRole(user, role))
-      .then(result => {
-        assert.equal(result.logs.length, 1);
-        assert.equal(result.logs[0].address, eventsHistory.address);
-        assert.equal(result.logs[0].event, 'RoleRemoved');
-        assert.equal(result.logs[0].args.user, user);
-        assert.equal(result.logs[0].args.role, role);
-      });
-    });
-
-    it('should not add user role if not allowed', () => {
-      const user = accounts[1];
-      const nonOwner = accounts[2];
-      const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-      return Promise.resolve()
-      .then(() => rolesLibrary.addRole(role))
-      .then(() => userLibrary.addRole(user, role, {from: nonOwner}))
-      .then(() => userLibrary.hasRole(user, role))
-      .then(asserts.isFalse);
-    });
-
-    it('should not add user role if not present in RolesLibrary', () => {
-      const user = accounts[1];
-      const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-      return Promise.resolve()
-      .then(() => userLibrary.addRole(user, role))
-      .then(() => userLibrary.hasRole(user, role))
-      .then(asserts.isFalse);
-    });
-
-    it('should not remove user role if not allowed', () => {
-      const user = accounts[1];
-      const nonOwner = accounts[2];
-      const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-      return Promise.resolve()
-      .then(() => rolesLibrary.addRole(role))
-      .then(() => userLibrary.addRole(user, role))
-      .then(() => userLibrary.removeRole(user, role, {from: nonOwner}))
-      .then(() => userLibrary.hasRole(user, role))
-      .then(asserts.isTrue);
-    });
-
-    it('should add several user roles', () => {
-      const user = accounts[1];
-      const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-      const role2 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
-      return Promise.resolve()
-      .then(() => rolesLibrary.addRole(role))
-      .then(() => rolesLibrary.addRole(role2))
-      .then(() => userLibrary.addRole(user, role))
-      .then(() => userLibrary.addRole(user, role2))
-      .then(() => userLibrary.hasRole(user, role))
-      .then(asserts.isTrue)
-      .then(() => userLibrary.hasRole(user, role2))
-      .then(asserts.isTrue);
-    });
-
-    it('should differentiate users', () => {
-      const user = accounts[1];
-      const user2 = accounts[2];
-      const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-      const role2 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
-      return Promise.resolve()
-      .then(() => rolesLibrary.addRole(role))
-      .then(() => rolesLibrary.addRole(role2))
-      .then(() => userLibrary.addRole(user, role))
-      .then(() => userLibrary.addRole(user2, role2))
-      .then(() => userLibrary.hasRole(user2, role))
-      .then(asserts.isFalse)
-      .then(() => userLibrary.hasRole(user, role2))
-      .then(asserts.isFalse)
-      .then(() => userLibrary.hasRole(user, role))
-      .then(asserts.isTrue)
-      .then(() => userLibrary.hasRole(user2, role2))
-      .then(asserts.isTrue);
-    });
-
-    it('should return all user roles', () => {
-      const user = accounts[1];
-      const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-      const role2 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
-      const role3 = '0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
-      return Promise.resolve()
-      .then(() => rolesLibrary.addRole(role))
-      .then(() => rolesLibrary.addRole(role2))
-      .then(() => rolesLibrary.addRole(role3))
-      .then(() => userLibrary.addRole(user, role))
-      .then(() => userLibrary.addRole(user, role2))
-      .then(() => userLibrary.addRole(user, role3))
-      .then(() => userLibrary.getUserRoles(user))
-      .then(roles => {
-        assert.equal(roles.length, 3);
-        assert.equal(roles[0], role);
-        assert.equal(roles[1], role2);
-        assert.equal(roles[2], role3);
-      })
-      .then(() => userLibrary.removeRole(user, role2))
-      .then(() => userLibrary.getUserRoles(user))
-      .then(roles => {
-        assert.equal(roles.length, 2);
-        assert.equal(roles[0], role);
-        assert.equal(roles[1], role3);
-      });
-    });
-
-    it('should return only user roles from RolesLibrary', () => {
-      const user = accounts[1];
-      const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-      const role2 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
-      const role3 = '0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
-      return Promise.resolve()
-      .then(() => rolesLibrary.addRole(role))
-      .then(() => rolesLibrary.addRole(role2))
-      .then(() => rolesLibrary.addRole(role3))
-      .then(() => userLibrary.addRole(user, role))
-      .then(() => userLibrary.addRole(user, role2))
-      .then(() => userLibrary.addRole(user, role3))
-      .then(() => rolesLibrary.removeRole(role2))
-      .then(() => userLibrary.getUserRoles(user))
-      .then(roles => {
-        assert.equal(roles.length, 2);
-        assert.equal(roles[0], role);
-        assert.equal(roles[1], role3);
-      });
-    });
-
-    it('should return user role only if present in RolesLibrary', () => {
-      const user = accounts[1];
-      const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-      return Promise.resolve()
-      .then(() => rolesLibrary.addRole(role))
-      .then(() => userLibrary.addRole(user, role))
-      .then(() => rolesLibrary.removeRole(role))
-      .then(() => userLibrary.hasRole(user, role))
-      .then(asserts.isFalse);
-    });
+  it('should check auth on setup event history', () => {
+    const caller = accounts[1];
+    const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      userLibrary.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        caller,
+        userLibrary.address,
+        userLibrary.contract.setupEventsHistory.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => userLibrary.setupEventsHistory(newAddress, {from: caller}))
+    .then(assertExpectations());
   });
 
   describe('Skills', function() {
@@ -262,6 +105,7 @@ contract('UserLibrary', function(accounts) {
 
     const assertUserSkills = (user, expectedSkills) => {
       let actualSkills;
+      let expSkills;
       return () =>
         userLibrary.getUserSkills(user)
         .then(([areas, categories, skills]) => {
@@ -276,6 +120,33 @@ contract('UserLibrary', function(accounts) {
     };
 
     describe('SetMany', function() {
+      it('should check auth on calling setMany', () => {
+        const caller = accounts[1];
+        const user = accounts[2];
+        const areas = addFlags(partialAndFullFlag(0));
+        const categories = [];
+        const skills = [];
+        const expectedSkills = [ 0, categories, skills ];
+        return Promise.resolve()
+        .then(() => ignoreAuth(false))
+        .then(() => {
+          const expectedSig = helpers.getSig("setMany(address,uint256,uint256[],uint256[])");
+          return mock.expect(
+            userLibrary.address,
+            0,
+            roles2LibraryInterface.canCall.getData(
+              caller,
+              userLibrary.address,
+              expectedSig
+            ), 0)
+          }
+        )
+        .then(() => userLibrary.setMany(user, areas, categories, skills, {from: caller}))
+        .then(assertExpectations())
+        .then(assertUserSkills(user, expectedSkills))
+        .then(() => true);
+      });
+
       it('should set user areas', () => {
         const user = accounts[1];
         const areas = addFlags(partialAndFullFlag(0));
@@ -507,6 +378,33 @@ contract('UserLibrary', function(accounts) {
     });
 
     describe('AddMany', function() {
+      it('should check auth on calling addMany', () => {
+        const caller = accounts[1];
+        const user = accounts[2];
+        const areas = addFlags(partialAndFullFlag(0));
+        const categories = [];
+        const skills = [];
+        const expectedSkills = [ 0, categories, skills ];
+        return Promise.resolve()
+        .then(() => ignoreAuth(false))
+        .then(() => {
+          const expectedSig = helpers.getSig("addMany(address,uint256,uint256[],uint256[])");
+          return mock.expect(
+            userLibrary.address,
+            0,
+            roles2LibraryInterface.canCall.getData(
+              caller,
+              userLibrary.address,
+              expectedSig
+            ), 0)
+          }
+        )
+        .then(() => userLibrary.addMany(user, areas, categories, skills, {from: caller}))
+        .then(assertExpectations())
+        .then(assertUserSkills(user, expectedSkills))
+        .then(() => true);
+      });
+
       it('should set user areas', () => {
         const user = accounts[1];
         const areas = addFlags(partialAndFullFlag(0));
@@ -727,6 +625,30 @@ contract('UserLibrary', function(accounts) {
     });
 
     describe('SetAreas', function() {
+      it('should check auth on setting user areas', () => {
+        const caller = accounts[1];
+        const user = accounts[1];
+        const areas = addFlags(partialAndFullFlag(0));
+        const categories = [];
+        const skills = [];
+        const expectedSkills = [ 0, categories, skills ];
+        return Promise.resolve()
+        .then(() => ignoreAuth(false))
+        .then(() => mock.expect(
+          userLibrary.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            userLibrary.address,
+            userLibrary.contract.setAreas.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => userLibrary.setAreas(user, areas, {from: caller}))
+        .then(assertExpectations())
+        .then(assertUserSkills(user, expectedSkills))
+        .then(() => true);
+      });
+
       it('should set user areas', () => {
         const user = accounts[1];
         const areas = addFlags(partialAndFullFlag(0));
@@ -737,9 +659,10 @@ contract('UserLibrary', function(accounts) {
         .then(() => userLibrary.setAreas(user, areas))
         .then(result => {
           assert.equal(result.logs.length, 1);
-          assert.equal(result.logs[0].address, eventsHistory.address);
+          assert.equal(result.logs[0].address, multiEventsHistory.address);
           assert.equal(result.logs[0].event, 'SkillAreasSet');
           assert.equal(result.logs[0].args.user, user);
+          assert.equal(result.logs[0].args.self, userLibrary.address);
           equal(result.logs[0].args.areas, areas);
         })
         .then(assertUserSkills(user, expectedSkills))
@@ -825,20 +748,32 @@ contract('UserLibrary', function(accounts) {
         .then(() => true);
       });
 
-      it('should not set user areas by non owner', () => {
-        const user = accounts[1];
-        const areas = addFlags(partialAndFullFlag(0));
-        const categories = [];
-        const skills = [];
-        const expectedSkills = [ 0, categories, skills ];
-        return Promise.resolve()
-        .then(() => userLibrary.setAreas(user, areas, FROM_NON_OWNER))
-        .then(assertUserSkills(user, expectedSkills))
-        .then(() => true);
-      });
     });
 
     describe('SetCategories', function() {
+      it('should check auth on setting user categories', () => {
+        const caller = accounts[1];
+        const user = accounts[1];
+        const area = partialFlag(0);
+        const categories = [addFlags(partialAndFullFlag(10))];
+        const expectedSkills = [ 0, [], [] ];
+        return Promise.resolve()
+        .then(() => ignoreAuth(false))
+        .then(() => mock.expect(
+          userLibrary.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            userLibrary.address,
+            userLibrary.contract.setCategories.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => userLibrary.setCategories(user, area, categories[0], {from: caller}))
+        .then(assertExpectations())
+        .then(assertUserSkills(user, expectedSkills))
+        .then(() => true);
+      });
+
       it('should set user categories', () => {
         const user = accounts[1];
         const area = partialFlag(0);
@@ -850,14 +785,16 @@ contract('UserLibrary', function(accounts) {
         .then(result => {
           assert.equal(result.logs.length, 2);
 
-          assert.equal(result.logs[0].address, eventsHistory.address);
+          assert.equal(result.logs[0].address, multiEventsHistory.address);
           assert.equal(result.logs[0].event, 'SkillAreasSet');
           assert.equal(result.logs[0].args.user, user);
+          assert.equal(result.logs[0].args.self, userLibrary.address);
           equal(result.logs[0].args.areas, area);
 
-          assert.equal(result.logs[1].address, eventsHistory.address);
+          assert.equal(result.logs[1].address, multiEventsHistory.address);
           assert.equal(result.logs[1].event, 'SkillCategoriesSet');
           assert.equal(result.logs[1].args.user, user);
+          assert.equal(result.logs[1].args.self, userLibrary.address);
           equal(result.logs[1].args.area, area);
           equal(result.logs[1].args.categories, categories);
         })
@@ -983,20 +920,33 @@ contract('UserLibrary', function(accounts) {
         .then(() => true);
       });
 
-      it('should not set user categories from non owner', () => {
-        const user = accounts[1];
-        const area = partialFlag(0);
-        const categories = [addFlags(partialAndFullFlag(10))];
-        const skills = [];
-        const expectedSkills = [ 0, [], [] ];
-        return Promise.resolve()
-        .then(() => userLibrary.setCategories(user, area, categories[0], FROM_NON_OWNER))
-        .then(assertUserSkills(user, expectedSkills))
-        .then(() => true);
-      });
     });
 
     describe('SetSkills', function() {
+      it('should check auth on setting user skills', () => {
+        const caller = accounts[1];
+        const user = accounts[1];
+        const area = partialFlag(0);
+        const category = partialFlag(10);
+        const skills = [addFlags(getFlag(15))];
+        const expectedSkills = [ 0, [], [] ];
+        return Promise.resolve()
+        .then(() => ignoreAuth(false))
+        .then(() => mock.expect(
+          userLibrary.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            userLibrary.address,
+            userLibrary.contract.setSkills.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => userLibrary.setSkills(user, area, category, skills[0], {from: caller}))
+        .then(assertExpectations())
+        .then(assertUserSkills(user, expectedSkills))
+        .then(() => true);
+      });
+
       it('should set user skills', () => {
         const user = accounts[1];
         const area = partialFlag(0);
@@ -1008,20 +958,23 @@ contract('UserLibrary', function(accounts) {
         .then(result => {
           assert.equal(result.logs.length, 3);
 
-          assert.equal(result.logs[0].address, eventsHistory.address);
+          assert.equal(result.logs[0].address, multiEventsHistory.address);
           assert.equal(result.logs[0].event, 'SkillAreasSet');
           assert.equal(result.logs[0].args.user, user);
+          assert.equal(result.logs[0].args.self, userLibrary.address);
           equal(result.logs[0].args.areas, area);
 
-          assert.equal(result.logs[1].address, eventsHistory.address);
+          assert.equal(result.logs[1].address, multiEventsHistory.address);
           assert.equal(result.logs[1].event, 'SkillCategoriesSet');
           assert.equal(result.logs[1].args.user, user);
+          assert.equal(result.logs[1].args.self, userLibrary.address);
           equal(result.logs[1].args.area, area);
           equal(result.logs[1].args.categories, category);
 
-          assert.equal(result.logs[2].address, eventsHistory.address);
+          assert.equal(result.logs[2].address, multiEventsHistory.address);
           assert.equal(result.logs[2].event, 'SkillsSet');
           assert.equal(result.logs[2].args.user, user);
+          assert.equal(result.logs[2].args.self, userLibrary.address);
           equal(result.logs[2].args.area, area);
           equal(result.logs[2].args.category, category);
           equal(result.logs[2].args.skills, skills);
@@ -1146,17 +1099,6 @@ contract('UserLibrary', function(accounts) {
         .then(() => true);
       });
 
-      it('should not set user skills from non owner', () => {
-        const user = accounts[1];
-        const area = partialFlag(0);
-        const category = partialFlag(10);
-        const skills = [addFlags(getFlag(15))];
-        const expectedSkills = [ 0, [], [] ];
-        return Promise.resolve()
-        .then(() => userLibrary.setSkills(user, area, category, skills[0], FROM_NON_OWNER))
-        .then(assertUserSkills(user, expectedSkills))
-        .then(() => true);
-      });
     });
   });
 });

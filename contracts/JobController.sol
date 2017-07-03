@@ -1,6 +1,6 @@
 pragma solidity 0.4.8;
 
-import './Owned.sol';
+import './Roles2LibraryAdapter.sol';
 import './StorageAdapter.sol';
 import './MultiEventsHistoryAdapter.sol';
 
@@ -13,7 +13,7 @@ contract PaymentProcessorInterface {
     function releasePayment(bytes32 _operationId, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee, address _contract) returns(bool);
 }
 
-contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Owned {
+contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     PaymentProcessorInterface public paymentProcessor;
     UserLibraryInterface public userLibrary;
     StorageInterface.UIntAddressMapping jobClient;
@@ -56,7 +56,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         _;
     }
 
-    function JobController(Storage _store, bytes32 _crate) StorageAdapter(_store, _crate) {
+    function JobController(Storage _store, bytes32 _crate, address _roles2Library)
+        StorageAdapter(_store, _crate)
+        Roles2LibraryAdapter(_roles2Library)
+    {
         jobClient.init('jobClient');
         jobSkillsArea.init('jobSkillsArea');
         jobSkillsCategory.init('jobSkillsCategory');
@@ -73,7 +76,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         jobFinishTime.init('jobFinishTime');
     }
 
-    function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
+    function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
         if (getEventsHistory() != 0x0) {
             return false;
         }
@@ -81,12 +84,12 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         return true;
     }
 
-    function setPaymentProcessor(PaymentProcessorInterface _paymentProcessor) onlyContractOwner() returns(bool) {
+    function setPaymentProcessor(PaymentProcessorInterface _paymentProcessor) auth() returns(bool) {
         paymentProcessor = _paymentProcessor;
         return true;
     }
 
-    function setUserLibrary(UserLibraryInterface _userLibrary) onlyContractOwner() returns(bool) {
+    function setUserLibrary(UserLibraryInterface _userLibrary) auth() returns(bool) {
         userLibrary = _userLibrary;
         return true;
     }
@@ -123,7 +126,9 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         return jobId;
     }
 
-    function postJobOffer(uint _jobId, address _erc20Contract, uint _rate, uint _estimate, uint _ontop) onlyJobState(_jobId, JobState.CREATED) returns(bool) {
+    function postJobOffer(uint _jobId, address _erc20Contract, uint _rate, uint _estimate, uint _ontop)
+        onlyJobState(_jobId, JobState.CREATED)
+    returns(bool) {
         if (_rate == 0 || _estimate == 0) {
             return false;
         }
@@ -156,7 +161,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         ) {
             return false;
         }
-        // Maybe incentivize by locking some money from worker? 
+        // Maybe incentivize by locking some money from worker?
         store.set(jobWorker, _jobId, _worker);
         store.set(jobState, _jobId, uint(JobState.ACCEPTED));
         return true;
@@ -209,6 +214,26 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Owned {
 
     function getJobWorker(uint _jobId) constant returns(address) {
         return store.get(jobWorker, _jobId);
+    }
+
+    function getJobSkillsArea(uint _jobId) constant returns(uint) {
+        return store.get(jobSkillsArea, _jobId);
+    }
+
+    function getJobSkillsCategory(uint _jobId) constant returns(uint) {
+        return store.get(jobSkillsCategory, _jobId);
+    }
+
+    function getJobSkills(uint _jobId) constant returns(uint) {
+        return store.get(jobSkills, _jobId);
+    }
+
+    function getJobDetailsIPFSHash(uint _jobId) constant returns(bytes32) {
+        return store.get(jobDetailsIPFSHash, _jobId);
+    }
+
+    function getJobState(uint _jobId) constant returns(uint) {
+        return uint(store.get(jobState, _jobId));
     }
 
     function _emitJobPosted(uint _jobId, address _client, uint _skillsArea, uint _skillsCategory, uint _skills, bytes32 _detailsIPFSHash) internal {

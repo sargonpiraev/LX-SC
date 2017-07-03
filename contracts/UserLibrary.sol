@@ -1,13 +1,8 @@
 pragma solidity 0.4.8;
 
-import './Owned.sol';
-import './EventsHistoryAndStorageAdapter.sol';
-
-contract RolesLibraryInterface {
-    function count() constant returns(uint);
-    function includes(bytes32 _role) constant returns(bool);
-    function getRole(uint _index) constant returns(bytes32);
-}
+import './Roles2LibraryAdapter.sol';
+import './StorageAdapter.sol';
+import './MultiEventsHistoryAdapter.sol';
 
 /**
  * @title LaborX User Library.
@@ -32,7 +27,7 @@ contract RolesLibraryInterface {
  * 00001101 is the first partial and second full areas.
  * 00000010 is invalid, because in order to be full area also should be partial.
  * Same encoding is used for categories.
- * 
+ *
  * For skills:
  * 00000001 is the first skill.
  * 00000010 is the second skill.
@@ -44,19 +39,14 @@ contract RolesLibraryInterface {
  *     11100000 - First category: sixth, senventh and eighth skills.
  *     10001001 - Fourth category: first, fourth and eighth skills.
  */
-contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
-    StorageInterface.Mapping roles;
-    StorageInterface.Address rolesLibrary;
+contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     StorageInterface.AddressUIntMapping skillAreas;
     StorageInterface.AddressUIntUIntMapping skillCategories;
     StorageInterface.AddressUIntUIntUIntMapping skills;
 
-    event RoleAdded(address indexed user, bytes32 indexed role, uint version);
-    event RoleRemoved(address indexed user, bytes32 indexed role, uint version);
-
-    event SkillAreasSet(address indexed user, uint areas, uint version);
-    event SkillCategoriesSet(address indexed user, uint indexed area, uint categories, uint version);
-    event SkillsSet(address indexed user, uint indexed area, uint indexed category, uint skills, uint version);
+    event SkillAreasSet(address indexed self, address indexed user, uint areas);
+    event SkillCategoriesSet(address indexed self, address indexed user, uint area, uint categories);
+    event SkillsSet(address indexed self, address indexed user, uint area, uint category, uint skills);
 
     modifier singleFlag(uint _flag) {
         if (!_isSingleFlag(_flag)) {
@@ -103,29 +93,21 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         return (_flags & flagsEvenOddMask) == flagsEvenOddMask;
     }
 
-    function UserLibrary(Storage _store, bytes32 _crate) EventsHistoryAndStorageAdapter(_store, _crate) {
-        roles.init('roles');
-        rolesLibrary.init('rolesLibrary');
+    function UserLibrary(Storage _store, bytes32 _crate, address _roles2Library)
+        StorageAdapter(_store, _crate)
+        Roles2LibraryAdapter(_roles2Library)
+    {
         skillAreas.init('skillAreas');
         skillCategories.init('skillCategories');
         skills.init('skills');
     }
 
-    function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
+    function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
         if (getEventsHistory() != 0x0) {
             return false;
         }
         _setEventsHistory(_eventsHistory);
         return true;
-    }
-
-    function setRolesLibrary(address _rolesLibrary) onlyContractOwner() returns(bool) {
-        store.set(rolesLibrary, _rolesLibrary);
-    }
-
-    // Will return user role only if it is present in RolesLibrary.
-    function hasRole(address _user, bytes32 _role) constant returns(bool) {
-        return getRolesLibrary().includes(_role) && store.get(roles, bytes32(_user), _role).toBool();
     }
 
     function getAreaInfo(address _user, uint _area)
@@ -208,46 +190,9 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         return _flags & _flagsToCheck == _flagsToCheck;
     }
 
-    bytes32[] temp;
-    // Will only return roles that are present in RolesLibrary.
-    function getUserRoles(address _user) constant returns(bytes32[]) {
-        temp.length = 0;
-        bytes32[] memory uniques = _getRoles();
-        for (uint i = 0; i < uniques.length; i++) {
-            if (hasRole(_user, uniques[i])) {
-                temp.push(uniques[i]);
-            }
-        }
-        return temp;
-    }
-
-    function _getRoles() constant internal returns(bytes32[]) {
-        var rolesLib = getRolesLibrary();
-        uint count = rolesLib.count();
-        bytes32[] memory uniques = new bytes32[](count);
-        for (uint i = 0; i < count; i++) {
-            uniques[i] = rolesLib.getRole(i);
-        }
-        return uniques;
-    }
-
-    function getRolesLibrary() constant returns(RolesLibraryInterface) {
-        return RolesLibraryInterface(store.get(rolesLibrary));
-    }
-
-    // Will add role only if it is present in RolesLibrary.
-    function addRole(address _user, bytes32 _role) onlyContractOwner() returns(bool) {
-        if (!getRolesLibrary().includes(_role)) {
-            return false;
-        }
-        _setRole(_user, _role, true);
-        _emitRoleAdded(_user, _role);
-        return true;
-    }
-
     function setAreas(address _user, uint _areas)
         ifEvenThenOddTooFlags(_areas)
-        onlyContractOwner()
+        auth()
     returns(bool) {
         for (uint area = 1; area != 0; area = area << 2) {
             if (_isFullOrNull(_areas, area)) {
@@ -265,7 +210,7 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         singleOddFlag(_area)
         ifEvenThenOddTooFlags(_categories)
         hasFlags(_categories)
-        onlyContractOwner()
+        auth()
     returns(bool) {
         _addArea(_user, _area);
         for (uint category = 1; category != 0; category = category << 2) {
@@ -284,7 +229,7 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         singleOddFlag(_area)
         singleOddFlag(_category)
         hasFlags(_skills)
-        onlyContractOwner()
+        auth()
     returns(bool) {
         _addArea(_user, _area);
         _addCategory(_user, _area, _category);
@@ -292,11 +237,11 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         return true;
     }
 
-    function addMany(address _user, uint _areas, uint[] _categories, uint[] _skills) onlyContractOwner() returns(bool) {
+    function addMany(address _user, uint _areas, uint[] _categories, uint[] _skills) auth() returns(bool) {
         return _setMany(_user, _areas, _categories, _skills, false);
     }
 
-    function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) onlyContractOwner() returns(bool) {
+    function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) auth() returns(bool) {
         return _setMany(_user, _areas, _categories, _skills, true);
     }
 
@@ -339,11 +284,6 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         return true;
     }
 
-    function removeRole(address _user, bytes32 _role) onlyContractOwner() returns(bool) {
-        _setRole(_user, _role, false);
-        _emitRoleRemoved(_user, _role);
-        return true;
-    }
 
     function _addArea(address _user, uint _area) internal {
         if (hasArea(_user, _area)) {
@@ -374,18 +314,6 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         _emitSkillsSet(_user, _area, _category, _skills);
     }
 
-    function _setRole(address _user, bytes32 _role, bool _status) internal {
-        store.set(roles, bytes32(_user), _role, _status.toBytes32());
-    }
-
-    function _emitRoleAdded(address _user, bytes32 _role) internal {
-        UserLibrary(getEventsHistory()).emitRoleAdded(_user, _role);
-    }
-
-    function _emitRoleRemoved(address _user, bytes32 _role) internal {
-        UserLibrary(getEventsHistory()).emitRoleRemoved(_user, _role);
-    }
-
     function _emitSkillAreasSet(address _user, uint _areas) internal {
         UserLibrary(getEventsHistory()).emitSkillAreasSet(_user, _areas);
     }
@@ -398,23 +326,16 @@ contract UserLibrary is EventsHistoryAndStorageAdapter, Owned {
         UserLibrary(getEventsHistory()).emitSkillsSet(_user, _area, _category, _skills);
     }
 
-    function emitRoleAdded(address _user, bytes32 _role) {
-        RoleAdded(_user, _role, _getVersion());
-    }
-
-    function emitRoleRemoved(address _user, bytes32 _role) {
-        RoleRemoved(_user, _role, _getVersion());
-    }
-
     function emitSkillAreasSet(address _user, uint _areas) {
-        SkillAreasSet(_user, _areas, _getVersion());
+        SkillAreasSet(_self(), _user, _areas);
     }
 
     function emitSkillCategoriesSet(address _user, uint _area, uint _categories) {
-        SkillCategoriesSet(_user, _area, _categories, _getVersion());
+        SkillCategoriesSet(_self(), _user, _area, _categories);
     }
 
     function emitSkillsSet(address _user, uint _area, uint _category, uint _skills) {
-        SkillsSet(_user, _area, _category, _skills, _getVersion());
+        SkillsSet(_self(), _user, _area, _category, _skills);
     }
+
 }

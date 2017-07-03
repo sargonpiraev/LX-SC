@@ -22,6 +22,7 @@ const FakeCoin = artifacts.require('./FakeCoin.sol');
 const Recovery = artifacts.require('./Recovery.sol');
 const UserMock = artifacts.require('./UserMock.sol');
 const Storage = artifacts.require('./Storage.sol');
+const JobController = artifacts.require('./JobController.sol');
 const User = artifacts.require('./User.sol');
 const Mock = artifacts.require('./Mock.sol');
 
@@ -49,9 +50,10 @@ module.exports = deployer => {
   .then(() => deployer.deploy(SkillsLibrary, Storage.address, 'SkillsLibrary', Mock.address))
   .then(() => deployer.deploy(RolesLibrary, Storage.address, 'RolesLibrary'))
   .then(() => deployer.deploy(Roles2Library, Storage.address, 'Roles2Library'))
-  .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibrary'))
+  .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibrary', Mock.address))
   .then(() => deployer.deploy(ERC20Library, Storage.address, 'ERC20Library', Mock.address))
   .then(() => deployer.deploy(PaymentGateway, Storage.address, 'PaymentGateway', Mock.address))
   .then(() => deployer.deploy(PaymentProcessor, Mock.address))
+  .then(() => deployer.deploy(JobController, Storage.address, 'JobController', Mock.address))
   .then(() => true);
 };
