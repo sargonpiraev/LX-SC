@@ -1,38 +1,37 @@
 pragma solidity 0.4.8;
 
-import './EventsHistoryAdapter.sol';
+import './MultiEventsHistoryAdapter.sol';
 import './UserLibrary.sol';
 import './UserProxy.sol';
-import './Owned.sol';
+import './Roles2LibraryAdapter.sol';
 import './User.sol';
 
 contract UserLibraryInterface {
-    function addRole(address _user, bytes32 _role) returns(bool);
     function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) returns(bool);
 }
 
-contract UserFactory is EventsHistoryAdapter, Owned {
+contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     UserLibraryInterface userLibrary;
 
-    event UserCreated(address indexed user, address proxy, address recoveryContract, bytes32[] roles, uint areas, uint[] categories, uint[] skills);
+    event UserCreated(address indexed self, address indexed user, address proxy, address recoveryContract, uint areas, uint[] categories, uint[] skills);
 
-    function createUserWithProxyAndRecovery(address _recoveryContract, bytes32[] _roles, uint _areas, uint[] _categories, uint[] _skills) {
+    function UserFactory(address _roles2Library) Roles2LibraryAdapter(_roles2Library) {}
+
+
+    function createUserWithProxyAndRecovery(address _recoveryContract, uint _areas, uint[] _categories, uint[] _skills) {
         UserProxy proxy = new UserProxy();
         User user = new User();
         user.setRecoveryContract(_recoveryContract);
         proxy.changeContractOwnership(user);
         user.claimContractOwnership();
         user.setUserProxy(proxy);
-        if(!_setRoles(user, _roles)) {
-            throw;
-        }
         if(!_setSkills(user, _areas, _categories, _skills)) {
             throw;
         }
-        UserCreated(user, proxy, _recoveryContract, _roles, _areas, _categories, _skills);
+        _emitUserCreated(user, proxy, _recoveryContract, _areas, _categories, _skills);
     }
 
-    function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
+    function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
         if (getEventsHistory() != 0x0) {
             return false;
         }
@@ -40,22 +39,13 @@ contract UserFactory is EventsHistoryAdapter, Owned {
         return true;
     }
 
-    function setupUserLibrary(UserLibraryInterface _userLibrary) onlyContractOwner() returns(bool) {
+    function setupUserLibrary(UserLibraryInterface _userLibrary) auth() returns(bool) {
         userLibrary = _userLibrary;
         return true;
     }
 
-    function getUserLibrary() returns(address){
+    function getUserLibrary() returns(address) {
         return userLibrary;
-    }
-
-    function _setRoles(address _user, bytes32[] _roles) internal returns(bool){
-        for(uint i = 0; i < _roles.length; i++) {
-            if(!userLibrary.addRole(_user, _roles[i])) {
-                return false;
-            }
-        }
-        return true;
     }
 
     function _setSkills(address _user, uint _areas, uint[] _categories, uint[] _skills) internal returns(bool){
@@ -66,5 +56,13 @@ contract UserFactory is EventsHistoryAdapter, Owned {
             return false;
         }
         return true;
+    }
+
+    function _emitUserCreated(address _user, address _proxy, address _recoveryContract, uint _areas, uint[] _categories, uint[] _skills) internal {
+        UserFactory(getEventsHistory()).emitUserCreated(_user, _proxy, _recoveryContract, _areas, _categories, _skills);
+    }
+
+    function emitUserCreated(address _user, address _proxy, address _recoveryContract, uint _areas, uint[] _categories, uint[] _skills) {
+        UserCreated(_self(), _user, _proxy, _recoveryContract, _areas, _categories, _skills);
     }
 }

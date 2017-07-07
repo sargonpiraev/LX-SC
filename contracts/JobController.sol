@@ -31,6 +31,13 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     StorageInterface.UIntUIntMapping jobStartTime;
     StorageInterface.UIntUIntMapping jobFinishTime;
 
+    StorageInterface.UIntUIntMapping jobAdditionalRequestedTime;
+
+    StorageInterface.UIntBoolMapping jobPaused;
+    StorageInterface.UIntUIntMapping jobPausedAt;
+    StorageInterface.UIntUIntMapping jobPausedFor;
+
+
     enum JobState { NOT_SET, CREATED, ACCEPTED, PENDING_START, STARTED, PENDING_FINISH, FINISHED, FINALIZED }
 
     event JobPosted(address indexed self, uint indexed jobId, address client, uint skillsArea, uint skillsCategory, uint skills, bytes32 detailsIPFSHash);
@@ -74,6 +81,12 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         jobState.init('jobState');
         jobStartTime.init('jobStartTime');
         jobFinishTime.init('jobFinishTime');
+
+        jobAdditionalRequestedTime.init('jobAdditionalRequestedTime');
+
+        jobPaused.init('jobPaused');
+        jobPausedAt.init('jobPausedAt');
+        jobPausedFor.init('jobPausedFor');
     }
 
     function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
@@ -94,6 +107,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return true;
     }
 
+
     function calculateLockAmount(uint _jobId) constant returns(uint) {
         address worker = store.get(jobWorker, _jobId);
         // Lock additional 10%, and additional working hour.
@@ -108,10 +122,11 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
 
     function calculatePaycheck(uint _jobId) constant returns(uint) {
         address worker = store.get(jobWorker, _jobId);
-        return (store.get(jobFinishTime, _jobId) - store.get(jobStartTime, _jobId)) *
+        return (store.get(jobFinishTime, _jobId) - store.get(jobStartTime, _jobId) - store.get(jobPausedFor, _jobId)) *
         store.get(jobOfferRate, _jobId, worker) / 60 +
         store.get(jobOfferOntop, _jobId, worker);
     }
+
 
     function postJob(uint _area, uint _category, uint _skills, bytes32 _detailsIPFSHash) returns(uint) {
         uint jobId = store.get(jobsCount) + 1;
@@ -167,6 +182,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return true;
     }
 
+
     function startWork(uint _jobId) onlyJobState(_jobId, JobState.ACCEPTED) onlyWorker(_jobId) returns(bool) {
         store.set(jobState, _jobId, uint(JobState.PENDING_START));
         return true;
@@ -178,7 +194,78 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return true;
     }
 
+
+    function pauseWork(uint _jobId) onlyJobState(_jobId, JobState.STARTED) onlyWorker(_jobId) returns(bool) {
+        if (store.get(jobPaused, _jobId)) {
+            return false;
+        }
+        store.set(jobPaused, _jobId, true);
+        store.set(jobPausedAt, _jobId, now);
+        // Pause event
+        return true;
+    }
+
+    function resumeWork(uint _jobId) onlyJobState(_jobId, JobState.STARTED) onlyWorker(_jobId) returns(bool) {
+        return _resumeWork(_jobId);
+    }
+
+    function _resumeWork(uint _jobId) internal returns(bool) {
+        if (!store.get(jobPaused, _jobId)) {
+            return false;
+        }
+        store.set(jobPausedFor, _jobId, store.get(jobPausedFor, _jobId) + (now - store.get(jobPausedAt, _jobId)));
+        store.set(jobPaused, _jobId, false);
+        // Resume event
+        return true;
+    }
+
+
+    function requestMoreTime(uint _jobId, uint _minutes, bool _pauseNeeded)
+        onlyJobState(_jobId, JobState.STARTED)
+        onlyWorker(_jobId)
+    returns(bool) {
+        if (store.get(jobAdditionalRequestedTime, _jobId) > 0 || _minutes > store.get(jobOfferEstimate, _jobId, msg.sender)) {
+            return false;
+        }
+        if (_pauseNeeded) {
+            pauseWork(_jobId);
+        }
+        store.set(jobAdditionalRequestedTime, _jobId, _minutes);
+        // Request more time event
+        return true;
+    }
+
+    function confirmMoreTime(uint _jobId) onlyJobState(_jobId, JobState.STARTED) onlyClient(_jobId) returns(bool) {
+        if (store.get(jobAdditionalRequestedTime, _jobId) == 0) {
+            return false;
+        }
+        _resumeWork(_jobId);
+
+        uint jobPaymentLocked = calculateLockAmount(_jobId);
+        store.set(
+            jobOfferEstimate,
+            _jobId,
+            store.get(jobWorker, _jobId),
+            store.get(jobOfferEstimate, _jobId, store.get(jobWorker, _jobId)) + store.get(jobAdditionalRequestedTime, _jobId)
+        );
+        store.set(jobAdditionalRequestedTime, _jobId, 0);
+
+        if (!paymentProcessor.lockPayment(
+                bytes32(_jobId),
+                msg.sender,
+                calculateLockAmount(_jobId) - jobPaymentLocked,
+                store.get(jobOfferERC20Contract, _jobId, store.get(jobWorker, _jobId))
+            )
+        ) {
+            throw;
+        }
+        // Confirm more time event
+        return true;
+    }
+
+
     function endWork(uint _jobId) onlyJobState(_jobId, JobState.STARTED) onlyWorker(_jobId) returns(bool) {
+        _resumeWork(_jobId);  // In case worker have forgotten about paused timer
         store.set(jobState, _jobId, uint(JobState.PENDING_FINISH));
         return true;
     }
@@ -188,6 +275,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         store.set(jobFinishTime, _jobId, now);
         return true;
     }
+
 
     function releasePayment(uint _jobId) onlyJobState(_jobId, JobState.FINISHED) returns(bool) {
         uint payCheck = calculatePaycheck(_jobId);
@@ -207,6 +295,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         store.set(jobState, _jobId, uint(JobState.FINALIZED));
         return true;
     }
+
 
     function getJobClient(uint _jobId) constant returns(address) {
         return store.get(jobClient, _jobId);

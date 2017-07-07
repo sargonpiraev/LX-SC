@@ -1,8 +1,8 @@
 pragma solidity 0.4.8;
 
-import './Roles2LibraryAdapter.sol';
 import './StorageAdapter.sol';
 import './MultiEventsHistoryAdapter.sol';
+import './Roles2LibraryAdapter.sol';
 
 /**
  * @title LaborX User Library.

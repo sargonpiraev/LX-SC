@@ -44,7 +44,7 @@ module.exports = deployer => {
   .then(() => deployer.deploy(MultiEventsHistory, Mock.address))
   .then(() => deployer.deploy(UserProxy))
   .then(() => deployer.deploy(UserProxyTester))
-  .then(() => deployer.deploy(UserFactory))
+  .then(() => deployer.deploy(UserFactory, Mock.address))
   .then(() => deployer.deploy(RatingsLibrary, Storage.address, 'RatingsLibrary'))
   .then(() => deployer.deploy(IPFSLibrary, Storage.address, 'IPFSLibrary', Mock.address))
   .then(() => deployer.deploy(SkillsLibrary, Storage.address, 'SkillsLibrary', Mock.address))
