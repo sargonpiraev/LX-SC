@@ -174,6 +174,8 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         if (store.get(jobOfferRate, _jobId, _worker) == 0) {
             return false;
         }
+        // Maybe incentivize by locking some money from worker?
+        store.set(jobWorker, _jobId, _worker);
         if (!paymentProcessor.lockPayment(
                 bytes32(_jobId),
                 msg.sender,
@@ -181,16 +183,12 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
                 store.get(jobOfferERC20Contract, _jobId, _worker)
             )
         ) {
-            return false;
+            throw;
         }
-
-        // Maybe incentivize by locking some money from worker?
-        store.set(jobWorker, _jobId, _worker);
         store.set(jobState, _jobId, uint(JobState.ACCEPTED));
         _emitJobOfferAccepted(_jobId, _worker);
         return true;
     }
-
 
     function startWork(uint _jobId) onlyJobState(_jobId, JobState.ACCEPTED) onlyWorker(_jobId) returns(bool) {
         store.set(jobState, _jobId, uint(JobState.PENDING_START));
