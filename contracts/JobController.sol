@@ -31,8 +31,6 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     StorageInterface.UIntUIntMapping jobStartTime;
     StorageInterface.UIntUIntMapping jobFinishTime;
 
-    StorageInterface.UIntUIntMapping jobAdditionalRequestedTime;
-
     StorageInterface.UIntBoolMapping jobPaused;
     StorageInterface.UIntUIntMapping jobPausedAt;
     StorageInterface.UIntUIntMapping jobPausedFor;
@@ -41,6 +39,12 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     enum JobState { NOT_SET, CREATED, ACCEPTED, PENDING_START, STARTED, PENDING_FINISH, FINISHED, FINALIZED }
 
     event JobPosted(address indexed self, uint indexed jobId, address client, uint skillsArea, uint skillsCategory, uint skills, bytes32 detailsIPFSHash);
+    event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
+    event JobOfferAccepted(address indexed self, uint indexed jobId, address worker);
+    event WorkStarted(address indexed self, uint indexed jobId, uint at);
+    event MoreTimeAdded(address indexed self, uint indexed jobId, uint time);  // Additional `time` in minutes
+    event WorkFinished(address indexed self, uint indexed jobId, uint time);
+    event PaymentReleased(address indexed self, uint indexed jobId, uint value);
 
     modifier onlyClient(uint _jobId) {
         if (store.get(jobClient, _jobId) != msg.sender) {
@@ -82,8 +86,6 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         jobStartTime.init('jobStartTime');
         jobFinishTime.init('jobFinishTime');
 
-        jobAdditionalRequestedTime.init('jobAdditionalRequestedTime');
-
         jobPaused.init('jobPaused');
         jobPausedAt.init('jobPausedAt');
         jobPausedFor.init('jobPausedFor');
@@ -120,11 +122,15 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             ) / 10;
     }
 
-    function calculatePaycheck(uint _jobId) constant returns(uint) {
+    function calculatePaycheck(uint _jobId, bool _canceled) constant returns(uint) {
         address worker = store.get(jobWorker, _jobId);
-        return (store.get(jobFinishTime, _jobId) - store.get(jobStartTime, _jobId) - store.get(jobPausedFor, _jobId)) *
-        store.get(jobOfferRate, _jobId, worker) / 60 +
-        store.get(jobOfferOntop, _jobId, worker);
+        if (_canceled) {
+            return store.get(jobOfferRate, _jobId, worker) * 60;
+        } else {
+            return (store.get(jobFinishTime, _jobId) - store.get(jobStartTime, _jobId) - store.get(jobPausedFor, _jobId)) *
+                    store.get(jobOfferRate, _jobId, worker) / 60 +
+                    store.get(jobOfferOntop, _jobId, worker);
+        }
     }
 
 
@@ -160,6 +166,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         store.set(jobOfferRate, _jobId, msg.sender, _rate);
         store.set(jobOfferEstimate, _jobId, msg.sender, _estimate);
         store.set(jobOfferOntop, _jobId, msg.sender, _ontop);
+        _emitJobOfferPosted(_jobId, msg.sender, _rate, _estimate, _ontop);
         return true;
     }
 
@@ -176,9 +183,11 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         ) {
             return false;
         }
+
         // Maybe incentivize by locking some money from worker?
         store.set(jobWorker, _jobId, _worker);
         store.set(jobState, _jobId, uint(JobState.ACCEPTED));
+        _emitJobOfferAccepted(_jobId, _worker);
         return true;
     }
 
@@ -191,6 +200,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     function confirmStartWork(uint _jobId) onlyJobState(_jobId, JobState.PENDING_START) onlyClient(_jobId) returns(bool) {
         store.set(jobState, _jobId, uint(JobState.STARTED));
         store.set(jobStartTime, _jobId, now);
+        _emitWorkStarted(_jobId, now);
         return true;
     }
 
@@ -219,48 +229,32 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return true;
     }
 
-
-    function requestMoreTime(uint _jobId, uint _minutes, bool _pauseNeeded)
-        onlyJobState(_jobId, JobState.STARTED)
-        onlyWorker(_jobId)
-    returns(bool) {
-        if (store.get(jobAdditionalRequestedTime, _jobId) > 0 || _minutes > store.get(jobOfferEstimate, _jobId, msg.sender)) {
+    function addMoreTime(uint _jobId, uint16 _additionalTime) onlyJobState(_jobId, JobState.STARTED) onlyClient(_jobId) returns(bool) {
+        if (_additionalTime == 0) {
             return false;
         }
-        if (_pauseNeeded) {
-            pauseWork(_jobId);
+
+        if (!_setNewEstimate(_jobId, _additionalTime)) {
+            throw;
         }
-        store.set(jobAdditionalRequestedTime, _jobId, _minutes);
-        // Request more time event
+        // Confirm more time event
         return true;
     }
 
-    function confirmMoreTime(uint _jobId) onlyJobState(_jobId, JobState.STARTED) onlyClient(_jobId) returns(bool) {
-        if (store.get(jobAdditionalRequestedTime, _jobId) == 0) {
-            return false;
-        }
-        _resumeWork(_jobId);
-
+    function _setNewEstimate(uint _jobId, uint16 _additionalTime) internal returns(bool) {
         uint jobPaymentLocked = calculateLockAmount(_jobId);
         store.set(
             jobOfferEstimate,
             _jobId,
             store.get(jobWorker, _jobId),
-            store.get(jobOfferEstimate, _jobId, store.get(jobWorker, _jobId)) + store.get(jobAdditionalRequestedTime, _jobId)
+            store.get(jobOfferEstimate, _jobId, store.get(jobWorker, _jobId)) + _additionalTime
         );
-        store.set(jobAdditionalRequestedTime, _jobId, 0);
-
-        if (!paymentProcessor.lockPayment(
-                bytes32(_jobId),
-                msg.sender,
-                calculateLockAmount(_jobId) - jobPaymentLocked,
-                store.get(jobOfferERC20Contract, _jobId, store.get(jobWorker, _jobId))
-            )
-        ) {
-            throw;
-        }
-        // Confirm more time event
-        return true;
+        return paymentProcessor.lockPayment(
+            bytes32(_jobId),
+            msg.sender,
+            calculateLockAmount(_jobId) - jobPaymentLocked,
+            store.get(jobOfferERC20Contract, _jobId, store.get(jobWorker, _jobId))
+        );
     }
 
 
@@ -273,12 +267,37 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     function confirmEndWork(uint _jobId) onlyJobState(_jobId, JobState.PENDING_FINISH) onlyClient(_jobId) returns(bool) {
         store.set(jobState, _jobId, uint(JobState.FINISHED));
         store.set(jobFinishTime, _jobId, now);
+        _emitWorkFinished(_jobId, now);
         return true;
     }
 
+    function cancelJob(uint _jobId) onlyClient(_jobId) returns(bool) {
+        if (
+            store.get(jobState, _jobId) != uint(JobState.STARTED) &&
+            store.get(jobState, _jobId) != uint(JobState.PENDING_FINISH)
+        ) {
+            return false;
+        }
+        uint payCheck = calculatePaycheck(_jobId, true);
+        address worker = store.get(jobWorker, _jobId);
+        if (!paymentProcessor.releasePayment(
+            bytes32(_jobId),
+            worker,
+            payCheck,
+            store.get(jobClient, _jobId),
+            payCheck,
+            0,
+            store.get(jobOfferERC20Contract, _jobId, worker)
+            )
+        ) {
+            return false;
+        }
+        store.set(jobState, _jobId, uint(JobState.FINALIZED));
+        return true;
+    }
 
     function releasePayment(uint _jobId) onlyJobState(_jobId, JobState.FINISHED) returns(bool) {
-        uint payCheck = calculatePaycheck(_jobId);
+        uint payCheck = calculatePaycheck(_jobId, false);
         address worker = store.get(jobWorker, _jobId);
         if (!paymentProcessor.releasePayment(
             bytes32(_jobId),
@@ -329,7 +348,47 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         JobController(getEventsHistory()).emitJobPosted(_jobId, _client, _skillsArea, _skillsCategory, _skills, _detailsIPFSHash);
     }
 
+    function _emitJobOfferPosted(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) {
+        JobController(getEventsHistory()).emitJobOfferPosted(_jobId, _worker, _rate, _estimate, _ontop);
+    }
+
+    function _emitJobOfferAccepted(uint _jobId, address _worker) {
+        JobController(getEventsHistory()).emitJobOfferAccepted(_jobId, _worker);
+    }
+
+    function _emitWorkStarted(uint _jobId, uint _at) {
+        JobController(getEventsHistory()).emitWorkStarted(_jobId, _at);
+    }
+
+    function _emitWorkFinished(uint _jobId, uint _at) {
+        JobController(getEventsHistory()).emitWorkFinished(_jobId, _at);
+    }
+
+    function _emitPaymentReleased(uint _jobId, uint _value) {
+        JobController(getEventsHistory()).emitPaymentReleased(_jobId, _value);
+    }
+
     function emitJobPosted(uint _jobId, address _client, uint _skillsArea, uint _skillsCategory, uint _skills, bytes32 _detailsIPFSHash) {
         JobPosted(_self(), _jobId, _client, _skillsArea, _skillsCategory, _skills, _detailsIPFSHash);
+    }
+
+    function emitJobOfferPosted(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) {
+        JobOfferPosted(_self(), _jobId, _worker, _rate, _estimate, _ontop);
+    }
+
+    function emitJobOfferAccepted(uint _jobId, address _worker) {
+        JobOfferAccepted(_self(), _jobId, _worker);
+    }
+
+    function emitWorkStarted(uint _jobId, uint _at) {
+        WorkStarted(_self(), _jobId, _at);
+    }
+
+    function emitWorkFinished(uint _jobId, uint _at) {
+        WorkFinished(_self(), _jobId, _at);
+    }
+
+    function emitPaymentReleased(uint _jobId, uint _value) {
+        PaymentReleased(_self(), _jobId, _value);
     }
 }

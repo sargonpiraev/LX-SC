@@ -457,7 +457,7 @@ library StorageInterface {
     }
 
     function get(Config storage self, UIntAddressAddressMapping storage item, uint _key, address _key2) internal constant returns(address) {
-        return address(get(self, item.innerMapping, bytes32(_key), bytes32(_key)));
+        return address(get(self, item.innerMapping, bytes32(_key), bytes32(_key2)));
     }
 
     function get(Config storage self, UIntAddressUIntMapping storage item, uint _key, address _key2) internal constant returns(uint) {
