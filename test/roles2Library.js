@@ -6,6 +6,7 @@ const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const Mock = artifacts.require('./Mock.sol');
+const helpers = require('./helpers/helpers');
 
 contract('Roles2Library', function(accounts) {
   const reverter = new Reverter(web3);
@@ -117,7 +118,23 @@ contract('Roles2Library', function(accounts) {
       .then(() => true);
     });
 
-    it('should not add user role if not allowed', () => {
+    it('should add user role if access granted', () => {
+      const user = accounts[1];
+      const nonOwner = accounts[2];
+      const role = 255;
+      const sig = helpers.getSig("addUserRole(address,uint8)");
+      return Promise.resolve()
+      .then(() => rolesLibrary.addRoleCapability(1, rolesLibrary.address, sig))
+      .then(() => rolesLibrary.addUserRole(nonOwner, 1))
+      .then(() => rolesLibrary.hasUserRole(nonOwner, 1))
+      .then(asserts.isTrue)
+      .then(() => rolesLibrary.addUserRole(user, role, {from: nonOwner}))
+      .then(() => rolesLibrary.hasUserRole(user, role))
+      .then(asserts.isTrue)
+      .then(() => true);
+    });
+
+    it('should not remove user role if not allowed', () => {
       const user = accounts[1];
       const nonOwner = accounts[2];
       const role = 255;

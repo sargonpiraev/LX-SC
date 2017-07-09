@@ -89,13 +89,20 @@ contract('UserFactory', function(accounts) {
     .then(assertExpectations());
   });
 
-  it('should create users without skills', () => {
-    return userFactory.createUserWithProxyAndRecovery(recovery, '', [], [])
+  it('should create users with roles', () => {
+    let roles = [1, 2];
+    let areas = 0;
+    let categories = [];
+    let skills = [];
+    return userFactory.createUserWithProxyAndRecovery(
+      recovery, roles, areas, categories, skills
+    )
     .then(result => {
       assert.equal(result.logs.length, 1);
       assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].args.self, userFactory.address);
       assert.equal(result.logs[0].event, 'UserCreated');
+      assert.equal(result.logs[0].args.roles.length, 2);
       assert.equal(result.logs[0].args.areas.toString(), '0');
       assert.equal(result.logs[0].args.categories.length, 0);
       assert.equal(result.logs[0].args.skills.length, 0); 
@@ -103,23 +110,99 @@ contract('UserFactory', function(accounts) {
       assert.isNotNull(result.logs[0].args.proxy);
       assert.isNotNull(result.logs[0].args.users);
     })
-    .then(() => callCounter.getCalls())
-    .then(array => {
-      assert.equal(array[0].toString(), '0');
-      assert.equal(array[1].toString(), '0');
-    });
+    .then(() => mock.callsCount())
+    .then(asserts.equal(2));
+  });
+
+  it('should create users with areas', () => {
+    let roles = [];
+    let areas = 10;
+    let categories = [];
+    let skills = [];
+    return userFactory.createUserWithProxyAndRecovery(
+      recovery, roles, areas, categories, skills
+    )
+      .then(result => {
+        assert.equal(result.logs.length, 1);
+        assert.equal(result.logs[0].address, multiEventsHistory.address);
+        assert.equal(result.logs[0].args.self, userFactory.address);
+        assert.equal(result.logs[0].event, 'UserCreated');
+        assert.equal(result.logs[0].args.roles.length, 0);
+        assert.equal(result.logs[0].args.areas.toString(2), '1010');
+        assert.equal(result.logs[0].args.categories.length, 0);
+        assert.equal(result.logs[0].args.skills.length, 0);
+        assert.equal(result.logs[0].args.recoveryContract, recovery);
+        assert.isNotNull(result.logs[0].args.proxy);
+        assert.isNotNull(result.logs[0].args.users);
+      })
+    .then(() => mock.callsCount())
+    .then(asserts.equal(0));
+  });
+
+  it('should create users with categories', () => {
+    let roles = [];
+    let areas = 0;
+    let categories = [1, 2];
+    let skills = [];
+    return userFactory.createUserWithProxyAndRecovery(
+      recovery, roles, areas, categories, skills
+    )
+      .then(result => {
+        assert.equal(result.logs.length, 1);
+        assert.equal(result.logs[0].address, multiEventsHistory.address);
+        assert.equal(result.logs[0].args.self, userFactory.address);
+        assert.equal(result.logs[0].event, 'UserCreated');
+        assert.equal(result.logs[0].args.roles.length, 0);
+        assert.equal(result.logs[0].args.areas.toString(), '0');
+        assert.equal(result.logs[0].args.categories.length, 2);
+        assert.equal(result.logs[0].args.skills.length, 0);
+        assert.equal(result.logs[0].args.recoveryContract, recovery);
+        assert.isNotNull(result.logs[0].args.proxy);
+        assert.isNotNull(result.logs[0].args.users);
+      })
+    .then(() => mock.callsCount())
+    .then(asserts.equal(0));
   });
 
   it('should create users with skills', () => {
-    let areas = 10;
-    let categories = [1, 2];
-    let skills = [1];
-    return userFactory.createUserWithProxyAndRecovery(recovery, areas, categories, skills)
+    let roles = [];
+    let areas = 0;
+    let categories = [];
+    let skills = [1, 2];
+    return userFactory.createUserWithProxyAndRecovery(
+      recovery, roles, areas, categories, skills
+    )
     .then(result => {
       assert.equal(result.logs.length, 1);
       assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].args.self, userFactory.address);
       assert.equal(result.logs[0].event, 'UserCreated');
+      assert.equal(result.logs[0].args.roles.length, 0);
+      assert.equal(result.logs[0].args.areas.toString(), '0');
+      assert.equal(result.logs[0].args.categories.length, 0);
+      assert.equal(result.logs[0].args.skills.length, 2);
+      assert.equal(result.logs[0].args.recoveryContract, recovery);
+      assert.isNotNull(result.logs[0].args.proxy);
+      assert.isNotNull(result.logs[0].args.users);
+    })
+    .then(() => mock.callsCount())
+    .then(asserts.equal(0));
+  });
+
+  it('should create users with roles, areas, categories and skills', () => {
+    let roles = [1, 2];
+    let areas = 10;
+    let categories = [1, 2];
+    let skills = [1];
+    return userFactory.createUserWithProxyAndRecovery(
+      recovery, roles, areas, categories, skills
+    )
+    .then(result => {
+      assert.equal(result.logs.length, 1);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
+      assert.equal(result.logs[0].args.self, userFactory.address);
+      assert.equal(result.logs[0].event, 'UserCreated');
+      assert.equal(result.logs[0].args.roles.length, 2);
       assert.equal(result.logs[0].args.areas.toString(2), '1010');
       assert.equal(result.logs[0].args.categories.length, 2);
       assert.equal(result.logs[0].args.skills.length, 1);
@@ -127,11 +210,25 @@ contract('UserFactory', function(accounts) {
       assert.isNotNull(result.logs[0].args.proxy);
       assert.isNotNull(result.logs[0].args.users);
     })
-    .then(() => callCounter.getCalls())
-    .then(array => {
-      assert.equal(array[0].toString(), '0');
-      assert.equal(array[1].toString(), '1');
-    });
+    .then(() => mock.callsCount())
+    .then(asserts.equal(2));
   });
 
-})
+  it('should create users without roles, areas, categories and skills', () => {
+    return userFactory.createUserWithProxyAndRecovery(recovery, [], 0, [], [])
+      .then(result => {
+        assert.equal(result.logs.length, 1);
+        assert.equal(result.logs[0].event, 'UserCreated');
+        assert.equal(result.logs[0].args.roles.length, 0);
+        assert.equal(result.logs[0].args.areas.toString(), '0');
+        assert.equal(result.logs[0].args.categories.length, 0);
+        assert.equal(result.logs[0].args.skills.length, 0);
+        assert.equal(result.logs[0].args.recoveryContract, recovery);
+        assert.isNotNull(result.logs[0].args.proxy);
+        assert.isNotNull(result.logs[0].args.users);
+      })
+    .then(() => mock.callsCount())
+    .then(asserts.equal(0));
+  });
+
+});

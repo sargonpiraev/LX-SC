@@ -1,6 +1,7 @@
 pragma solidity 0.4.8;
 
 contract Roles2LibraryInterface {
+    function addUserRole(address _user, uint8 _role) returns(bool);
     function canCall(address _src, address _code, bytes4 _sig) constant returns(bool);
 }
 
