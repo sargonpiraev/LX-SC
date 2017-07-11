@@ -18,8 +18,8 @@ contract Storage is Owned {
     }
 
     struct AddressUInt8 {
-        address ratedBy;
-        uint8 rate;
+        address _address;
+        uint8 _uint8;
     }
 
     mapping(bytes32 => Crate) crates;
@@ -90,6 +90,6 @@ contract Storage is Owned {
     }
 
     function getAddressUInt8(bytes32 _crate, bytes32 _key) constant returns(address, uint8) {
-        return (crates[_crate].addressUInt8s[_key].ratedBy, crates[_crate].addressUInt8s[_key].rate);
+        return (crates[_crate].addressUInt8s[_key]._address, crates[_crate].addressUInt8s[_key]._uint8);
     }
 }

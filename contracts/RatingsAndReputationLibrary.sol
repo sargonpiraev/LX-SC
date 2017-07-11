@@ -116,9 +116,8 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         if((_rating > 10) || !userLibrary.hasArea(_to, _area)) { 
             if(_throws) {
                 throw;
-            } else {
-                return false;
-            } 
+            }
+            return false; 
         }
         store.set(areaRatingsGiven, _to, _jobId, _area, msg.sender, _rating);
         _emitAreaRatingGiven(msg.sender, _to, _rating, _area, _jobId);
@@ -135,9 +134,8 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         if((_rating > 10) || !userLibrary.hasArea(_to, _area)) { 
             if(_throws) {
                 throw;
-            } else {
-                return false;
-            } 
+            }
+            return false;
         }
         store.set(areasEvaluated, _to, _area, msg.sender, _rating);
         _emitAreaEvaluated(msg.sender, _to, _rating, _area);
@@ -162,9 +160,8 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         if((_rating > 10) || !userLibrary.hasCategory(_to, _area, _category)) { 
             if(_throws) {
                 throw;
-            } else {
-                return false;
-            } 
+            }
+            return false;
         }
         store.set(categoryRatingsGiven, _to, _jobId, _area, _category, msg.sender, _rating);
         _emitCategoryRatingGiven(msg.sender, _to, _rating, _area, _category, _jobId);
@@ -181,9 +178,8 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         if((_rating > 10) || !userLibrary.hasCategory(_to, _area, _category)) { 
             if(_throws) {
                 throw;
-            } else {
-                return false;
-            } 
+            }
+            return false; 
         }
         store.set(categoriesEvaluated, _to, _area, _category, msg.sender, _rating);
         _emitCategoryEvaluated(msg.sender, _to, _rating, _area, _category);
@@ -208,9 +204,8 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         if((_rating > 10) || !userLibrary.hasSkill(_to, _area, _category, _skill)) { 
             if(_throws) {
                 throw;
-            } else {
-                return false;
-            } 
+            }
+            return false;
         } 
         store.set(skillRatingsGiven, _to, _jobId, _area, _category, _skill, msg.sender, _rating);
         _emitSkillRatingGiven(msg.sender, _to, _rating, _area, _category, _skill, _jobId);
@@ -227,9 +222,8 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
         if((_rating > 10) || !userLibrary.hasSkill(_to, _area, _category, _skill)) { 
             if(_throws) {
                 throw;
-            } else {
-                return false;
-            } 
+            }
+            return false; 
         } 
         store.set(skillsEvaluated, _to, _area, _category, _skill, msg.sender, _rating);
         _emitSkillEvaluated(msg.sender, _to, _rating, _area, _category, _skill);
@@ -252,8 +246,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
             }
             //check if area is full
             if (_hasFlag(_areas, area << 1)) { 
-                _evaluateArea(_to, _rating[ratingCounter], area, true);
-                ratingCounter++;
+                _evaluateArea(_to, _rating[ratingCounter++], area, true);
                 //area is full, no need to go further to category checks
                 continue;
             }
@@ -272,8 +265,7 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
                 }
                 //check if category is full
                 if (_hasFlag(_categories[categoriesCounter], category << 1)) {
-                    _evaluateCategory(_to, _rating[ratingCounter], area, category, true);
-                    ratingCounter++;
+                    _evaluateCategory(_to, _rating[ratingCounter++], area, category, true);
                     //exit when full category set
                     continue;
                 }
@@ -281,14 +273,11 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
                 if (_skills[skillsCounter] == 0) {
                     throw;
                 }
-                _evaluateSkill(_to, _rating[ratingCounter], area, category, _skills[skillsCounter], true);
-                ratingCounter++;
+                _evaluateSkill(_to, _rating[ratingCounter++], area, category, _skills[skillsCounter++], true);
                 // Move to next skill
-                skillsCounter += 1;
-                
             }
             // Move to next category set
-            categoriesCounter += 1;
+            categoriesCounter++;
         }
         return true;
     }
@@ -336,12 +325,11 @@ contract RatingsAndReputationLibrary is EventsHistoryAndStorageAdapter, Owned {
                 if (_skills[skillsCounter] == 0) {
                     throw;
                 }
-                _setSkillRating(_to, _rating[ratingCounter++], area, category,  _skills[skillsCounter], _jobId, true);
+                _setSkillRating(_to, _rating[ratingCounter++], area, category,  _skills[skillsCounter++], _jobId, true);
                 // Move to next skill
-                skillsCounter += 1;
             }
             // Move to next category set
-            categoriesCounter += 1;
+            categoriesCounter ++;
         }
         return true;
     }
