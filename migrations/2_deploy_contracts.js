@@ -1,10 +1,10 @@
+const RatingsAndReputationLibrary = artifacts.require('./RatingsAndReputationLibrary.sol');
 const StorageInterface = artifacts.require('./StorageInterface.sol');
 const UserLibraryMock = artifacts.require('./UserLibraryMock.sol');
 const UserProxyTester = artifacts.require('./UserProxyTester.sol');
 const StorageManager = artifacts.require('./StorageManager.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
 const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
-const RatingsLibrary = artifacts.require('./RatingsLibrary.sol');
 const SkillsLibrary = artifacts.require('./SkillsLibrary.sol');
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const StorageTester = artifacts.require('./StorageTester.sol');
@@ -41,7 +41,7 @@ module.exports = deployer => {
   .then(() => deployer.deploy(UserProxy))
   .then(() => deployer.deploy(UserProxyTester))
   .then(() => deployer.deploy(UserFactory))
-  .then(() => deployer.deploy(RatingsLibrary, Storage.address, 'RatingsLibrary'))
+  .then(() => deployer.deploy(RatingsAndReputationLibrary, Storage.address, 'RatingsAndReputationLibrary'))
   .then(() => deployer.deploy(IPFSLibrary, Storage.address, 'IPFSLibrary'))
   .then(() => deployer.deploy(SkillsLibrary, Storage.address, 'SkillsLibrary'))
   .then(() => deployer.deploy(RolesLibrary, Storage.address, 'RolesLibrary'))
