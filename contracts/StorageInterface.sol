@@ -111,7 +111,7 @@ library StorageInterface {
     }
 
     // Can't use modifier due to a Solidity bug.
-    function sanityCheck(bytes32 _currentId, bytes32 _newId) internal { 
+    function sanityCheck(bytes32 _currentId, bytes32 _newId) internal {
         if (_currentId != 0 || _newId == 0) {
             throw;
         }
@@ -264,14 +264,6 @@ library StorageInterface {
         self.store.setAddressUInt8(self.crate, sha3(item.id, _key), _value1, _value2);
     }
 
-    // function set(Config storage self, Mapping storage item, bytes32 _key, uint8 _value) internal {
-    //     self.store.setUInt8(self.crate, sha3(item.id, _key), _value);
-    // }
-
-    // function set(Config storage self, Mapping storage item, bytes32 _key, address _value, uint8 _value2) internal {
-    //     self.store.setAddressUInt8(self.crate, sha3(item.id, _key), _value, _value2);
-    // }
-
     function set(Config storage self, Mapping storage item, bytes32 _key, bytes32 _key2, bytes32 _value) internal {
         set(self, item, sha3(_key, _key2), _value);
     }
@@ -405,14 +397,6 @@ library StorageInterface {
     function get(Config storage self, AddressUInt8Mapping storage item, bytes32 _key) internal constant returns(address, uint8) {
         return self.store.getAddressUInt8(self.crate, sha3(item.id, _key));
     }
-
-    // function getAddressUInt8(Config storage self, Mapping storage item, bytes32 _key) internal constant returns(address, uint8) {
-    //     return self.store.getAddressUInt8(self.crate, sha3(item.id, _key));
-    // }
-
-    // function getUInt8(Config storage self, Mapping storage item, bytes32 _key) internal constant returns(uint8) {
-    //     return self.store.getUInt8(self.crate, sha3(item.id, _key));
-    // }
 
     function get(Config storage self, Mapping storage item, bytes32 _key, bytes32 _key2) internal constant returns(bytes32) {
         return get(self, item, sha3(_key, _key2));
