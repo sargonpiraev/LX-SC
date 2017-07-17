@@ -16,6 +16,8 @@ const Mock = artifacts.require('./Mock.sol');
 
 const JobController = artifacts.require('./JobController.sol');
 
+const helpers = require('./helpers/helpers');
+
 contract('JobController', function(accounts) {
   const reverter = new Reverter(web3);
   afterEach('revert', reverter.revert);
@@ -71,6 +73,7 @@ contract('JobController', function(accounts) {
       stages[stage] = results[stage];
     }
 
+
     const jobId = 1;
     const jobArea = 333;
     const jobCategory = 333;
@@ -117,6 +120,58 @@ contract('JobController', function(accounts) {
       .then(result => assert.equal(result, stages.FINALIZED))
 
       //.then(console.log('hi'));
+  }
+
+
+  const onReleasePayment = (timeSpent, jobPaymentEstimate, pauses) => {
+    const jobId = 1;
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+
+    let clientBalanceBefore;
+    let workerBalanceBefore;
+
+    const timeManagent = () => {
+      if (pauses) {
+        return Promise.resolve()
+        .then(() => helpers.increaseTime(timeSpent / 2 * 60))
+        .then(() => helpers.mine())
+        .then(() => jobController.pauseWork(jobId, {from: worker}))
+        .then(() => helpers.increaseTime(30 * 60))
+        .then(() => helpers.mine())
+        .then(() => jobController.resumeWork(jobId, {from: worker}))
+        .then(() => helpers.increaseTime(timeSpent / 2 * 60))
+        .then(() => helpers.mine())
+      } else {
+        return Promise.resolve()
+        .then(() => helpers.increaseTime(timeSpent * 60))
+        .then(() => helpers.mine())
+      }
+    }
+
+    return Promise.resolve()
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => clientBalanceBefore = result)
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => workerBalanceBefore = result)
+      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJobOffer(
+        jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+      ))
+      .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+      .then(() => jobController.startWork(jobId, {from: worker}))
+      .then(() => jobController.confirmStartWork(jobId, {from: client}))
+      .then(() => timeManagent())
+      .then(() => jobController.endWork(jobId, {from: worker}))
+      .then(() => jobController.confirmEndWork(jobId, {from: client}))
+      .then(() => jobController.releasePayment(jobId))
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(jobPaymentEstimate).toString()))
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), workerBalanceBefore.add(jobPaymentEstimate).toString()))
+      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), '0'));
   }
 
   before('setup', () => {
@@ -510,6 +565,263 @@ contract('JobController', function(accounts) {
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
       });
+  });
+
+  it('should lock correct amount of tokens on `acceptOffer`', () => {
+    const jobId = 1;
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+
+    let clientBalanceBefore;
+    let workerBalanceBefore;
+
+    const estimatedLockAmount = Math.floor(
+      ((workerRate * (jobEstimate + 60) + workerOnTop) * 11) / 10
+    );
+
+    return Promise.resolve()
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => clientBalanceBefore = result)
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => workerBalanceBefore = result)
+      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJobOffer(
+        jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+      ))
+      .then(() => jobController.acceptOffer(1, worker, {from: client}))
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => {
+        const clientBalanceAfter = clientBalanceBefore.sub(estimatedLockAmount);
+        assert.equal(result.toString(), clientBalanceAfter.toString())
+      })
+      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), estimatedLockAmount.toString()))
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), workerBalanceBefore.toString()));
+  });
+
+  it('should release just jobOfferOnTop on `cancelJob` on ACCEPTED job stage', () => {
+    const jobId = 1;
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+
+    let clientBalanceBefore;
+    let workerBalanceBefore;
+
+    return Promise.resolve()
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => clientBalanceBefore = result)
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => workerBalanceBefore = result)
+      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJobOffer(
+        jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+      ))
+      .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+      .then(() => jobController.cancelJob(jobId, {from: client}))
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(workerOnTop).toString()))
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), workerBalanceBefore.add(workerOnTop).toString()))
+      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), '0'));
+  });
+
+  it('should release just jobOfferOnTop on `cancelJob` on PENDING_START job stage', () => {
+    const jobId = 1;
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+
+    let clientBalanceBefore;
+    let workerBalanceBefore;
+
+    return Promise.resolve()
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => clientBalanceBefore = result)
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => workerBalanceBefore = result)
+      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJobOffer(
+        jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+      ))
+      .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+      .then(() => jobController.startWork(jobId, {from: worker}))
+      .then(() => jobController.cancelJob(jobId, {from: client}))
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(workerOnTop).toString()))
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), workerBalanceBefore.add(workerOnTop).toString()))
+      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), '0'));
+  });
+
+  it('should release jobOnTop + 1 hour of work + jobOnTop on `cancelJob` on STARTED job stage', () => {
+    const jobId = 1;
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+
+    let clientBalanceBefore;
+    let workerBalanceBefore;
+
+    const jobPaymentEstimate = workerRate * 60 + workerOnTop;
+
+    return Promise.resolve()
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => clientBalanceBefore = result)
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => workerBalanceBefore = result)
+      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJobOffer(
+        jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+      ))
+      .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+      .then(() => jobController.startWork(jobId, {from: worker}))
+      .then(() => jobController.confirmStartWork(jobId, {from: client}))
+      .then(() => jobController.cancelJob(jobId, {from: client}))
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(jobPaymentEstimate).toString()))
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), workerBalanceBefore.add(jobPaymentEstimate).toString()))
+      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), '0'));
+  });
+
+  it('should release jobOnTop + 1 hour of work + jobOnTop on `cancelJob` on PENDING_FINISH job stage', () => {
+    const jobId = 1;
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+
+    let clientBalanceBefore;
+    let workerBalanceBefore;
+
+    const jobPaymentEstimate = workerRate * 60 + workerOnTop;
+
+    return Promise.resolve()
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => clientBalanceBefore = result)
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => workerBalanceBefore = result)
+      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJobOffer(
+        jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+      ))
+      .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+      .then(() => jobController.startWork(jobId, {from: worker}))
+      .then(() => jobController.confirmStartWork(jobId, {from: client}))
+      .then(() => jobController.endWork(jobId, {from: worker}))
+      .then(() => jobController.cancelJob(jobId, {from: client}))
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(jobPaymentEstimate).toString()))
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), workerBalanceBefore.add(jobPaymentEstimate).toString()))
+      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), '0'));
+  });
+
+
+  it('should release correct amount of tokens on `releasePayment` when worked for exactly the estimated time', () => {
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+    const timeSpent = jobEstimate;
+    const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
+    return onReleasePayment(timeSpent, jobPaymentEstimate);
+  });
+
+  it('should release correct amount of tokens on `releasePayment` when' +
+     'worked for more than an hour but less than estimated time', () => {
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+    const timeSpent = 183;
+    const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
+    return onReleasePayment(timeSpent, jobPaymentEstimate);
+  });
+
+  it('should release correct amount of tokens on `releasePayment` when' +
+     'worked for more than estimated time but less than estimated time and an hour', () => {
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+    const timeSpent = 299;
+    const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
+    return onReleasePayment(timeSpent, jobPaymentEstimate);
+  });
+
+  it('should release possible maximum of tokens(estimate + 1 hour)' +
+      'when worked for more than estimate and an hour', () => {
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+    const timeSpent = 340;
+    const jobPaymentEstimate = workerRate * (jobEstimate + 60) + workerOnTop;
+    return onReleasePayment(timeSpent, jobPaymentEstimate);
+  });
+
+  it('should release minimum an hour of work on `releasePayment` when worked for less than an hour', () => {
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+    const timeSpent = 17;
+    const jobPaymentEstimate = workerRate * 60 + workerOnTop;
+    return onReleasePayment(timeSpent, jobPaymentEstimate);
+  });
+
+
+
+  it('should release correct amount of tokens on `releasePayment` ' +
+     'when worked for exactly the estimated time, with pauses/resumes', () => {
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+    const timeSpent = 183;
+    const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
+    return onReleasePayment(timeSpent, jobPaymentEstimate, true);
+  });
+
+  it('should release correct amount of tokens on `releasePayment` when' +
+     'worked for more than an hour but less than estimated time, with pauses/resumes', () => {
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+    const timeSpent = 183;
+    const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
+    return onReleasePayment(timeSpent, jobPaymentEstimate, true);
+  });
+
+  it('should release correct amount of tokens on `releasePayment` when' +
+     'worked for more than estimated time but less than estimated time and an hour, with pauses/resumes', () => {
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+    const timeSpent = 299;
+    const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
+    return onReleasePayment(timeSpent, jobPaymentEstimate, true);
+  });
+
+  it('should release possible maximum of tokens(estimate + 1 hour)' +
+     'when worked for more than estimate and an hour, with pauses/resumes', () => {
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+    const timeSpent = 340;
+    const jobPaymentEstimate = workerRate * (jobEstimate + 60) + workerOnTop;
+    return onReleasePayment(timeSpent, jobPaymentEstimate, true);
+  });
+
+  it('should release minimum an hour of work on `releasePayment`' +
+     'when worked for less than an hour, with pauses/resumes', () => {
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+    const timeSpent = 17;
+    const jobPaymentEstimate = workerRate * 60 + workerOnTop;
+    return onReleasePayment(timeSpent, jobPaymentEstimate, true);
   });
 
 });

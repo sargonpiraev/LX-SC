@@ -162,7 +162,9 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         if (change != 0) {
             _addBalance(_change, change, _contract);
             _emitTransferred(_from, _change, change, _contract);
+            total = _safeAdd(total, change);
         }
+        _subBalance(_from, total, _contract);
         return true;
     }
 

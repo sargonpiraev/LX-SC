@@ -1135,4 +1135,7 @@ contract('PaymentGateway', function(accounts) {
     .then(assertExternalBalance(feeAddress, fakeCoin.address, 0))
     .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, value));
   });
+
+  it('should distribute correct amount of tokens on `transferAll`');
+
 });
