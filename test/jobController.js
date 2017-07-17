@@ -337,6 +337,7 @@ contract('JobController', function(accounts) {
       .then(() => operationAllowance(operation, args, results));
   });
 
+
   it('should throw on `acceptOffer` if client has insufficient funds', () => {
     return Promise.resolve()
       .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
@@ -347,6 +348,52 @@ contract('JobController', function(accounts) {
       .then(() => asserts.throws(
         jobController.acceptOffer(1, {from: client})
       ));
+  });
+
+  it('should throw on `acceptOffer` if unsupported token contract is provided', () => {
+      return Promise.resolve()
+      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJobOffer(
+          1, jobController.address, '0xfffffffffffffffffff', 1, 1, {from: worker}
+        )
+      )
+      .then(() => asserts.throws(
+        jobController.acceptOffer(1, {from: client})
+      ));
+  });
+
+  it('should lock correct amount of tokens on `acceptOffer`', () => {
+    const jobId = 1;
+    const workerRate = 200000000000;
+    const workerOnTop = 1000000000;
+    const jobEstimate = 240;
+
+    let clientBalanceBefore;
+    let workerBalanceBefore;
+
+    const estimatedLockAmount = Math.floor(
+      ((workerRate * (jobEstimate + 60) + workerOnTop) * 11) / 10
+    );
+
+    return Promise.resolve()
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => clientBalanceBefore = result)
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => workerBalanceBefore = result)
+      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJobOffer(
+        jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+      ))
+      .then(() => jobController.acceptOffer(1, worker, {from: client}))
+      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+      .then(result => {
+        const clientBalanceAfter = clientBalanceBefore.sub(estimatedLockAmount);
+        assert.equal(result.toString(), clientBalanceAfter.toString())
+      })
+      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), estimatedLockAmount.toString()))
+      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+      .then(result => assert.equal(result.toString(), workerBalanceBefore.toString()));
   });
 
   it('should emit event when job is posted', () => {
@@ -576,40 +623,6 @@ contract('JobController', function(accounts) {
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
       });
-  });
-
-  it('should lock correct amount of tokens on `acceptOffer`', () => {
-    const jobId = 1;
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
-
-    let clientBalanceBefore;
-    let workerBalanceBefore;
-
-    const estimatedLockAmount = Math.floor(
-      ((workerRate * (jobEstimate + 60) + workerOnTop) * 11) / 10
-    );
-
-    return Promise.resolve()
-      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
-      .then(result => clientBalanceBefore = result)
-      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
-      .then(result => workerBalanceBefore = result)
-      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
-      .then(() => jobController.postJobOffer(
-        jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
-      ))
-      .then(() => jobController.acceptOffer(1, worker, {from: client}))
-      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
-      .then(result => {
-        const clientBalanceAfter = clientBalanceBefore.sub(estimatedLockAmount);
-        assert.equal(result.toString(), clientBalanceAfter.toString())
-      })
-      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), estimatedLockAmount.toString()))
-      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), workerBalanceBefore.toString()));
   });
 
   it('should release just jobOfferOnTop on `cancelJob` on ACCEPTED job stage', () => {

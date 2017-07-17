@@ -193,7 +193,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return true;
     }
 
-    function acceptOffer(uint _jobId, address _worker) onlyJobState(_jobId, JobState.CREATED) onlyClient(_jobId) returns(bool) {
+    function acceptOffer(uint _jobId, address _worker)
+        onlyJobState(_jobId, JobState.CREATED)
+        onlyClient(_jobId)
+    returns(bool) {
         if (store.get(jobOfferRate, _jobId, _worker) == 0) {
             return false;
         }
@@ -214,12 +217,18 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     }
 
 
-    function startWork(uint _jobId) onlyJobState(_jobId, JobState.ACCEPTED) onlyWorker(_jobId) returns(bool) {
+    function startWork(uint _jobId)
+        onlyJobState(_jobId, JobState.ACCEPTED)
+        onlyWorker(_jobId)
+    returns(bool) {
         store.set(jobState, _jobId, uint(JobState.PENDING_START));
         return true;
     }
 
-    function confirmStartWork(uint _jobId) onlyJobState(_jobId, JobState.PENDING_START) onlyClient(_jobId) returns(bool) {
+    function confirmStartWork(uint _jobId)
+        onlyJobState(_jobId, JobState.PENDING_START)
+        onlyClient(_jobId)
+    returns(bool) {
         store.set(jobState, _jobId, uint(JobState.STARTED));
         store.set(jobStartTime, _jobId, now);
         _emitWorkStarted(_jobId, now);
@@ -227,7 +236,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     }
 
 
-    function pauseWork(uint _jobId) onlyJobState(_jobId, JobState.STARTED) onlyWorker(_jobId) returns(bool) {
+    function pauseWork(uint _jobId)
+        onlyJobState(_jobId, JobState.STARTED)
+        onlyWorker(_jobId)
+    returns(bool) {
         if (store.get(jobPaused, _jobId)) {
             return false;
         }
@@ -237,7 +249,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return true;
     }
 
-    function resumeWork(uint _jobId) onlyJobState(_jobId, JobState.STARTED) onlyWorker(_jobId) returns(bool) {
+    function resumeWork(uint _jobId)
+        onlyJobState(_jobId, JobState.STARTED)
+        onlyWorker(_jobId)
+    returns(bool) {
         return _resumeWork(_jobId);
     }
 
@@ -251,7 +266,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return true;
     }
 
-    function addMoreTime(uint _jobId, uint16 _additionalTime) onlyJobState(_jobId, JobState.STARTED) onlyClient(_jobId) returns(bool) {
+    function addMoreTime(uint _jobId, uint16 _additionalTime)
+        onlyJobState(_jobId, JobState.STARTED)
+        onlyClient(_jobId)
+    returns(bool) {
         if (_additionalTime == 0) {
             return false;
         }
@@ -280,13 +298,19 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     }
 
 
-    function endWork(uint _jobId) onlyJobState(_jobId, JobState.STARTED) onlyWorker(_jobId) returns(bool) {
+    function endWork(uint _jobId)
+        onlyJobState(_jobId, JobState.STARTED)
+        onlyWorker(_jobId)
+    returns(bool) {
         _resumeWork(_jobId);  // In case worker have forgotten about paused timer
         store.set(jobState, _jobId, uint(JobState.PENDING_FINISH));
         return true;
     }
 
-    function confirmEndWork(uint _jobId) onlyJobState(_jobId, JobState.PENDING_FINISH) onlyClient(_jobId) returns(bool) {
+    function confirmEndWork(uint _jobId)
+        onlyJobState(_jobId, JobState.PENDING_FINISH)
+        onlyClient(_jobId)
+    returns(bool) {
         store.set(jobState, _jobId, uint(JobState.FINISHED));
         store.set(jobFinishTime, _jobId, now);
         _emitWorkFinished(_jobId, now);
@@ -370,47 +394,80 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return uint(store.get(jobState, _jobId));
     }
 
-    function _emitJobPosted(uint _jobId, address _client, uint _skillsArea, uint _skillsCategory, uint _skills, bytes32 _detailsIPFSHash) internal {
-        JobController(getEventsHistory()).emitJobPosted(_jobId, _client, _skillsArea, _skillsCategory, _skills, _detailsIPFSHash);
+    function _emitJobPosted(
+        uint _jobId,
+        address _client,
+        uint _skillsArea,
+        uint _skillsCategory,
+        uint _skills,
+        bytes32 _detailsIPFSHash
+    ) internal {
+        JobController(getEventsHistory()).emitJobPosted(
+            _jobId,
+            _client,
+            _skillsArea,
+            _skillsCategory,
+            _skills,
+            _detailsIPFSHash
+        );
     }
 
-    function _emitJobOfferPosted(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) {
-        JobController(getEventsHistory()).emitJobOfferPosted(_jobId, _worker, _rate, _estimate, _ontop);
+    function _emitJobOfferPosted(
+        uint _jobId,
+        address _worker,
+        uint _rate,
+        uint _estimate,
+        uint _ontop
+    ) internal {
+        JobController(getEventsHistory()).emitJobOfferPosted(
+            _jobId,
+            _worker,
+            _rate,
+            _estimate,
+            _ontop
+        );
     }
 
-    function _emitJobOfferAccepted(uint _jobId, address _worker) {
+    function _emitJobOfferAccepted(uint _jobId, address _worker) internal {
         JobController(getEventsHistory()).emitJobOfferAccepted(_jobId, _worker);
     }
 
-    function _emitWorkStarted(uint _jobId, uint _at) {
+    function _emitWorkStarted(uint _jobId, uint _at) internal {
         JobController(getEventsHistory()).emitWorkStarted(_jobId, _at);
     }
 
-    function _emitWorkPaused(uint _jobId, uint _at) {
+    function _emitWorkPaused(uint _jobId, uint _at) internal {
         JobController(getEventsHistory()).emitWorkPaused(_jobId, _at);
     }
 
-    function _emitWorkResumed(uint _jobId, uint _at) {
+    function _emitWorkResumed(uint _jobId, uint _at) internal {
         JobController(getEventsHistory()).emitWorkResumed(_jobId, _at);
     }
 
-    function _emitTimeAdded(uint _jobId, uint _time) {
+    function _emitTimeAdded(uint _jobId, uint _time) internal {
         JobController(getEventsHistory()).emitTimeAdded(_jobId, _time);
     }
 
-    function _emitWorkFinished(uint _jobId, uint _at) {
+    function _emitWorkFinished(uint _jobId, uint _at) internal {
         JobController(getEventsHistory()).emitWorkFinished(_jobId, _at);
     }
 
-    function _emitPaymentReleased(uint _jobId, uint _value) {
+    function _emitPaymentReleased(uint _jobId, uint _value) internal {
         JobController(getEventsHistory()).emitPaymentReleased(_jobId, _value);
     }
 
-    function _emitJobCanceled(uint _jobId) {
+    function _emitJobCanceled(uint _jobId) internal {
         JobController(getEventsHistory()).emitJobCanceled(_jobId);
     }
 
-    function emitJobPosted(uint _jobId, address _client, uint _skillsArea, uint _skillsCategory, uint _skills, bytes32 _detailsIPFSHash) {
+    function emitJobPosted(
+        uint _jobId,
+        address _client,
+        uint _skillsArea,
+        uint _skillsCategory,
+        uint _skills,
+        bytes32 _detailsIPFSHash
+    ) {
         JobPosted(_self(), _jobId, _client, _skillsArea, _skillsCategory, _skills, _detailsIPFSHash);
     }
 
