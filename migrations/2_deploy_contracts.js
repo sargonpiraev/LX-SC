@@ -26,10 +26,12 @@ const JobController = artifacts.require('./JobController.sol');
 const User = artifacts.require('./User.sol');
 const Mock = artifacts.require('./Mock.sol');
 
+const owner = "0xb1c9fa0dc1a49238c3676aded76563541000acf3";
+
 module.exports = deployer => {
   deployer.deploy(ManagerMock)
   .then(() => deployer.deploy(Mock))
-  .then(() => deployer.deploy(User))
+  .then(() => deployer.deploy(User, owner, Mock.address))
   .then(() => deployer.deploy(UserMock))
   .then(() => deployer.deploy(UserLibraryMock))
   .then(() => deployer.deploy(StorageManager, Mock.address))

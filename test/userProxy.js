@@ -22,7 +22,7 @@ contract('UserProxy', function(accounts) {
     const data = tester.contract.functionReturningValue.getData(someParameter);
     return userProxy.forward.call(tester.address, data, 0, false)
       .then(result => assert.equal(result, someParameter));
-  })
+  });
   
   it('should not forward calls when called by not-owner', () => {
     const someParameter = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';

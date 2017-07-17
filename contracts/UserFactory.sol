@@ -14,25 +14,39 @@ contract UserLibraryInterface {
 contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     UserLibraryInterface userLibrary;
 
-    event UserCreated(address indexed self, address indexed user, address proxy, address recoveryContract, uint8[] roles, uint areas, uint[] categories, uint[] skills);
+    event UserCreated(
+        address indexed self,
+        address indexed user,
+        address proxy,
+        address recoveryContract,
+        address owner,
+        uint8[] roles,
+        uint areas,
+        uint[] categories,
+        uint[] skills
+    );
 
     function UserFactory(address _roles2Library) Roles2LibraryAdapter(_roles2Library) {}
 
-
-    function createUserWithProxyAndRecovery(address _recoveryContract, uint8[] _roles, uint _areas, uint[] _categories, uint[] _skills) {
-        UserProxy proxy = new UserProxy();
-        User user = new User();
-        user.setRecoveryContract(_recoveryContract);
-        proxy.changeContractOwnership(user);
-        user.claimContractOwnership();
-        user.setUserProxy(proxy);
-        if(!_setRoles(user, _roles)) {
+    function createUserWithProxyAndRecovery(
+        address _owner,
+        address _recoveryContract,
+        uint8[] _roles,
+        uint _areas,
+        uint[] _categories,
+        uint[] _skills
+    )
+        auth()
+    returns(bool) {
+        User user = new User(_owner, _recoveryContract);
+        UserProxy proxy = UserProxy(user.getUserProxy());
+        if(!_setRoles(proxy, _roles)) {
             throw;
         }
-        if(!_setSkills(user, _areas, _categories, _skills)) {
+        if(!_setSkills(proxy, _areas, _categories, _skills)) {
             throw;
         }
-        _emitUserCreated(user, proxy, _recoveryContract, _roles, _areas, _categories, _skills);
+        _emitUserCreated(user, proxy, _recoveryContract, _owner, _roles, _areas, _categories, _skills);
     }
 
     function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
@@ -61,7 +75,9 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         return true;
     }
 
-    function _setSkills(address _user, uint _areas, uint[] _categories, uint[] _skills) internal returns(bool) {
+    function _setSkills(address _user, uint _areas, uint[] _categories, uint[] _skills)
+        internal
+    returns(bool) {
         if(_areas == 0){
             return true;
         }
@@ -71,11 +87,48 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         return true;
     }
 
-    function _emitUserCreated(address _user, address _proxy, address _recoveryContract, uint8[] _roles, uint _areas, uint[] _categories, uint[] _skills) internal {
-        UserFactory(getEventsHistory()).emitUserCreated(_user, _proxy, _recoveryContract, _roles, _areas, _categories, _skills);
+    function _emitUserCreated(
+        address _user,
+        address _proxy,
+        address _recoveryContract,
+        address _owner,
+        uint8[] _roles,
+        uint _areas,
+        uint[] _categories,
+        uint[] _skills
+    ) internal {
+        UserFactory(getEventsHistory()).emitUserCreated(
+            _user,
+            _proxy,
+            _recoveryContract,
+            _owner,
+            _roles,
+            _areas,
+            _categories,
+            _skills
+        );
     }
 
-    function emitUserCreated(address _user, address _proxy, address _recoveryContract, uint8[] _roles, uint _areas, uint[] _categories, uint[] _skills) {
-        UserCreated(_self(), _user, _proxy, _recoveryContract, _roles, _areas, _categories, _skills);
+    function emitUserCreated(
+        address _user,
+        address _proxy,
+        address _recoveryContract,
+        address _owner,
+        uint8[] _roles,
+        uint _areas,
+        uint[] _categories,
+        uint[] _skills
+    ) {
+        UserCreated(
+            _self(),
+            _user,
+            _proxy,
+            _recoveryContract,
+            _owner,
+            _roles,
+            _areas,
+            _categories,
+            _skills
+        );
     }
 }

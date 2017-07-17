@@ -6,7 +6,7 @@
     "test": "truffle test",
     "compile": "truffle compile",
     "truffle": "truffle",
-    "testrpc": "testrpc"
+    "testrpc": "testrpc -m 'fun puzzle laundry wheat evoke gold tube family fog act aspect visa'"
   },
   "repository": {
     "type": "git",

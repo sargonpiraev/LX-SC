@@ -2,6 +2,7 @@ const UserProxyTester = artifacts.require('./UserProxyTester.sol');
 const EventsHistory = artifacts.require('./EventsHistory.sol');
 const Reverter = require('./helpers/reverter');
 const User = artifacts.require('./User.sol');
+const Mock = artifacts.require('./Mock.sol');
 
 contract('User', function(accounts) {
   const reverter = new Reverter(web3);
@@ -9,10 +10,15 @@ contract('User', function(accounts) {
 
   let user;
   let tester;
+  let mock;
 
   before('setup', () => {
-    return User.deployed()
+    return Mock.deployed()
+    .then(instance => mock = instance)
+    .then(() => User.deployed())
     .then(instance => user = instance)
+    .then(() => user.contractOwner())
+    .then(result => console.log(result))
     .then(() => UserProxyTester.deployed())
     .then(instance => tester = instance)
     .then(() => user.setRecoveryContract(accounts[1]))
@@ -30,7 +36,7 @@ contract('User', function(accounts) {
     const address = '0xffffffffffffffffffffffffffffffffffffffff';
     return user.setUserProxy(address, {from: accounts[1]})
     .then(() => user.getUserProxy())
-    .then(result => assert.equal(result, '0x0000000000000000000000000000000000000000'));
+    .then(result => assert.notEqual(result, '0xffffffffffffffffffffffffffffffffffffffff'));
   });
 
   it('should forward and return value', () => {
