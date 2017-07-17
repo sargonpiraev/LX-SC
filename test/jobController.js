@@ -39,6 +39,20 @@ contract('JobController', function(accounts) {
   const client = accounts[1];
   const worker = accounts[2];
 
+  const assertInternalBalance = (address, coinAddress, expectedValue) => {
+    return (actualValue) => {
+      return paymentGateway.getBalance(address, coinAddress)
+      .then(asserts.equal(expectedValue));
+    };
+  };
+
+  const assertExternalBalance = (address, coinAddress, expectedValue) => {
+    return (actualValue) => {
+      return paymentGateway.getBalanceOf(address, coinAddress)
+      .then(asserts.equal(expectedValue));
+    };
+  };
+
   const assertExpectations = (expected = 0, callsCount = null) => {
     let expectationsCount;
     return () => {
@@ -132,7 +146,7 @@ contract('JobController', function(accounts) {
     let clientBalanceBefore;
     let workerBalanceBefore;
 
-    const timeManagent = () => {
+    const timeOps = () => {
       if (pauses) {
         return Promise.resolve()
         .then(() => helpers.increaseTime(timeSpent / 2 * 60))
@@ -162,16 +176,13 @@ contract('JobController', function(accounts) {
       .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
       .then(() => jobController.startWork(jobId, {from: worker}))
       .then(() => jobController.confirmStartWork(jobId, {from: client}))
-      .then(() => timeManagent())
+      .then(() => timeOps())
       .then(() => jobController.endWork(jobId, {from: worker}))
       .then(() => jobController.confirmEndWork(jobId, {from: client}))
       .then(() => jobController.releasePayment(jobId))
-      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(jobPaymentEstimate).toString()))
-      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), workerBalanceBefore.add(jobPaymentEstimate).toString()))
-      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), '0'));
+      .then(() => assertInternalBalance(client, fakeCoin.address, clientBalanceBefore.sub(jobPaymentEstimate)))
+      .then(() => assertInternalBalance(worker, fakeCoin.address, workerBalanceBefore.add(jobPaymentEstimate)))
+      .then(() => assertInternalBalance(jobId, fakeCoin.address, 0));
   }
 
   before('setup', () => {

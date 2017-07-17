@@ -1136,6 +1136,144 @@ contract('PaymentGateway', function(accounts) {
     .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, value));
   });
 
-  it('should distribute correct amount of tokens on `transferAll`');
+
+  it('should should check auth on `transferAll`', () => {
+    const sender = accounts[6];
+    const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+    const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+    const balance = 5000;
+    const value = 1000;
+    const change = balance - value;
+
+    return Promise.resolve()
+    .then(() => fakeCoin.mint(sender, balance))
+    .then(() => paymentGateway.deposit(balance, fakeCoin.address, {from: sender}))
+    .then(() => {
+      const expectedSig = helpers.getSig("transferAll(address,address,uint256,address,uint256,uint256,address)");
+      return mock.expect(
+        paymentGateway.address,
+        0,
+        roles2LibraryInterface.canCall.getData(
+          sender,
+          paymentGateway.address,
+          expectedSig
+        ), 0)
+      }
+    )
+    .then(() => paymentGateway.transferAll(
+      sender, receiver, value, changeAddress, value, 0, fakeCoin.address
+    ))
+    .then(() => assertInternalBalance(sender, fakeCoin.address, balance))
+    .then(() => assertInternalBalance(receiver, fakeCoin.address, 0))
+    .then(() => assertInternalBalance(changeAddress, fakeCoin.address, 0));
+  });
+
+  it('should not perform actions on `transferAll` if contract is not supported', () => {
+    const sender = accounts[6];
+    const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+    const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+    const balance = 5000;
+    const value = 1000;
+    const change = balance - value;
+
+    return Promise.resolve()
+    .then(() => fakeCoin.mint(sender, balance))
+    .then(() => paymentGateway.deposit(balance, fakeCoin.address, {from: sender}))
+    .then(() => paymentGateway.transferAll(
+      sender, receiver, value, changeAddress, value, 0, paymentGateway.address
+    ))
+    .then(() => assertInternalBalance(sender, fakeCoin.address, balance))
+    .then(() => assertInternalBalance(receiver, fakeCoin.address, 0))
+    .then(() => assertInternalBalance(changeAddress, fakeCoin.address, 0));
+  });
+
+  it('should not perform action on `transferAll` if sender has insufficient balance', () => {
+    const sender = accounts[6];
+    const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+    const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+    const balance = 1000;
+    const value = 1001;
+
+    return Promise.resolve()
+    .then(() => fakeCoin.mint(sender, balance))
+    .then(() => paymentGateway.deposit(balance, fakeCoin.address, {from: sender}))
+    .then(() => asserts.throws(paymentGateway.transferAll(
+      sender, receiver, value, changeAddress, value, 0, fakeCoin.address
+    )))
+    .then(() => assertInternalBalance(sender, fakeCoin.address, balance))
+    .then(() => assertInternalBalance(receiver, fakeCoin.address, 0))
+    .then(() => assertInternalBalance(changeAddress, fakeCoin.address, 0));
+  });
+
+  it('should distribute correct amount of tokens on `transferAll`', () => {
+    const sender = accounts[6];
+    const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+    const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+    const balance = 5000;
+    const value = 1000;
+    const change = balance - value;
+
+    return Promise.resolve()
+    .then(() => fakeCoin.mint(sender, balance))
+    .then(() => paymentGateway.deposit(balance, fakeCoin.address, {from: sender}))
+    .then(() => paymentGateway.transferAll(
+      sender, receiver, value, changeAddress, value, 0, fakeCoin.address
+    ))
+    .then(() => assertInternalBalance(sender, fakeCoin.address, 0))
+    .then(() => assertInternalBalance(receiver, fakeCoin.address, value))
+    .then(() => assertInternalBalance(changeAddress, fakeCoin.address, change));
+  });
+
+  it('should distribute correct amount of tokens on `transferAll` with fee percent', () => {
+    const sender = accounts[6];
+    const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+    const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+    const feeAddress = '0xffffffffffffffffffffffffffffffffffffff02';
+    const balance = 5000;
+    const value = 1000;
+    const feePercent = 1000;  // 10%
+    const fee = value * feePercent / 10000;
+    const change = balance - value - fee;
+
+    return Promise.resolve()
+    .then(() => paymentGateway.setFeeAddress(feeAddress))
+    .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
+    .then(() => fakeCoin.mint(sender, balance))
+    .then(() => paymentGateway.deposit(balance, fakeCoin.address, {from: sender}))
+    .then(() => paymentGateway.transferAll(
+      sender, receiver, value, changeAddress, value, 0, fakeCoin.address
+    ))
+    .then(() => assertInternalBalance(sender, fakeCoin.address, 0))
+    .then(() => assertInternalBalance(receiver, fakeCoin.address, value))
+    .then(() => assertInternalBalance(feeAddress, fakeCoin.address, fee))
+    .then(() => assertInternalBalance(changeAddress, fakeCoin.address, change));
+  });
+
+  it('should distribute correct amount of tokens on' +
+     '`transferAll` with fee percent and additional fee', () => {
+    const sender = accounts[6];
+    const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+    const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+    const feeAddress = '0xffffffffffffffffffffffffffffffffffffff02';
+    const balance = 5000;
+    const value = 1000;
+    const feePercent = 1000;  // 10%
+    const additionalFee = 200;
+    const fee = value * feePercent / 10000;
+    const change = balance - value - fee - additionalFee;
+
+    return Promise.resolve()
+    .then(() => paymentGateway.setFeeAddress(feeAddress))
+    .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
+    .then(() => fakeCoin.mint(sender, balance))
+    .then(() => paymentGateway.deposit(balance, fakeCoin.address, {from: sender}))
+    .then(() => paymentGateway.transferAll(
+      sender, receiver, value, changeAddress, value, additionalFee, fakeCoin.address
+    ))
+    .then(() => assertInternalBalance(sender, fakeCoin.address, 0))
+    .then(() => assertInternalBalance(receiver, fakeCoin.address, value))
+    .then(() => assertInternalBalance(feeAddress, fakeCoin.address, fee))
+    .then(() => assertInternalBalance(changeAddress, fakeCoin.address, change));
+  });
 
 });
