@@ -1,8 +1,8 @@
 pragma solidity 0.4.8;
 
-import './Roles2LibraryAdapter.sol';
 import './StorageAdapter.sol';
 import './MultiEventsHistoryAdapter.sol';
+import './Roles2LibraryAndERC20LibraryAdapter.sol';
 
 contract UserLibraryInterface {
     function hasSkills(address _user, uint _area, uint _category, uint _skills) constant returns(bool);
@@ -13,7 +13,7 @@ contract PaymentProcessorInterface {
     function releasePayment(bytes32 _operationId, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee, address _contract) returns(bool);
 }
 
-contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter {
+contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAndERC20LibraryAdapter {
     PaymentProcessorInterface public paymentProcessor;
     UserLibraryInterface public userLibrary;
     StorageInterface.UIntAddressMapping jobClient;
@@ -70,9 +70,9 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         _;
     }
 
-    function JobController(Storage _store, bytes32 _crate, address _roles2Library)
+    function JobController(Storage _store, bytes32 _crate, address _roles2Library, address _erc20Library)
         StorageAdapter(_store, _crate)
-        Roles2LibraryAdapter(_roles2Library)
+        Roles2LibraryAndERC20LibraryAdapter(_roles2Library, _erc20Library)
     {
         jobClient.init('jobClient');
         jobSkillsArea.init('jobSkillsArea');
@@ -172,6 +172,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
 
     function postJobOffer(uint _jobId, address _erc20Contract, uint _rate, uint _estimate, uint _ontop)
         onlyJobState(_jobId, JobState.CREATED)
+        onlySupportedContract(_erc20Contract)
     returns(bool) {
         if (_rate == 0 || _estimate == 0) {
             return false;

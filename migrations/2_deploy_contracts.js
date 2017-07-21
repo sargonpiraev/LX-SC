@@ -54,8 +54,8 @@ module.exports = deployer => {
   .then(() => deployer.deploy(Roles2Library, Storage.address, 'Roles2Library'))
   .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibrary', Mock.address))
   .then(() => deployer.deploy(ERC20Library, Storage.address, 'ERC20Library', Mock.address))
-  .then(() => deployer.deploy(PaymentGateway, Storage.address, 'PaymentGateway', Mock.address))
+  .then(() => deployer.deploy(PaymentGateway, Storage.address, 'PaymentGateway', Mock.address, ERC20Library.address))
   .then(() => deployer.deploy(PaymentProcessor, Mock.address))
-  .then(() => deployer.deploy(JobController, Storage.address, 'JobController', Mock.address))
+  .then(() => deployer.deploy(JobController, Storage.address, 'JobController', Mock.address, ERC20Library.address))
   .then(() => true);
 };

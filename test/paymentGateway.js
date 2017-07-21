@@ -80,11 +80,10 @@ contract('PaymentGateway', function(accounts) {
     .then(instance => multiEventsHistory = instance)
     .then(() => erc20Library.setupEventsHistory(multiEventsHistory.address))
     .then(() => erc20Library.addContract(fakeCoin.address))
+
     .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
-    .then(() => paymentGateway.setERC20Library(erc20Library.address))
-    //.then(() => paymentGateway.setPaymentProcessor(paymentProcessor))
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
-    //.then(() => balanceHolder.setPaymentGateway(paymentGateway.address))
+
     .then(() => multiEventsHistory.authorize(paymentGateway.address))
     .then(reverter.snapshot);
   });

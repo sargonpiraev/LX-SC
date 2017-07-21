@@ -1,12 +1,8 @@
 pragma solidity 0.4.8;
 
-import './Roles2LibraryAdapter.sol';
 import './StorageAdapter.sol';
 import './MultiEventsHistoryAdapter.sol';
-
-contract ERC20LibraryInterface {
-    function includes(address _contract) constant returns(bool);
-}
+import './Roles2LibraryAndERC20LibraryAdapter.sol';
 
 contract ERC20BalanceInterface {
     function balanceOf(address _address) constant returns(uint);
@@ -17,8 +13,7 @@ contract BalanceHolderInterface {
     function withdraw(address _to, uint _value, address _contract) returns(bool);
 }
 
-contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter {
-    StorageInterface.Address erc2Library;
+contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAndERC20LibraryAdapter {
     StorageInterface.Address feeAddress;
     StorageInterface.AddressUIntMapping fees; // 10000 is 100%.
     StorageInterface.Address balanceHolder;
@@ -29,18 +24,11 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     event Withdrawn(address indexed self, address indexed contractAddress, address indexed by, uint value);
     event Transferred(address indexed self, address indexed contractAddress, address from, address indexed to, uint value);
 
-    modifier onlySupportedContract(address _contract) {
-        if (!getERC20Library().includes(_contract)) {
-            return;
-        }
-        _;
-    }
 
-    function PaymentGateway(Storage _store, bytes32 _crate, address _roles2Library)
+    function PaymentGateway(Storage _store, bytes32 _crate, address _roles2Library, address _erc20Library)
         StorageAdapter(_store, _crate)
-        Roles2LibraryAdapter(_roles2Library)
+        Roles2LibraryAndERC20LibraryAdapter(_roles2Library, _erc20Library)
     {
-        erc2Library.init('erc2Library');
         feeAddress.init('feeAddress');
         fees.init('fees');
         balanceHolder.init('balanceHolder');
@@ -52,11 +40,6 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
             return false;
         }
         _setEventsHistory(_eventsHistory);
-        return true;
-    }
-
-    function setERC20Library(address _erc20Library) auth() returns(bool) {  // only owner
-        store.set(erc2Library, _erc20Library);
         return true;
     }
 
@@ -262,10 +245,6 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     function calculateFee(uint _value, address _contract) constant returns(uint) {
         uint feeRaw = _value * getFeePercent(_contract);
         return (feeRaw / 10000) + (feeRaw % 10000 == 0 ? 0 : 1);
-    }
-
-    function getERC20Library() constant returns(ERC20LibraryInterface) {
-        return ERC20LibraryInterface(store.get(erc2Library));
     }
 
     function getFeeAddress() constant returns(address) {

@@ -216,7 +216,6 @@ contract('JobController', function(accounts) {
     .then(() => erc20Library.addContract(fakeCoin.address))
 
     .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
-    .then(() => paymentGateway.setERC20Library(erc20Library.address))
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
 
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
@@ -285,6 +284,24 @@ contract('JobController', function(accounts) {
     .then(assertExpectations());
   });
 
+  it('should check auth on setting ERC20 library', () => {
+    const caller = accounts[1];
+    const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      jobController.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        caller,
+        jobController.address,
+        jobController.contract.setERC20Library.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => jobController.setERC20Library(newAddress, {from: caller}))
+    .then(assertExpectations());
+  });
+
   it('should allow anyone to post a job');
 
   it('should allow anyone to post an offer for a job only when a job has CREATED status', () => {
@@ -338,23 +355,21 @@ contract('JobController', function(accounts) {
   });
 
 
+  it('should NOT post job offer if unsupported token contract is provided', () => {
+    return Promise.resolve()
+      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJobOffer.call(
+          1, Mock.address, '0xfffffffffffffffffff', 1, 1, {from: worker}
+        )
+      )
+      .then(assert.isFalse);
+  });
+
   it('should throw on `acceptOffer` if client has insufficient funds', () => {
     return Promise.resolve()
       .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
       .then(() => jobController.postJobOffer(
           1, fakeCoin.address, '0xfffffffffffffffffff', 1, 1, {from: worker}
-        )
-      )
-      .then(() => asserts.throws(
-        jobController.acceptOffer(1, {from: client})
-      ));
-  });
-
-  it('should throw on `acceptOffer` if unsupported token contract is provided', () => {
-      return Promise.resolve()
-      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
-      .then(() => jobController.postJobOffer(
-          1, jobController.address, '0xfffffffffffffffffff', 1, 1, {from: worker}
         )
       )
       .then(() => asserts.throws(
