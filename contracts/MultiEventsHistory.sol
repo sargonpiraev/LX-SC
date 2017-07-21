@@ -1,6 +1,7 @@
 pragma solidity 0.4.8;
 
-import './Roles2LibraryAdapter.sol';
+import './adapters/Roles2LibraryAdapter.sol';
+
 
 /**
  * @title Events History universal multi contract.

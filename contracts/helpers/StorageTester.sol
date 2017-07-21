@@ -1,6 +1,6 @@
 pragma solidity 0.4.8;
 
-import '../StorageAdapter.sol';
+import '../adapters/StorageAdapter.sol';
 
 contract StorageTester is StorageAdapter {
     StorageInterface.UInt uintVar;
@@ -36,7 +36,7 @@ contract StorageTester is StorageAdapter {
     function getUInt() constant returns(uint) {
         return store.get(uintVar);
     }
-    
+
     function setInt(int _value) {
         store.set(intVar, _value);
     }

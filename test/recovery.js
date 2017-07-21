@@ -1,9 +1,13 @@
-const Reverter = require('./helpers/reverter');
-const Asserts = require('./helpers/asserts');
-const Recovery = artifacts.require('./Recovery.sol');
-const UserMock = artifacts.require('./UserMock.sol');
-const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+"use strict";
+
 const Mock = artifacts.require('./Mock.sol');
+const Recovery = artifacts.require('./Recovery.sol');
+const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const UserMock = artifacts.require('./UserMock.sol');
+
+const Asserts = require('./helpers/asserts');
+const Reverter = require('./helpers/reverter');
+
 
 contract('Recovery', function(accounts) {
   const reverter = new Reverter(web3);

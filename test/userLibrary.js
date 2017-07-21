@@ -1,14 +1,17 @@
-const Reverter = require('./helpers/reverter');
-const Asserts = require('./helpers/asserts');
-const Storage = artifacts.require('./Storage.sol');
+"use strict";
+
 const ManagerMock = artifacts.require('./ManagerMock.sol');
-const RolesLibrary = artifacts.require('./RolesLibrary.sol');
-const UserLibrary = artifacts.require('./UserLibrary.sol');
+const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
-const Mock = artifacts.require('./Mock.sol');
+const Storage = artifacts.require('./Storage.sol');
+const UserLibrary = artifacts.require('./UserLibrary.sol');
+
+const Asserts = require('./helpers/asserts');
+const Reverter = require('./helpers/reverter');
 
 const helpers = require('./helpers/helpers');
+
 
 contract('UserLibrary', function(accounts) {
   const reverter = new Reverter(web3);
@@ -17,7 +20,6 @@ contract('UserLibrary', function(accounts) {
   const asserts = Asserts(assert);
   let storage;
   let multiEventsHistory;
-  let rolesLibrary;
   let userLibrary;
   let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
   let mock;
@@ -48,8 +50,6 @@ contract('UserLibrary', function(accounts) {
     .then(instance => storage = instance)
     .then(() => ManagerMock.deployed())
     .then(instance => storage.setManager(instance.address))
-    .then(() => RolesLibrary.deployed())
-    .then(instance => rolesLibrary = instance)
     .then(() => UserLibrary.deployed())
     .then(instance => userLibrary = instance)
     .then(() => MultiEventsHistory.deployed())

@@ -1,22 +1,24 @@
-const Reverter = require('./helpers/reverter');
-const Asserts = require('./helpers/asserts');
-const Promise = require('bluebird');
-const Storage = artifacts.require('./Storage.sol');
+"use strict";
+
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
-const FakeCoin = artifacts.require('./FakeCoin.sol');
 const ERC20Library = artifacts.require('./ERC20Library.sol');
-const ERC20Interface = artifacts.require('./ERC20Interface.sol');
+const FakeCoin = artifacts.require('./FakeCoin.sol');
+const JobController = artifacts.require('./JobController.sol');
+const ManagerMock = artifacts.require('./ManagerMock.sol');
+const Mock = artifacts.require('./Mock.sol');
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
 const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
-const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const Storage = artifacts.require('./Storage.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
-const Mock = artifacts.require('./Mock.sol');
 
-const JobController = artifacts.require('./JobController.sol');
+const Asserts = require('./helpers/asserts');
+const Promise = require('bluebird');
+const Reverter = require('./helpers/reverter');
 
 const helpers = require('./helpers/helpers');
+
 
 contract('JobController', function(accounts) {
   const reverter = new Reverter(web3);
@@ -25,13 +27,13 @@ contract('JobController', function(accounts) {
   const asserts = Asserts(assert);
   const roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
   const userLibraryInterface = web3.eth.contract(UserLibrary.abi).at('0x0');
+  let fakeCoin;
   let storage;
   let jobController;
   let multiEventsHistory;
   let paymentProcessor;
   let erc20Library;
-  let erc20Interface = web3.eth.contract(ERC20Interface.abi).at('0x0');
-  let fakeCoin;
+  let userLibrary;
   let paymentGateway;
   let balanceHolder;
   let mock;
@@ -89,10 +91,10 @@ contract('JobController', function(accounts) {
 
 
     const jobId = 1;
-    const jobArea = 333;
-    const jobCategory = 333;
-    const jobSkills = 333;
-    const jobDetails = 'Le Job Description';
+    const jobArea = 4;
+    const jobCategory = 4;
+    const jobSkills = 4;
+    const jobDetails = 'Job details';
     const additionalTime = 60;
 
     const workerRate = '0x12f2a36ecd555';
@@ -169,7 +171,7 @@ contract('JobController', function(accounts) {
       .then(result => clientBalanceBefore = result)
       .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
       .then(result => workerBalanceBefore = result)
-      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
       .then(() => jobController.postJobOffer(
         jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
       ))
@@ -190,6 +192,8 @@ contract('JobController', function(accounts) {
     .then(instance => mock = instance)
     .then(() => ignoreAuth())
     .then(() => ignoreSkillsCheck())
+    .then(() => FakeCoin.deployed())
+    .then(instance => fakeCoin = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
     .then(() => Storage.deployed())
@@ -198,22 +202,26 @@ contract('JobController', function(accounts) {
     .then(instance => storage.setManager(instance.address))
     .then(() => BalanceHolder.deployed())
     .then(instance => balanceHolder = instance)
-    .then(() => FakeCoin.deployed())
-    .then(instance => fakeCoin = instance)
     .then(() => ERC20Library.deployed())
     .then(instance => erc20Library = instance)
+    .then(() => UserLibrary.deployed())
+    .then(instance => userLibrary = instance)
     .then(() => PaymentGateway.deployed())
     .then(instance => paymentGateway = instance)
     .then(() => PaymentProcessor.deployed())
     .then(instance => paymentProcessor = instance)
     .then(() => JobController.deployed())
     .then(instance => jobController = instance)
+
     .then(() => multiEventsHistory.authorize(erc20Library.address))
+    .then(() => multiEventsHistory.authorize(userLibrary.address))
     .then(() => multiEventsHistory.authorize(paymentGateway.address))
     .then(() => multiEventsHistory.authorize(jobController.address))
 
     .then(() => erc20Library.setupEventsHistory(multiEventsHistory.address))
     .then(() => erc20Library.addContract(fakeCoin.address))
+
+    .then(() => userLibrary.setupEventsHistory(multiEventsHistory.address))
 
     .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
@@ -302,7 +310,58 @@ contract('JobController', function(accounts) {
     .then(assertExpectations());
   });
 
-  it('should allow anyone to post a job');
+
+  it('should allow anyone to post a job', () => {
+    return Promise.each(accounts, account => {
+      return jobController.postJob.call(4, 4, 4, 'Job details', {from: account})
+        .then(jobId => assert.equal(jobId, 1));
+    });
+  });
+
+  it('should NOT allow to post a job with even area mask', () => {
+    const area = 2;
+    const category = 4;
+    const skills = 555;
+    return Promise.resolve()
+      .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+      .then(asserts.equal(0));
+  });
+
+  it('should NOT allow to post a job with multiple area mask', () => {
+    const area = 5;
+    const category = 4;
+    const skills = 555;
+    return Promise.resolve()
+      .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+      .then(asserts.equal(0));
+  });
+
+  it('should NOT allow to post a job with even category mask', () => {
+    const area = 1;
+    const category = 2;
+    const skills = 555;
+    return Promise.resolve()
+      .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+      .then(asserts.equal(0));
+  });
+
+  it('should NOT allow to post a job with multiple category mask', () => {
+    const area = 1;
+    const category = 5;
+    const skills = 555;
+    return Promise.resolve()
+      .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+      .then(asserts.equal(0));
+  });
+
+  it('should NOT allow to post a job with no skills', () => {
+    const area = 1;
+    const category = 4;
+    const skills = 0;
+    return Promise.resolve()
+      .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+      .then(asserts.equal(0));
+  });
 
   it('should allow anyone to post an offer for a job only when a job has CREATED status', () => {
     const operation = jobController.postJobOffer;
@@ -312,7 +371,51 @@ contract('JobController', function(accounts) {
       .then(() => operationAllowance(operation, args, results));
   });
 
-  it('should check skills on posting job offer');
+  it("should check skills on posting job offer", () => {
+    return jobController.postJob(4, 4, 4, 'Job details', {from: client})
+      .then(() => ignoreSkillsCheck(false))
+      .then(() => mock.expect(
+        jobController.address,
+        0,
+        userLibraryInterface.hasSkills.getData(
+          worker, 4, 4, 4
+        ),
+        0
+      ))
+      .then(() => jobController.postJobOffer(1, fakeCoin.address, 1000, 180, 1000, {from: worker}))
+      .then(assertExpectations());
+  });
+
+  it("should NOT post job offer if worker skills does not match", () => {
+    return jobController.setUserLibrary(userLibrary.address)
+      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+      .then(() => jobController.postJobOffer.call(
+        1, fakeCoin.address, 1000, 180, 1000, {from: worker})
+      )
+      .then(assert.isFalse);
+  });
+
+  it("should post job offer if worker skills match", () => {
+    return Promise.resolve()
+      .then(() => jobController.setUserLibrary(userLibrary.address))
+      .then(() => jobController.postJob(16, 1, 1, 'Job details', {from: client}))
+      .then(() => userLibrary.setMany(worker, 16, [1], [1]))
+      .then(() => jobController.postJobOffer.call(
+        1, fakeCoin.address, 1000, 180, 1000, {from: worker})
+      )
+      .then(assert.isTrue);
+  });
+
+  it('should NOT post job offer if unsupported token contract is provided', () => {
+    return Promise.resolve()
+      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+      .then(() => jobController.postJobOffer.call(
+          1, Mock.address, '0xfffffffffffffffffff', 1, 1, {from: worker}
+        )
+      )
+      .then(assert.isFalse);
+  });
+
 
   it('should allow assigned worker to request work start only when a job has ACCEPTED status', () => {
     const operation = jobController.startWork;
@@ -355,19 +458,9 @@ contract('JobController', function(accounts) {
   });
 
 
-  it('should NOT post job offer if unsupported token contract is provided', () => {
-    return Promise.resolve()
-      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
-      .then(() => jobController.postJobOffer.call(
-          1, Mock.address, '0xfffffffffffffffffff', 1, 1, {from: worker}
-        )
-      )
-      .then(assert.isFalse);
-  });
-
   it('should throw on `acceptOffer` if client has insufficient funds', () => {
     return Promise.resolve()
-      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
       .then(() => jobController.postJobOffer(
           1, fakeCoin.address, '0xfffffffffffffffffff', 1, 1, {from: worker}
         )
@@ -395,7 +488,7 @@ contract('JobController', function(accounts) {
       .then(result => clientBalanceBefore = result)
       .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
       .then(result => workerBalanceBefore = result)
-      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
       .then(() => jobController.postJobOffer(
         jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
       ))
@@ -411,32 +504,12 @@ contract('JobController', function(accounts) {
       .then(result => assert.equal(result.toString(), workerBalanceBefore.toString()));
   });
 
-  it('should emit event when job is posted', () => {
-    const skillsArea = '333';
-    const skillsCategory = '444';
-    const skills = '555';
-    const jobDetails = "Le details";
-
-    return Promise.resolve()
-      .then(() => jobController.postJob(skillsArea, skillsCategory, skills, jobDetails, {from: client}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        assert.equal(log.client, client);
-        assert.equal(log.skillsArea.toString(), skillsArea);
-        assert.equal(log.skillsCategory.toString(), skillsCategory);
-        assert.equal(log.skills.toString(), skills);
-        // TODO: handle hash matches
-      });
-  });
 
   it('should emit all events on a workflow with completed job', () => {
-    const skillsArea = '333';
-    const skillsCategory = '444';
+    const skillsArea = '4';
+    const skillsCategory = '4';
     const skills = '555';
-    const jobDetails = "Le details";
+    const jobDetails = "Job details";
 
     const workerRate = '0x12f2a36ecd555';
     const workerOnTop = '0x12f2a36ecd555';
@@ -447,6 +520,7 @@ contract('JobController', function(accounts) {
       .then(() => jobController.postJob(skillsArea, skillsCategory, skills, jobDetails, {from: client}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'JobPosted');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -463,6 +537,7 @@ contract('JobController', function(accounts) {
       )
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'JobOfferPosted');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -475,6 +550,7 @@ contract('JobController', function(accounts) {
       .then(() => jobController.acceptOffer(1, worker, {from: client}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'JobOfferAccepted');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -487,6 +563,7 @@ contract('JobController', function(accounts) {
       .then(() => jobController.confirmStartWork(1, {from: client}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'WorkStarted');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -497,6 +574,7 @@ contract('JobController', function(accounts) {
       .then(() => jobController.pauseWork(1, {from: worker}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'WorkPaused');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -507,6 +585,7 @@ contract('JobController', function(accounts) {
       .then(() => jobController.resumeWork(1, {from: worker}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'WorkResumed');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -517,6 +596,7 @@ contract('JobController', function(accounts) {
       .then(() => jobController.addMoreTime(1, 60, {from: client}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'TimeAdded');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -529,19 +609,28 @@ contract('JobController', function(accounts) {
       .then(() => jobController.confirmEndWork(1, {from: client}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'WorkFinished');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
         const now = new Date() / 1000;
         assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
+      })
+      .then(() => jobController.releasePayment(1))
+      .then(tx => {
+        assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'PaymentReleased');
+        const log = tx.logs[0].args;
+        assert.equal(log.self, jobController.address);
+        assert.equal(log.jobId.toString(), '1');
       });
   });
 
   it('should emit all events on a workflow with canceled job', () => {
-    const skillsArea = '333';
-    const skillsCategory = '444';
+    const skillsArea = '4';
+    const skillsCategory = '4';
     const skills = '555';
-    const jobDetails = "Le details";
+    const jobDetails = "Job details";
 
     const workerRate = '0x12f2a36ecd555';
     const workerOnTop = '0x12f2a36ecd555';
@@ -552,6 +641,7 @@ contract('JobController', function(accounts) {
       .then(() => jobController.postJob(skillsArea, skillsCategory, skills, jobDetails, {from: client}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'JobPosted');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -568,6 +658,7 @@ contract('JobController', function(accounts) {
       )
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'JobOfferPosted');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -580,6 +671,7 @@ contract('JobController', function(accounts) {
       .then(() => jobController.acceptOffer(1, worker, {from: client}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'JobOfferAccepted');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -592,6 +684,7 @@ contract('JobController', function(accounts) {
       .then(() => jobController.confirmStartWork(1, {from: client}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'WorkStarted');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -602,6 +695,7 @@ contract('JobController', function(accounts) {
       .then(() => jobController.pauseWork(1, {from: worker}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'WorkPaused');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -612,6 +706,7 @@ contract('JobController', function(accounts) {
       .then(() => jobController.resumeWork(1, {from: worker}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'WorkResumed');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -622,6 +717,7 @@ contract('JobController', function(accounts) {
       .then(() => jobController.addMoreTime(1, 60, {from: client}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'TimeAdded');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
@@ -634,11 +730,13 @@ contract('JobController', function(accounts) {
       .then(() => jobController.cancelJob(1, {from: client}))
       .then(tx => {
         assert.equal(tx.logs.length, 1);
+        assert.equal(tx.logs[0].event, 'JobCanceled');
         const log = tx.logs[0].args;
         assert.equal(log.self, jobController.address);
         assert.equal(log.jobId.toString(), '1');
       });
   });
+
 
   it('should release just jobOfferOnTop on `cancelJob` on ACCEPTED job stage', () => {
     const jobId = 1;
@@ -654,7 +752,7 @@ contract('JobController', function(accounts) {
       .then(result => clientBalanceBefore = result)
       .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
       .then(result => workerBalanceBefore = result)
-      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
       .then(() => jobController.postJobOffer(
         jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
       ))
@@ -682,7 +780,7 @@ contract('JobController', function(accounts) {
       .then(result => clientBalanceBefore = result)
       .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
       .then(result => workerBalanceBefore = result)
-      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
       .then(() => jobController.postJobOffer(
         jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
       ))
@@ -697,7 +795,7 @@ contract('JobController', function(accounts) {
       .then(result => assert.equal(result.toString(), '0'));
   });
 
-  it('should release jobOnTop + 1 hour of work + jobOnTop on `cancelJob` on STARTED job stage', () => {
+  it('should release jobOfferOnTop + 1 hour of work on `cancelJob` on STARTED job stage', () => {
     const jobId = 1;
     const workerRate = 200000000000;
     const workerOnTop = 1000000000;
@@ -713,7 +811,7 @@ contract('JobController', function(accounts) {
       .then(result => clientBalanceBefore = result)
       .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
       .then(result => workerBalanceBefore = result)
-      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
       .then(() => jobController.postJobOffer(
         jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
       ))
@@ -729,7 +827,7 @@ contract('JobController', function(accounts) {
       .then(result => assert.equal(result.toString(), '0'));
   });
 
-  it('should release jobOnTop + 1 hour of work + jobOnTop on `cancelJob` on PENDING_FINISH job stage', () => {
+  it('should release jobOfferOnTop + 1 hour of work on `cancelJob` on PENDING_FINISH job stage', () => {
     const jobId = 1;
     const workerRate = 200000000000;
     const workerOnTop = 1000000000;
@@ -745,7 +843,7 @@ contract('JobController', function(accounts) {
       .then(result => clientBalanceBefore = result)
       .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
       .then(result => workerBalanceBefore = result)
-      .then(() => jobController.postJob(333, 333, 333, 'Le details', {from: client}))
+      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
       .then(() => jobController.postJobOffer(
         jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
       ))
@@ -810,7 +908,6 @@ contract('JobController', function(accounts) {
     const jobPaymentEstimate = workerRate * 60 + workerOnTop;
     return onReleasePayment(timeSpent, jobPaymentEstimate);
   });
-
 
 
   it('should release correct amount of tokens on `releasePayment` ' +

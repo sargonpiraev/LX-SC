@@ -1,8 +1,9 @@
 pragma solidity 0.4.8;
 
-import './StorageAdapter.sol';
-import './MultiEventsHistoryAdapter.sol';
-import './Roles2LibraryAndERC20LibraryAdapter.sol';
+import './adapters/MultiEventsHistoryAdapter.sol';
+import './adapters/Roles2LibraryAndERC20LibraryAdapter.sol';
+import './adapters/StorageAdapter.sol';
+
 
 contract ERC20BalanceInterface {
     function balanceOf(address _address) constant returns(uint);
@@ -23,7 +24,6 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     event Deposited(address indexed self, address indexed contractAddress, address indexed by, uint value);
     event Withdrawn(address indexed self, address indexed contractAddress, address indexed by, uint value);
     event Transferred(address indexed self, address indexed contractAddress, address from, address indexed to, uint value);
-
 
     function PaymentGateway(Storage _store, bytes32 _crate, address _roles2Library, address _erc20Library)
         StorageAdapter(_store, _crate)

@@ -1,8 +1,10 @@
 pragma solidity 0.4.8;
 
-import './StorageAdapter.sol';
-import './MultiEventsHistoryAdapter.sol';
-import './Roles2LibraryAndERC20LibraryAdapter.sol';
+import './adapters/MultiEventsHistoryAdapter.sol';
+import './adapters/Roles2LibraryAndERC20LibraryAdapter.sol';
+import './adapters/StorageAdapter.sol';
+import './base/BitOps.sol';
+
 
 contract UserLibraryInterface {
     function hasSkills(address _user, uint _area, uint _category, uint _skills) constant returns(bool);
@@ -13,7 +15,7 @@ contract PaymentProcessorInterface {
     function releasePayment(bytes32 _operationId, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee, address _contract) returns(bool);
 }
 
-contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAndERC20LibraryAdapter {
+contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAndERC20LibraryAdapter, BitOps {
     PaymentProcessorInterface public paymentProcessor;
     UserLibraryInterface public userLibrary;
     StorageInterface.UIntAddressMapping jobClient;
@@ -46,7 +48,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     event WorkPaused(address indexed self, uint indexed jobId, uint at);
     event WorkResumed(address indexed self, uint indexed jobId, uint at);
     event WorkFinished(address indexed self, uint indexed jobId, uint at);
-    event PaymentReleased(address indexed self, uint indexed jobId, uint value);
+    event PaymentReleased(address indexed self, uint indexed jobId);
     event JobCanceled(address indexed self, uint indexed jobId);
 
     modifier onlyClient(uint _jobId) {
@@ -157,7 +159,11 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     }
 
 
-    function postJob(uint _area, uint _category, uint _skills, bytes32 _detailsIPFSHash) returns(uint) {
+    function postJob(uint _area, uint _category, uint _skills, bytes32 _detailsIPFSHash)
+        singleOddFlag(_area)
+        singleOddFlag(_category)
+        hasFlags(_skills)
+    returns(uint) {
         uint jobId = store.get(jobsCount) + 1;
         store.set(jobsCount, jobId);
         store.set(jobClient, jobId, msg.sender);
@@ -363,6 +369,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             return false;
         }
         store.set(jobState, _jobId, uint(JobState.FINALIZED));
+        _emitPaymentReleased(_jobId);
         return true;
     }
 
@@ -453,8 +460,8 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         JobController(getEventsHistory()).emitWorkFinished(_jobId, _at);
     }
 
-    function _emitPaymentReleased(uint _jobId, uint _value) internal {
-        JobController(getEventsHistory()).emitPaymentReleased(_jobId, _value);
+    function _emitPaymentReleased(uint _jobId) internal {
+        JobController(getEventsHistory()).emitPaymentReleased(_jobId);
     }
 
     function _emitJobCanceled(uint _jobId) internal {
@@ -500,8 +507,8 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         WorkFinished(_self(), _jobId, _at);
     }
 
-    function emitPaymentReleased(uint _jobId, uint _value) {
-        PaymentReleased(_self(), _jobId, _value);
+    function emitPaymentReleased(uint _jobId) {
+        PaymentReleased(_self(), _jobId);
     }
 
     function emitJobCanceled(uint _jobId) {

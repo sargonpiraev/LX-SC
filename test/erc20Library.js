@@ -1,11 +1,15 @@
-const Reverter = require('./helpers/reverter');
-const Asserts = require('./helpers/asserts');
-const Storage = artifacts.require('./Storage.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
+"use strict";
+
 const ERC20Library = artifacts.require('./ERC20Library.sol');
+const ManagerMock = artifacts.require('./ManagerMock.sol');
+const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
-const Mock = artifacts.require('./Mock.sol');
+const Storage = artifacts.require('./Storage.sol');
+
+const Asserts = require('./helpers/asserts');
+const Reverter = require('./helpers/reverter');
+
 
 contract('ERC20Library', function(accounts) {
   const reverter = new Reverter(web3);

@@ -1,15 +1,17 @@
-const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
-const UserLibraryMock = artifacts.require('./UserLibraryMock.sol');
-const UserFactory = artifacts.require('./UserFactory.sol');
-const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+"use strict";
+
 const Mock = artifacts.require('./Mock.sol');
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
+const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const User = artifacts.require('./User.sol');
+const UserFactory = artifacts.require('./UserFactory.sol');
 const UserProxy = artifacts.require('./UserProxy.sol');
 
 const Asserts = require('./helpers/asserts');
 const Reverter = require('./helpers/reverter');
 
 const helpers = require('./helpers/helpers');
+
 
 contract('UserFactory', function(accounts) {
   const reverter = new Reverter(web3);
@@ -20,7 +22,6 @@ contract('UserFactory', function(accounts) {
   const recovery = "0xffffffffffffffffffffffffffffffffffffffff";
   let multiEventsHistory;
   let userFactory;
-  let callCounter;
   let mock;
 
   const assertExpectations = (expected = 0, callsCount = null) => {
@@ -49,9 +50,7 @@ contract('UserFactory', function(accounts) {
     .then(instance => userFactory = instance)
     .then(() => multiEventsHistory.authorize(userFactory.address))
     .then(() => userFactory.setupEventsHistory(multiEventsHistory.address))
-    .then(() => UserLibraryMock.deployed())
-    .then(instance => callCounter = instance)
-    .then(() => userFactory.setupUserLibrary(callCounter.address))
+    .then(() => userFactory.setupUserLibrary(mock.address))
     .then(reverter.snapshot);
   });
 
@@ -145,66 +144,12 @@ contract('UserFactory', function(accounts) {
       .then(asserts.equal(2));
   });
 
-  it('should create users with areas', () => {
-    const owner = accounts[1];
-    const roles = [];
-    const areas = 10;
-    const categories = [];
-    const skills = [];
-    return userFactory.createUserWithProxyAndRecovery(
-        owner, recovery, roles, areas, categories, skills
-      )
-      .then(result => {
-        assert.equal(result.logs.length, 1);
-        assert.equal(result.logs[0].address, multiEventsHistory.address);
-        assert.equal(result.logs[0].args.self, userFactory.address);
-        assert.equal(result.logs[0].event, 'UserCreated');
-        assert.equal(result.logs[0].args.owner, owner);
-        assert.equal(result.logs[0].args.roles.length, 0);
-        assert.equal(result.logs[0].args.areas.toString(2), '1010');
-        assert.equal(result.logs[0].args.categories.length, 0);
-        assert.equal(result.logs[0].args.skills.length, 0);
-        assert.equal(result.logs[0].args.recoveryContract, recovery);
-        assert.notEqual(result.logs[0].args.proxy, undefined);
-        assert.notEqual(result.logs[0].args.user, undefined);
-      })
-      .then(() => mock.callsCount())
-      .then(asserts.equal(0));
-  });
-
-  it('should create users with categories', () => {
-    const owner = accounts[1];
-    const roles = [];
-    const areas = 0;
-    const categories = [1, 2];
-    const skills = [];
-    return userFactory.createUserWithProxyAndRecovery(
-        owner, recovery, roles, areas, categories, skills
-      )
-      .then(result => {
-        assert.equal(result.logs.length, 1);
-        assert.equal(result.logs[0].address, multiEventsHistory.address);
-        assert.equal(result.logs[0].args.self, userFactory.address);
-        assert.equal(result.logs[0].event, 'UserCreated');
-        assert.equal(result.logs[0].args.owner, owner);
-        assert.equal(result.logs[0].args.roles.length, 0);
-        assert.equal(result.logs[0].args.areas.toString(), '0');
-        assert.equal(result.logs[0].args.categories.length, 2);
-        assert.equal(result.logs[0].args.skills.length, 0);
-        assert.equal(result.logs[0].args.recoveryContract, recovery);
-        assert.notEqual(result.logs[0].args.proxy, undefined);
-        assert.notEqual(result.logs[0].args.user, undefined);
-      })
-      .then(() => mock.callsCount())
-      .then(asserts.equal(0));
-  });
-
   it('should create users with skills', () => {
     const owner = accounts[1];
     const roles = [];
-    const areas = 0;
-    const categories = [];
-    const skills = [1, 2];
+    const areas = 4;
+    const categories = [1];
+    const skills = [1];
     return userFactory.createUserWithProxyAndRecovery(
         owner, recovery, roles, areas, categories, skills
       )
@@ -215,22 +160,22 @@ contract('UserFactory', function(accounts) {
         assert.equal(result.logs[0].event, 'UserCreated');
         assert.equal(result.logs[0].args.owner, owner);
         assert.equal(result.logs[0].args.roles.length, 0);
-        assert.equal(result.logs[0].args.areas.toString(), '0');
-        assert.equal(result.logs[0].args.categories.length, 0);
-        assert.equal(result.logs[0].args.skills.length, 2);
+        assert.equal(result.logs[0].args.areas.toString(2), '100');
+        assert.equal(result.logs[0].args.categories.length, 1);
+        assert.equal(result.logs[0].args.skills.length, 1);
         assert.equal(result.logs[0].args.recoveryContract, recovery);
         assert.notEqual(result.logs[0].args.proxy, undefined);
         assert.notEqual(result.logs[0].args.user, undefined);
       })
       .then(() => mock.callsCount())
-      .then(asserts.equal(0));
+      .then(asserts.equal(1));
   });
 
-  it('should create users with roles, areas, categories and skills', () => {
+  it('should create users with roles and skills', () => {
     const owner = accounts[1];
     const roles = [1, 2];
-    const areas = 10;
-    const categories = [1, 2];
+    const areas = 4;
+    const categories = [1];
     const skills = [1];
     return userFactory.createUserWithProxyAndRecovery(
         owner, recovery, roles, areas, categories, skills
@@ -242,18 +187,18 @@ contract('UserFactory', function(accounts) {
         assert.equal(result.logs[0].event, 'UserCreated');
         assert.equal(result.logs[0].args.owner, owner);
         assert.equal(result.logs[0].args.roles.length, 2);
-        assert.equal(result.logs[0].args.areas.toString(2), '1010');
-        assert.equal(result.logs[0].args.categories.length, 2);
+        assert.equal(result.logs[0].args.areas.toString(2), '100');
+        assert.equal(result.logs[0].args.categories.length, 1);
         assert.equal(result.logs[0].args.skills.length, 1);
         assert.equal(result.logs[0].args.recoveryContract, recovery);
         assert.notEqual(result.logs[0].args.proxy, undefined);
         assert.notEqual(result.logs[0].args.user, undefined);
       })
       .then(() => mock.callsCount())
-      .then(asserts.equal(2));
+      .then(asserts.equal(3));
   });
 
-  it('should create users without roles, areas, categories and skills', () => {
+  it('should create users without roles and skills', () => {
     const owner = accounts[1];
     return userFactory.createUserWithProxyAndRecovery(owner, recovery, [], 0, [], [])
       .then(result => {

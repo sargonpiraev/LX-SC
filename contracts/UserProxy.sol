@@ -1,6 +1,7 @@
 pragma solidity 0.4.8;
 
-import './Owned.sol';
+import './base/Owned.sol';
+
 
 contract UserProxy is Owned {
     event Forwarded (

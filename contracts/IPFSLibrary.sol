@@ -1,8 +1,9 @@
 pragma solidity 0.4.8;
 
-import './Roles2LibraryAdapter.sol';
-import './StorageAdapter.sol';
-import './MultiEventsHistoryAdapter.sol';
+import './adapters/MultiEventsHistoryAdapter.sol';
+import './adapters/Roles2LibraryAdapter.sol';
+import './adapters/StorageAdapter.sol';
+
 
 contract IPFSLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     StorageInterface.AddressBytes32Bytes32Mapping ipfsHashes;

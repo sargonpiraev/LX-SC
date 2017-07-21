@@ -1,10 +1,11 @@
 pragma solidity 0.4.8;
 
-import './MultiEventsHistoryAdapter.sol';
+import './User.sol';
 import './UserLibrary.sol';
 import './UserProxy.sol';
-import './Roles2LibraryAdapter.sol';
-import './User.sol';
+import './adapters/MultiEventsHistoryAdapter.sol';
+import './adapters/Roles2LibraryAdapter.sol';
+
 
 contract UserLibraryInterface {
     function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) returns(bool);
@@ -27,6 +28,7 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     );
 
     function UserFactory(address _roles2Library) Roles2LibraryAdapter(_roles2Library) {}
+
 
     function createUserWithProxyAndRecovery(
         address _owner,
@@ -62,13 +64,13 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         return true;
     }
 
-    function getUserLibrary() returns(address) {
+    function getUserLibrary() constant returns(address) {
         return userLibrary;
     }
 
     function _setRoles(address _user, uint8[] _roles) internal returns(bool) {
-        for(uint i = 0; i < _roles.length; i++) {
-            if(!roles2Library.addUserRole(_user, _roles[i])) {
+        for (uint i = 0; i < _roles.length; i++) {
+            if (!roles2Library.addUserRole(_user, _roles[i])) {
                 return false;
             }
         }
@@ -78,10 +80,10 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     function _setSkills(address _user, uint _areas, uint[] _categories, uint[] _skills)
         internal
     returns(bool) {
-        if(_areas == 0){
+        if (_areas == 0) {
             return true;
         }
-        if(!userLibrary.setMany(_user, _areas, _categories, _skills)){
+        if (!userLibrary.setMany(_user, _areas, _categories, _skills)) {
             return false;
         }
         return true;

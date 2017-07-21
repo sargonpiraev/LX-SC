@@ -1,15 +1,18 @@
-const Reverter = require('./helpers/reverter');
-const Asserts = require('./helpers/asserts');
-const Storage = artifacts.require('./Storage.sol');
+"use strict";
+
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
 const FakeCoin = artifacts.require('./FakeCoin.sol');
-const ERC20Library = artifacts.require('./ERC20Library.sol');
 const ERC20Interface = artifacts.require('./ERC20Interface.sol');
-const PaymentGateway = artifacts.require('./PaymentGateway.sol');
-const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
-const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const ERC20Library = artifacts.require('./ERC20Library.sol');
+const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Mock = artifacts.require('./Mock.sol');
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
+const PaymentGateway = artifacts.require('./PaymentGateway.sol');
+const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const Storage = artifacts.require('./Storage.sol');
+
+const Asserts = require('./helpers/asserts');
+const Reverter = require('./helpers/reverter');
 
 const helpers = require('./helpers/helpers');
 

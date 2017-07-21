@@ -1,6 +1,7 @@
 pragma solidity 0.4.8;
 
-import './Roles2LibraryAdapter.sol';
+import './adapters/Roles2LibraryAdapter.sol';
+
 
 contract PaymentGatewayInterface {
     function transferWithFee(address _from, address _to, uint _value, uint _feeFromValue, uint _additionalFee, address _contract) returns(bool);

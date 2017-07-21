@@ -1,9 +1,13 @@
-const Reverter = require('./helpers/reverter');
-const Asserts = require('./helpers/asserts');
+"use strict";
+
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const ERC20Interface = artifacts.require('./ERC20Interface.sol');
-const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Mock = artifacts.require('./Mock.sol');
+const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+
+const Asserts = require('./helpers/asserts');
+const Reverter = require('./helpers/reverter');
+
 
 contract('BalanceHolder', function(accounts) {
   const reverter = new Reverter(web3);

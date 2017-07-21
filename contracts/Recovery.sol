@@ -1,7 +1,8 @@
 pragma solidity 0.4.8;
 
 import './User.sol';
-import './Roles2LibraryAdapter.sol';
+import './adapters/Roles2LibraryAdapter.sol';
+
 
 contract Recovery is Roles2LibraryAdapter {
 

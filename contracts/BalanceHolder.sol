@@ -1,6 +1,7 @@
 pragma solidity 0.4.8;
 
-import './Roles2LibraryAdapter.sol';
+import './adapters/Roles2LibraryAdapter.sol';
+
 
 contract ERC20Interface {
     function transfer(address _to, uint _value) returns(bool);

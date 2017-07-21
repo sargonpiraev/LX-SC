@@ -2,6 +2,7 @@ pragma solidity ^0.4.8;
 
 import './Storage.sol';
 
+
 library StorageInterface {
     struct Config {
         Storage store;

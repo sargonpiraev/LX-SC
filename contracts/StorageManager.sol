@@ -1,7 +1,8 @@
 pragma solidity 0.4.8;
 
-import './Roles2LibraryAdapter.sol';
-import './MultiEventsHistoryAdapter.sol';
+import './adapters/MultiEventsHistoryAdapter.sol';
+import './adapters/Roles2LibraryAdapter.sol';
+
 
 contract StorageManager is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     mapping(address => mapping(bytes32 => bool)) internal approvedContracts;

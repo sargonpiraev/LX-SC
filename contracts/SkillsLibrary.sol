@@ -1,8 +1,8 @@
 pragma solidity 0.4.8;
 
-import './StorageAdapter.sol';
-import './MultiEventsHistoryAdapter.sol';
-import './Roles2LibraryAdapter.sol';
+import './adapters/MultiEventsHistoryAdapter.sol';
+import './adapters/Roles2LibraryAdapter.sol';
+import './adapters/StorageAdapter.sol';
 
 
 /**

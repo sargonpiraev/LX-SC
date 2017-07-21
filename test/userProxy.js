@@ -1,6 +1,10 @@
-const Reverter = require('./helpers/reverter');
+"use strict";
+
 const UserProxy = artifacts.require('./UserProxy.sol');
 const UserProxyTester = artifacts.require('./UserProxyTester.sol');
+
+const Reverter = require('./helpers/reverter');
+
 
 contract('UserProxy', function(accounts) {
   const reverter = new Reverter(web3);

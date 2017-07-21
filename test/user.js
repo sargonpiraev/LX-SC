@@ -1,8 +1,11 @@
-const UserProxyTester = artifacts.require('./UserProxyTester.sol');
-const EventsHistory = artifacts.require('./EventsHistory.sol');
-const Reverter = require('./helpers/reverter');
-const User = artifacts.require('./User.sol');
+"use strict";
+
 const Mock = artifacts.require('./Mock.sol');
+const User = artifacts.require('./User.sol');
+const UserProxyTester = artifacts.require('./UserProxyTester.sol');
+
+const Reverter = require('./helpers/reverter');
+
 
 contract('User', function(accounts) {
   const reverter = new Reverter(web3);

@@ -1,8 +1,9 @@
 pragma solidity 0.4.8;
 
-import './Owned.sol';
-import './StorageAdapter.sol';
-import './MultiEventsHistoryAdapter.sol';
+import './adapters/MultiEventsHistoryAdapter.sol';
+import './adapters/StorageAdapter.sol';
+import './base/Owned.sol';
+
 
 contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
     StorageInterface.AddressBoolMapping rootUsers;

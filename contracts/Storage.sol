@@ -1,12 +1,13 @@
 pragma solidity 0.4.8;
 
-import './Roles2LibraryAdapter.sol';
+import './base/Owned.sol';
+
 
 contract Manager {
     function isAllowed(address _actor, bytes32 _role) constant returns(bool);
 }
 
-contract Storage is Roles2LibraryAdapter {
+contract Storage is Owned {
     struct Crate {
         mapping(bytes32 => uint) uints;
         mapping(bytes32 => address) addresses;
@@ -25,9 +26,7 @@ contract Storage is Roles2LibraryAdapter {
         _;
     }
 
-    function Storage(address _roles2Library) Roles2LibraryAdapter(_roles2Library) {}
-
-    function setManager(Manager _manager) auth() returns(bool) {
+    function setManager(Manager _manager) onlyContractOwner() returns(bool) {
         manager = _manager;
         return true;
     }

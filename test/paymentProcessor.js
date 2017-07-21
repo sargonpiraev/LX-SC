@@ -1,10 +1,14 @@
-const Reverter = require('./helpers/reverter');
-const Asserts = require('./helpers/asserts');
-const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
+"use strict";
+
 const Mock = artifacts.require('./Mock.sol');
 const PaymentGatewayInterface = artifacts.require('./PaymentGatewayInterface.sol');
-const Promise = require('bluebird');
+const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+
+const Asserts = require('./helpers/asserts');
+const Promise = require('bluebird');
+const Reverter = require('./helpers/reverter');
+
 
 contract('PaymentProcessor', function(accounts) {
   const reverter = new Reverter(web3);

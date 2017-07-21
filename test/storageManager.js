@@ -1,9 +1,13 @@
-const Reverter = require('./helpers/reverter');
-const Asserts = require('./helpers/asserts');
-const StorageManager = artifacts.require('./StorageManager.sol');
+"use strict";
+
+const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
-const Mock = artifacts.require('./Mock.sol');
+const StorageManager = artifacts.require('./StorageManager.sol');
+
+const Asserts = require('./helpers/asserts');
+const Reverter = require('./helpers/reverter');
+
 
 contract('StorageManager', function(accounts) {
   const reverter = new Reverter(web3);

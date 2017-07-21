@@ -1,6 +1,6 @@
 pragma solidity 0.4.8;
 
-import './StorageInterface.sol';
+import '../StorageInterface.sol';
 
 contract StorageAdapter {
     using StorageInterface for *;
