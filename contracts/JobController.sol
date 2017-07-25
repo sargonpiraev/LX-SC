@@ -132,6 +132,8 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     function calculatePaycheck(uint _jobId) constant returns(uint) {
         address worker = store.get(jobWorker, _jobId);
         if (store.get(jobState, _jobId) == uint(JobState.FINISHED)) {
+            // Means that participants have agreed on job completion
+            // Full reward should be released
             uint maxEstimatedTime = store.get(jobOfferEstimate, _jobId, worker) + 60;
             uint timeSpent = (store.get(jobFinishTime, _jobId) -
                               store.get(jobStartTime, _jobId) -
@@ -150,12 +152,16 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             store.get(jobState, _jobId) == uint(JobState.STARTED) ||
             store.get(jobState, _jobId) == uint(JobState.PENDING_FINISH)
         ) {
+            // Job has been canceled right after start or right before completion
+            // Minimum of 1 working hour + worker onTop should be released
             return store.get(jobOfferOntop, _jobId, worker) +
                    store.get(jobOfferRate, _jobId, worker) * 60;
         } else if (
             store.get(jobState, _jobId) == uint(JobState.ACCEPTED) ||
             store.get(jobState, _jobId) == uint(JobState.PENDING_START)
         ) {
+            // Job hasn't even started yet, but been accepted
+            // Release just worker onTop
             return store.get(jobOfferOntop, _jobId, worker);
         }
     }
