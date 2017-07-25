@@ -85,10 +85,10 @@ contract('JobController', function(accounts) {
       FINISHED: false,
       FINALIZED: false
     };
+
     for (let stage in results) {
       stages[stage] = results[stage];
     }
-
 
     const jobId = 1;
     const jobArea = 4;
@@ -133,9 +133,7 @@ contract('JobController', function(accounts) {
 
       .then(() => jobController.releasePayment(jobId))
       .then(() => operation.call(...args))
-      .then(result => assert.equal(result, stages.FINALIZED))
-
-      //.then(console.log('hi'));
+      .then(result => assert.equal(result, stages.FINALIZED));
   }
 
 
@@ -238,726 +236,788 @@ contract('JobController', function(accounts) {
   });
 
 
-  it('should check auth on setup event history', () => {
-    const caller = accounts[1];
-    const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => ignoreAuth(false))
-    .then(() => mock.expect(
-      jobController.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
-        jobController.address,
-        jobController.contract.setupEventsHistory.getData().slice(0, 10)
-      ), 0)
-    )
-    .then(() => jobController.setupEventsHistory(newAddress, {from: caller}))
-    .then(assertExpectations());
-  });
+  describe('Contract setup', () => {
 
-  it('should check auth on setting a payment processor', () => {
-    const caller = accounts[1];
-    const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => ignoreAuth(false))
-    .then(() => mock.expect(
-      jobController.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
-        jobController.address,
-        jobController.contract.setPaymentProcessor.getData().slice(0, 10)
-      ), 0)
-    )
-    .then(() => jobController.setPaymentProcessor(newAddress, {from: caller}))
-    .then(assertExpectations());
-  });
-
-  it('should check auth on setting a user library', () => {
-    const caller = accounts[1];
-    const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => ignoreAuth(false))
-    .then(() => mock.expect(
-      jobController.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
-        jobController.address,
-        jobController.contract.setUserLibrary.getData().slice(0, 10)
-      ), 0)
-    )
-    .then(() => jobController.setUserLibrary(newAddress, {from: caller}))
-    .then(assertExpectations());
-  });
-
-  it('should check auth on setting ERC20 library', () => {
-    const caller = accounts[1];
-    const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => ignoreAuth(false))
-    .then(() => mock.expect(
-      jobController.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
-        jobController.address,
-        jobController.contract.setERC20Library.getData().slice(0, 10)
-      ), 0)
-    )
-    .then(() => jobController.setERC20Library(newAddress, {from: caller}))
-    .then(assertExpectations());
-  });
-
-
-  it('should allow anyone to post a job', () => {
-    return Promise.each(accounts, account => {
-      return jobController.postJob.call(4, 4, 4, 'Job details', {from: account})
-        .then(jobId => assert.equal(jobId, 1));
+    it('should check auth on setup event history', () => {
+      const caller = accounts[1];
+      const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+        .then(() => ignoreAuth(false))
+        .then(() => mock.expect(
+          jobController.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            jobController.address,
+            jobController.contract.setupEventsHistory.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => jobController.setupEventsHistory(newAddress, {from: caller}))
+        .then(assertExpectations());
     });
+
+    it('should check auth on setting a payment processor', () => {
+      const caller = accounts[1];
+      const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+        .then(() => ignoreAuth(false))
+        .then(() => mock.expect(
+          jobController.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            jobController.address,
+            jobController.contract.setPaymentProcessor.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => jobController.setPaymentProcessor(newAddress, {from: caller}))
+        .then(assertExpectations());
+    });
+
+    it('should check auth on setting a user library', () => {
+      const caller = accounts[1];
+      const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+        .then(() => ignoreAuth(false))
+        .then(() => mock.expect(
+          jobController.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            jobController.address,
+            jobController.contract.setUserLibrary.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => jobController.setUserLibrary(newAddress, {from: caller}))
+        .then(assertExpectations());
+    });
+
+    it('should check auth on setting ERC20 library', () => {
+      const caller = accounts[1];
+      const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+        .then(() => ignoreAuth(false))
+        .then(() => mock.expect(
+          jobController.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            jobController.address,
+            jobController.contract.setERC20Library.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => jobController.setERC20Library(newAddress, {from: caller}))
+        .then(assertExpectations());
+    });
+
   });
 
-  it('should NOT allow to post a job with even area mask', () => {
-    const area = 2;
-    const category = 4;
-    const skills = 555;
-    return Promise.resolve()
-      .then(() => jobController.postJob.call(area, category, skills, "Job details"))
-      .then(asserts.equal(0));
+
+  describe('Job posting', () => {
+
+    it('should allow anyone to post a job', () => {
+      return Promise.each(accounts, account => {
+        return jobController.postJob.call(4, 4, 4, 'Job details', {from: account})
+          .then(jobId => assert.equal(jobId, 1));
+      });
+    });
+
+    it('should NOT allow to post a job with even area mask', () => {
+      const area = 2;
+      const category = 4;
+      const skills = 555;
+      return Promise.resolve()
+        .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+        .then(asserts.equal(0));
+    });
+
+    it('should NOT allow to post a job with multiple area mask', () => {
+      const area = 5;
+      const category = 4;
+      const skills = 555;
+      return Promise.resolve()
+        .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+        .then(asserts.equal(0));
+    });
+
+    it('should NOT allow to post a job with even category mask', () => {
+      const area = 1;
+      const category = 2;
+      const skills = 555;
+      return Promise.resolve()
+        .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+        .then(asserts.equal(0));
+    });
+
+    it('should NOT allow to post a job with multiple category mask', () => {
+      const area = 1;
+      const category = 5;
+      const skills = 555;
+      return Promise.resolve()
+        .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+        .then(asserts.equal(0));
+    });
+
+    it('should NOT allow to post a job with no skills', () => {
+      const area = 1;
+      const category = 4;
+      const skills = 0;
+      return Promise.resolve()
+        .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+        .then(asserts.equal(0));
+    });
+
   });
 
-  it('should NOT allow to post a job with multiple area mask', () => {
-    const area = 5;
-    const category = 4;
-    const skills = 555;
-    return Promise.resolve()
-      .then(() => jobController.postJob.call(area, category, skills, "Job details"))
-      .then(asserts.equal(0));
-  });
 
-  it('should NOT allow to post a job with even category mask', () => {
-    const area = 1;
-    const category = 2;
-    const skills = 555;
-    return Promise.resolve()
-      .then(() => jobController.postJob.call(area, category, skills, "Job details"))
-      .then(asserts.equal(0));
-  });
+  describe('Post job offer', () => {
 
-  it('should NOT allow to post a job with multiple category mask', () => {
-    const area = 1;
-    const category = 5;
-    const skills = 555;
-    return Promise.resolve()
-      .then(() => jobController.postJob.call(area, category, skills, "Job details"))
-      .then(asserts.equal(0));
-  });
+    it('should allow anyone to post an offer for a job only when a job has CREATED status', () => {
+      const operation = jobController.postJobOffer;
+      const args = [1, FakeCoin.address, '0x12F2A36ECD555', 180, '0x12F2A36ECD555', {from: worker}];
+      const results = {CREATED: true};
+      return Promise.resolve()
+        .then(() => operationAllowance(operation, args, results));
+    });
 
-  it('should NOT allow to post a job with no skills', () => {
-    const area = 1;
-    const category = 4;
-    const skills = 0;
-    return Promise.resolve()
-      .then(() => jobController.postJob.call(area, category, skills, "Job details"))
-      .then(asserts.equal(0));
-  });
+    it("should check skills on posting job offer", () => {
+      return jobController.postJob(4, 4, 4, 'Job details', {from: client})
+        .then(() => ignoreSkillsCheck(false))
+        .then(() => mock.expect(
+          jobController.address,
+          0,
+          userLibraryInterface.hasSkills.getData(
+            worker, 4, 4, 4
+          ),
+          0
+        ))
+        .then(() => jobController.postJobOffer(1, fakeCoin.address, 1000, 180, 1000, {from: worker}))
+        .then(assertExpectations());
+    });
 
-  it('should allow anyone to post an offer for a job only when a job has CREATED status', () => {
-    const operation = jobController.postJobOffer;
-    const args = [1, FakeCoin.address, '0x12F2A36ECD555', 180, '0x12F2A36ECD555', {from: worker}];
-    const results = {CREATED: true};
-    return Promise.resolve()
-      .then(() => operationAllowance(operation, args, results));
-  });
+    it("should NOT post job offer if worker skills does not match", () => {
+      return jobController.setUserLibrary(userLibrary.address)
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer.call(
+          1, fakeCoin.address, 1000, 180, 1000, {from: worker})
+        )
+        .then(assert.isFalse);
+    });
 
-  it("should check skills on posting job offer", () => {
-    return jobController.postJob(4, 4, 4, 'Job details', {from: client})
-      .then(() => ignoreSkillsCheck(false))
-      .then(() => mock.expect(
-        jobController.address,
-        0,
-        userLibraryInterface.hasSkills.getData(
-          worker, 4, 4, 4
-        ),
-        0
-      ))
-      .then(() => jobController.postJobOffer(1, fakeCoin.address, 1000, 180, 1000, {from: worker}))
-      .then(assertExpectations());
-  });
+    it("should post job offer if worker skills match", () => {
+      return Promise.resolve()
+        .then(() => jobController.setUserLibrary(userLibrary.address))
+        .then(() => jobController.postJob(16, 1, 1, 'Job details', {from: client}))
+        .then(() => userLibrary.setMany(worker, 16, [1], [1]))
+        .then(() => jobController.postJobOffer.call(
+          1, fakeCoin.address, 1000, 180, 1000, {from: worker})
+        )
+        .then(assert.isTrue);
+    });
 
-  it("should NOT post job offer if worker skills does not match", () => {
-    return jobController.setUserLibrary(userLibrary.address)
-      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
-      .then(() => jobController.postJobOffer.call(
-        1, fakeCoin.address, 1000, 180, 1000, {from: worker})
-      )
-      .then(assert.isFalse);
-  });
-
-  it("should post job offer if worker skills match", () => {
-    return Promise.resolve()
-      .then(() => jobController.setUserLibrary(userLibrary.address))
-      .then(() => jobController.postJob(16, 1, 1, 'Job details', {from: client}))
-      .then(() => userLibrary.setMany(worker, 16, [1], [1]))
-      .then(() => jobController.postJobOffer.call(
-        1, fakeCoin.address, 1000, 180, 1000, {from: worker})
-      )
-      .then(assert.isTrue);
-  });
-
-  it('should NOT post job offer if unsupported token contract is provided', () => {
-    return Promise.resolve()
-      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
-      .then(() => jobController.postJobOffer.call(
+    it('should NOT post job offer if unsupported token contract is provided', () => {
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer.call(
           1, Mock.address, '0xfffffffffffffffffff', 1, 1, {from: worker}
+          )
         )
-      )
-      .then(assert.isFalse);
+        .then(assert.isFalse);
+    });
+
   });
 
 
-  it('should allow assigned worker to request work start only when a job has ACCEPTED status', () => {
-    const operation = jobController.startWork;
-    const args = [1, {from: worker}];
-    const results = {ACCEPTED: true};
-    return Promise.resolve()
-      .then(() => operationAllowance(operation, args, results));
-  });
+  describe('Accept job offer', () => {
 
-  it('should allow client to confirm start work only when job has PENDING_START status', () => {
-    const operation = jobController.confirmStartWork;
-    const args = [1, {from: client}];
-    const results = {PENDING_START: true};
-    return Promise.resolve()
-      .then(() => operationAllowance(operation, args, results));
-  });
-
-  it('should allow assigned worker to request end work only when job has STARTED status', () => {
-    const operation = jobController.endWork;
-    const args = [1, {from: worker}];
-    const results = {STARTED: true};
-    return Promise.resolve()
-      .then(() => operationAllowance(operation, args, results));
-  });
-
-  it('should allow client to confirm end work only when job has PENDING_FINISH status', () => {
-    const operation = jobController.confirmEndWork;
-    const args = [1, {from: client}];
-    const results = {PENDING_FINISH: true};
-    return Promise.resolve()
-      .then(() => operationAllowance(operation, args, results));
-  });
-
-  it('should allow anyone to release payment only when job has FINISHED status', () => {
-    const operation = jobController.releasePayment;
-    const args = [1, {from: accounts[3]}];
-    const results = {FINISHED: true};
-    return Promise.resolve()
-      .then(() => operationAllowance(operation, args, results));
-  });
-
-
-  it('should throw on `acceptOffer` if client has insufficient funds', () => {
-    return Promise.resolve()
-      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
-      .then(() => jobController.postJobOffer(
+    it('should throw on `acceptOffer` if client has insufficient funds', () => {
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
           1, fakeCoin.address, '0xfffffffffffffffffff', 1, 1, {from: worker}
+          )
         )
-      )
-      .then(() => asserts.throws(
-        jobController.acceptOffer(1, {from: client})
-      ));
-  });
+        .then(() => asserts.throws(
+          jobController.acceptOffer(1, {from: client})
+        ));
+    });
 
-  it('should lock correct amount of tokens on `acceptOffer`', () => {
-    const jobId = 1;
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
+    it('should lock correct amount of tokens on `acceptOffer`', () => {
+      const jobId = 1;
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
 
-    let clientBalanceBefore;
-    let workerBalanceBefore;
+      let clientBalanceBefore;
+      let workerBalanceBefore;
 
-    const estimatedLockAmount = Math.floor(
-      ((workerRate * (jobEstimate + 60) + workerOnTop) * 11) / 10
-    );
+      const estimatedLockAmount = Math.floor(
+        ((workerRate * (jobEstimate + 60) + workerOnTop) * 11) / 10
+      );
 
-    return Promise.resolve()
-      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
-      .then(result => clientBalanceBefore = result)
-      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
-      .then(result => workerBalanceBefore = result)
-      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
-      .then(() => jobController.postJobOffer(
-        jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
-      ))
-      .then(() => jobController.acceptOffer(1, worker, {from: client}))
-      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
-      .then(result => {
-        const clientBalanceAfter = clientBalanceBefore.sub(estimatedLockAmount);
-        assert.equal(result.toString(), clientBalanceAfter.toString())
-      })
-      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), estimatedLockAmount.toString()))
-      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), workerBalanceBefore.toString()));
-  });
+      return Promise.resolve()
+        .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+        .then(result => clientBalanceBefore = result)
+        .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+        .then(result => workerBalanceBefore = result)
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
+          jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(1, worker, {from: client}))
+        .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+        .then(result => {
+          const clientBalanceAfter = clientBalanceBefore.sub(estimatedLockAmount);
+          assert.equal(result.toString(), clientBalanceAfter.toString())
+        })
+        .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), estimatedLockAmount.toString()))
+        .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), workerBalanceBefore.toString()));
+    });
 
-
-  it('should emit all events on a workflow with completed job', () => {
-    const skillsArea = '4';
-    const skillsCategory = '4';
-    const skills = '555';
-    const jobDetails = "Job details";
-
-    const workerRate = '0x12f2a36ecd555';
-    const workerOnTop = '0x12f2a36ecd555';
-    const jobEstimate = 180;
-
-    return Promise.resolve()
-      // Post job
-      .then(() => jobController.postJob(skillsArea, skillsCategory, skills, jobDetails, {from: client}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'JobPosted');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        assert.equal(log.client, client);
-        assert.equal(log.skillsArea.toString(), skillsArea);
-        assert.equal(log.skillsCategory.toString(), skillsCategory);
-        assert.equal(log.skills.toString(), skills);
-        // TODO: handle hash matches
-      })
-      // Post job offer
-      .then(() => jobController.postJobOffer(
-          1, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
-        )
-      )
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'JobOfferPosted');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        assert.equal(log.worker, worker);
-        assert.equal('0x' + log.rate.toString(16), workerRate);
-        assert.equal(log.estimate.toString(), jobEstimate);
-        assert.equal('0x' + log.ontop.toString(16), workerOnTop);
-      })
-      // Accept job offer
-      .then(() => jobController.acceptOffer(1, worker, {from: client}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'JobOfferAccepted');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        assert.equal(log.worker, worker);
-      })
-      // Request start of work
-      .then(() => jobController.startWork(1, {from: worker}))
-      .then(tx => assert.equal(tx.logs.length, 0))
-      // Confirm start of work
-      .then(() => jobController.confirmStartWork(1, {from: client}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'WorkStarted');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        const now = new Date() / 1000;
-        assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
-      })
-      // Pause work
-      .then(() => jobController.pauseWork(1, {from: worker}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'WorkPaused');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        const now = new Date() / 1000;
-        assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
-      })
-      // Resume work
-      .then(() => jobController.resumeWork(1, {from: worker}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'WorkResumed');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        const now = new Date() / 1000;
-        assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
-      })
-      // Add more time
-      .then(() => jobController.addMoreTime(1, 60, {from: client}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'TimeAdded');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        assert.equal(log.time.toString(), '60');
-      })
-      // Request end of work
-      .then(() => jobController.endWork(1, {from: worker}))
-      .then(tx => assert.equal(tx.logs.length, 0))
-      // Confirm end of work
-      .then(() => jobController.confirmEndWork(1, {from: client}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'WorkFinished');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        const now = new Date() / 1000;
-        assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
-      })
-      .then(() => jobController.releasePayment(1))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'PaymentReleased');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-      });
-  });
-
-  it('should emit all events on a workflow with canceled job', () => {
-    const skillsArea = '4';
-    const skillsCategory = '4';
-    const skills = '555';
-    const jobDetails = "Job details";
-
-    const workerRate = '0x12f2a36ecd555';
-    const workerOnTop = '0x12f2a36ecd555';
-    const jobEstimate = 180;
-
-    return Promise.resolve()
-      // Post job
-      .then(() => jobController.postJob(skillsArea, skillsCategory, skills, jobDetails, {from: client}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'JobPosted');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        assert.equal(log.client, client);
-        assert.equal(log.skillsArea.toString(), skillsArea);
-        assert.equal(log.skillsCategory.toString(), skillsCategory);
-        assert.equal(log.skills.toString(), skills);
-        // TODO: handle hash matches
-      })
-      // Post job offer
-      .then(() => jobController.postJobOffer(
-          1, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
-        )
-      )
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'JobOfferPosted');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        assert.equal(log.worker, worker);
-        assert.equal('0x' + log.rate.toString(16), workerRate);
-        assert.equal(log.estimate.toString(), jobEstimate);
-        assert.equal('0x' + log.ontop.toString(16), workerOnTop);
-      })
-      // Accept job offer
-      .then(() => jobController.acceptOffer(1, worker, {from: client}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'JobOfferAccepted');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        assert.equal(log.worker, worker);
-      })
-      // Request start of work
-      .then(() => jobController.startWork(1, {from: worker}))
-      .then(tx => assert.equal(tx.logs.length, 0))
-      // Confirm start of work
-      .then(() => jobController.confirmStartWork(1, {from: client}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'WorkStarted');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        const now = new Date() / 1000;
-        assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
-      })
-      // Pause work
-      .then(() => jobController.pauseWork(1, {from: worker}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'WorkPaused');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        const now = new Date() / 1000;
-        assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
-      })
-      // Resume work
-      .then(() => jobController.resumeWork(1, {from: worker}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'WorkResumed');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        const now = new Date() / 1000;
-        assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
-      })
-      // Add more time
-      .then(() => jobController.addMoreTime(1, 60, {from: client}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'TimeAdded');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-        assert.equal(log.time.toString(), '60');
-      })
-      // Request end of work
-      .then(() => jobController.endWork(1, {from: worker}))
-      .then(tx => assert.equal(tx.logs.length, 0))
-      // Cancel job
-      .then(() => jobController.cancelJob(1, {from: client}))
-      .then(tx => {
-        assert.equal(tx.logs.length, 1);
-        assert.equal(tx.logs[0].event, 'JobCanceled');
-        const log = tx.logs[0].args;
-        assert.equal(log.self, jobController.address);
-        assert.equal(log.jobId.toString(), '1');
-      });
   });
 
 
-  it('should release just jobOfferOnTop on `cancelJob` on ACCEPTED job stage', () => {
-    const jobId = 1;
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
+  describe('Job status restrictions', () => {
 
-    let clientBalanceBefore;
-    let workerBalanceBefore;
+    it('should allow assigned worker to request work start only when a job has ACCEPTED status', () => {
+      const operation = jobController.startWork;
+      const args = [1, {from: worker}];
+      const results = {ACCEPTED: true};
+      return Promise.resolve()
+        .then(() => operationAllowance(operation, args, results));
+    });
 
-    return Promise.resolve()
-      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
-      .then(result => clientBalanceBefore = result)
-      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
-      .then(result => workerBalanceBefore = result)
-      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
-      .then(() => jobController.postJobOffer(
-        jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
-      ))
+    it('should allow client to confirm start work only when job has PENDING_START status', () => {
+      const operation = jobController.confirmStartWork;
+      const args = [1, {from: client}];
+      const results = {PENDING_START: true};
+      return Promise.resolve()
+        .then(() => operationAllowance(operation, args, results));
+    });
+
+    it('should allow assigned worker to request end work only when job has STARTED status', () => {
+      const operation = jobController.endWork;
+      const args = [1, {from: worker}];
+      const results = {STARTED: true};
+      return Promise.resolve()
+        .then(() => operationAllowance(operation, args, results));
+    });
+
+    it('should allow client to confirm end work only when job has PENDING_FINISH status', () => {
+      const operation = jobController.confirmEndWork;
+      const args = [1, {from: client}];
+      const results = {PENDING_FINISH: true};
+      return Promise.resolve()
+        .then(() => operationAllowance(operation, args, results));
+    });
+
+    it('should allow anyone to release payment only when job has FINISHED status', () => {
+      const operation = jobController.releasePayment;
+      const args = [1, {from: accounts[3]}];
+      const results = {FINISHED: true};
+      return Promise.resolve()
+        .then(() => operationAllowance(operation, args, results));
+    });
+
+    it('should NOT allow to cancel job if it was agreed as FINISHED', () => {
+      const jobId = 1;
+      const jobArea = 4;
+      const jobCategory = 4;
+      const jobSkills = 4;
+      const jobDetails = 'Job details';
+
+      const workerRate = '0x12f2a36ecd555';
+      const workerOnTop = '0x12f2a36ecd555';
+      const jobEstimate = 180;
+
+      return Promise.resolve()
+      .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
+
+      .then(() => jobController.postJobOffer(jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}))
+      .then(() => paymentProcessor.approve(jobId))
       .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
-      .then(() => jobController.cancelJob(jobId, {from: client}))
-      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(workerOnTop).toString()))
-      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), workerBalanceBefore.add(workerOnTop).toString()))
-      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), '0'));
-  });
 
-  it('should release just jobOfferOnTop on `cancelJob` on PENDING_START job stage', () => {
-    const jobId = 1;
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
-
-    let clientBalanceBefore;
-    let workerBalanceBefore;
-
-    return Promise.resolve()
-      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
-      .then(result => clientBalanceBefore = result)
-      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
-      .then(result => workerBalanceBefore = result)
-      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
-      .then(() => jobController.postJobOffer(
-        jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
-      ))
-      .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
       .then(() => jobController.startWork(jobId, {from: worker}))
-      .then(() => jobController.cancelJob(jobId, {from: client}))
-      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(workerOnTop).toString()))
-      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), workerBalanceBefore.add(workerOnTop).toString()))
-      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), '0'));
-  });
 
-  it('should release jobOfferOnTop + 1 hour of work on `cancelJob` on STARTED job stage', () => {
-    const jobId = 1;
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
-
-    let clientBalanceBefore;
-    let workerBalanceBefore;
-
-    const jobPaymentEstimate = workerRate * 60 + workerOnTop;
-
-    return Promise.resolve()
-      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
-      .then(result => clientBalanceBefore = result)
-      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
-      .then(result => workerBalanceBefore = result)
-      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
-      .then(() => jobController.postJobOffer(
-        jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
-      ))
-      .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
-      .then(() => jobController.startWork(jobId, {from: worker}))
       .then(() => jobController.confirmStartWork(jobId, {from: client}))
-      .then(() => jobController.cancelJob(jobId, {from: client}))
-      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(jobPaymentEstimate).toString()))
-      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), workerBalanceBefore.add(jobPaymentEstimate).toString()))
-      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), '0'));
-  });
 
-  it('should release jobOfferOnTop + 1 hour of work on `cancelJob` on PENDING_FINISH job stage', () => {
-    const jobId = 1;
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
+      .then(() => jobController.endWork(1, {from: worker}))
 
-    let clientBalanceBefore;
-    let workerBalanceBefore;
+      .then(() => jobController.confirmEndWork(jobId, {from: client}))
 
-    const jobPaymentEstimate = workerRate * 60 + workerOnTop;
+      .then(() => jobController.getJobState(jobId))
+      .then(asserts.equal(6))
+      .then(() => jobController.cancelJob.call(jobId, {from: client}))
+      .then(assert.isFalse);
 
-    return Promise.resolve()
-      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
-      .then(result => clientBalanceBefore = result)
-      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
-      .then(result => workerBalanceBefore = result)
-      .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
-      .then(() => jobController.postJobOffer(
-        jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
-      ))
-      .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
-      .then(() => jobController.startWork(jobId, {from: worker}))
-      .then(() => jobController.confirmStartWork(jobId, {from: client}))
-      .then(() => jobController.endWork(jobId, {from: worker}))
-      .then(() => jobController.cancelJob(jobId, {from: client}))
-      .then(() => paymentGateway.getBalance(client, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(jobPaymentEstimate).toString()))
-      .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), workerBalanceBefore.add(jobPaymentEstimate).toString()))
-      .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
-      .then(result => assert.equal(result.toString(), '0'));
+    });  // TODO!
+
   });
 
 
-  it('should release correct amount of tokens on `releasePayment` when worked for exactly the estimated time', () => {
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
-    const timeSpent = jobEstimate;
-    const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
-    return onReleasePayment(timeSpent, jobPaymentEstimate);
+  describe('Events', () => {
+
+    it('should emit all events on a workflow with completed job', () => {
+      const skillsArea = '4';
+      const skillsCategory = '4';
+      const skills = '555';
+      const jobDetails = "Job details";
+
+      const workerRate = '0x12f2a36ecd555';
+      const workerOnTop = '0x12f2a36ecd555';
+      const jobEstimate = 180;
+
+      return Promise.resolve()
+      // Post job
+        .then(() => jobController.postJob(skillsArea, skillsCategory, skills, jobDetails, {from: client}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'JobPosted');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          assert.equal(log.client, client);
+          assert.equal(log.skillsArea.toString(), skillsArea);
+          assert.equal(log.skillsCategory.toString(), skillsCategory);
+          assert.equal(log.skills.toString(), skills);
+          // TODO: handle hash matches
+        })
+        // Post job offer
+        .then(() => jobController.postJobOffer(
+          1, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+          )
+        )
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'JobOfferPosted');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          assert.equal(log.worker, worker);
+          assert.equal('0x' + log.rate.toString(16), workerRate);
+          assert.equal(log.estimate.toString(), jobEstimate);
+          assert.equal('0x' + log.ontop.toString(16), workerOnTop);
+        })
+        // Accept job offer
+        .then(() => jobController.acceptOffer(1, worker, {from: client}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'JobOfferAccepted');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          assert.equal(log.worker, worker);
+        })
+        // Request start of work
+        .then(() => jobController.startWork(1, {from: worker}))
+        .then(tx => assert.equal(tx.logs.length, 0))
+        // Confirm start of work
+        .then(() => jobController.confirmStartWork(1, {from: client}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'WorkStarted');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          const now = new Date() / 1000;
+          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
+        })
+        // Pause work
+        .then(() => jobController.pauseWork(1, {from: worker}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'WorkPaused');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          const now = new Date() / 1000;
+          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
+        })
+        // Resume work
+        .then(() => jobController.resumeWork(1, {from: worker}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'WorkResumed');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          const now = new Date() / 1000;
+          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
+        })
+        // Add more time
+        .then(() => jobController.addMoreTime(1, 60, {from: client}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'TimeAdded');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          assert.equal(log.time.toString(), '60');
+        })
+        // Request end of work
+        .then(() => jobController.endWork(1, {from: worker}))
+        .then(tx => assert.equal(tx.logs.length, 0))
+        // Confirm end of work
+        .then(() => jobController.confirmEndWork(1, {from: client}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'WorkFinished');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          const now = new Date() / 1000;
+          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
+        })
+        .then(() => jobController.releasePayment(1))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'PaymentReleased');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+        });
+    });
+
+    it('should emit all events on a workflow with canceled job', () => {
+      const skillsArea = '4';
+      const skillsCategory = '4';
+      const skills = '555';
+      const jobDetails = "Job details";
+
+      const workerRate = '0x12f2a36ecd555';
+      const workerOnTop = '0x12f2a36ecd555';
+      const jobEstimate = 180;
+
+      return Promise.resolve()
+      // Post job
+        .then(() => jobController.postJob(skillsArea, skillsCategory, skills, jobDetails, {from: client}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'JobPosted');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          assert.equal(log.client, client);
+          assert.equal(log.skillsArea.toString(), skillsArea);
+          assert.equal(log.skillsCategory.toString(), skillsCategory);
+          assert.equal(log.skills.toString(), skills);
+          // TODO: handle hash matches
+        })
+        // Post job offer
+        .then(() => jobController.postJobOffer(
+          1, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+          )
+        )
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'JobOfferPosted');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          assert.equal(log.worker, worker);
+          assert.equal('0x' + log.rate.toString(16), workerRate);
+          assert.equal(log.estimate.toString(), jobEstimate);
+          assert.equal('0x' + log.ontop.toString(16), workerOnTop);
+        })
+        // Accept job offer
+        .then(() => jobController.acceptOffer(1, worker, {from: client}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'JobOfferAccepted');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          assert.equal(log.worker, worker);
+        })
+        // Request start of work
+        .then(() => jobController.startWork(1, {from: worker}))
+        .then(tx => assert.equal(tx.logs.length, 0))
+        // Confirm start of work
+        .then(() => jobController.confirmStartWork(1, {from: client}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'WorkStarted');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          const now = new Date() / 1000;
+          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
+        })
+        // Pause work
+        .then(() => jobController.pauseWork(1, {from: worker}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'WorkPaused');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          const now = new Date() / 1000;
+          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
+        })
+        // Resume work
+        .then(() => jobController.resumeWork(1, {from: worker}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'WorkResumed');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          const now = new Date() / 1000;
+          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
+        })
+        // Add more time
+        .then(() => jobController.addMoreTime(1, 60, {from: client}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'TimeAdded');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+          assert.equal(log.time.toString(), '60');
+        })
+        // Request end of work
+        .then(() => jobController.endWork(1, {from: worker}))
+        .then(tx => assert.equal(tx.logs.length, 0))
+        // Cancel job
+        .then(() => jobController.cancelJob(1, {from: client}))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].event, 'JobCanceled');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), '1');
+        });
+    });
+
   });
 
-  it('should release correct amount of tokens on `releasePayment` when' +
-     'worked for more than an hour but less than estimated time', () => {
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
-    const timeSpent = 183;
-    const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
-    return onReleasePayment(timeSpent, jobPaymentEstimate);
-  });
 
-  it('should release correct amount of tokens on `releasePayment` when' +
-     'worked for more than estimated time but less than estimated time and an hour', () => {
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
-    const timeSpent = 299;
-    const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
-    return onReleasePayment(timeSpent, jobPaymentEstimate);
-  });
+  describe('Reward release', () => {
 
-  it('should release possible maximum of tokens(estimate + 1 hour)' +
+    it('should release just jobOfferOnTop on `cancelJob` on ACCEPTED job stage', () => {
+      const jobId = 1;
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+
+      let clientBalanceBefore;
+      let workerBalanceBefore;
+
+      return Promise.resolve()
+        .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+        .then(result => clientBalanceBefore = result)
+        .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+        .then(result => workerBalanceBefore = result)
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
+          jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+        .then(() => jobController.cancelJob(jobId, {from: client}))
+        .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(workerOnTop).toString()))
+        .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), workerBalanceBefore.add(workerOnTop).toString()))
+        .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), '0'));
+    });
+
+    it('should release just jobOfferOnTop on `cancelJob` on PENDING_START job stage', () => {
+      const jobId = 1;
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+
+      let clientBalanceBefore;
+      let workerBalanceBefore;
+
+      return Promise.resolve()
+        .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+        .then(result => clientBalanceBefore = result)
+        .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+        .then(result => workerBalanceBefore = result)
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
+          jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+        .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => jobController.cancelJob(jobId, {from: client}))
+        .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(workerOnTop).toString()))
+        .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), workerBalanceBefore.add(workerOnTop).toString()))
+        .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), '0'));
+    });
+
+    it('should release jobOfferOnTop + 1 hour of work on `cancelJob` on STARTED job stage', () => {
+      const jobId = 1;
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+
+      let clientBalanceBefore;
+      let workerBalanceBefore;
+
+      const jobPaymentEstimate = workerRate * 60 + workerOnTop;
+
+      return Promise.resolve()
+        .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+        .then(result => clientBalanceBefore = result)
+        .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+        .then(result => workerBalanceBefore = result)
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
+          jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+        .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => jobController.confirmStartWork(jobId, {from: client}))
+        .then(() => jobController.cancelJob(jobId, {from: client}))
+        .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(jobPaymentEstimate).toString()))
+        .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), workerBalanceBefore.add(jobPaymentEstimate).toString()))
+        .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), '0'));
+    });
+
+    it('should release jobOfferOnTop + 1 hour of work on `cancelJob` on PENDING_FINISH job stage', () => {
+      const jobId = 1;
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+
+      let clientBalanceBefore;
+      let workerBalanceBefore;
+
+      const jobPaymentEstimate = workerRate * 60 + workerOnTop;
+
+      return Promise.resolve()
+        .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+        .then(result => clientBalanceBefore = result)
+        .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+        .then(result => workerBalanceBefore = result)
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
+          jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+        .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => jobController.confirmStartWork(jobId, {from: client}))
+        .then(() => jobController.endWork(jobId, {from: worker}))
+        .then(() => jobController.cancelJob(jobId, {from: client}))
+        .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), clientBalanceBefore.sub(jobPaymentEstimate).toString()))
+        .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), workerBalanceBefore.add(jobPaymentEstimate).toString()))
+        .then(() => paymentGateway.getBalance(jobId, fakeCoin.address))
+        .then(result => assert.equal(result.toString(), '0'));
+    });
+
+
+    it('should release correct amount of tokens on `releasePayment` when worked for exactly the estimated time', () => {
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+      const timeSpent = jobEstimate;
+      const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
+      return onReleasePayment(timeSpent, jobPaymentEstimate);
+    });
+
+    it('should release correct amount of tokens on `releasePayment` when' +
+      'worked for more than an hour but less than estimated time', () => {
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+      const timeSpent = 183;
+      const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
+      return onReleasePayment(timeSpent, jobPaymentEstimate);
+    });
+
+    it('should release correct amount of tokens on `releasePayment` when' +
+      'worked for more than estimated time but less than estimated time and an hour', () => {
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+      const timeSpent = 299;
+      const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
+      return onReleasePayment(timeSpent, jobPaymentEstimate);
+    });
+
+    it('should release possible maximum of tokens(estimate + 1 hour)' +
       'when worked for more than estimate and an hour', () => {
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
-    const timeSpent = 340;
-    const jobPaymentEstimate = workerRate * (jobEstimate + 60) + workerOnTop;
-    return onReleasePayment(timeSpent, jobPaymentEstimate);
-  });
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+      const timeSpent = 340;
+      const jobPaymentEstimate = workerRate * (jobEstimate + 60) + workerOnTop;
+      return onReleasePayment(timeSpent, jobPaymentEstimate);
+    });
 
-  it('should release minimum an hour of work on `releasePayment` when worked for less than an hour', () => {
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
-    const timeSpent = 17;
-    const jobPaymentEstimate = workerRate * 60 + workerOnTop;
-    return onReleasePayment(timeSpent, jobPaymentEstimate);
-  });
+    it('should release minimum an hour of work on `releasePayment` when worked for less than an hour', () => {
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+      const timeSpent = 17;
+      const jobPaymentEstimate = workerRate * 60 + workerOnTop;
+      return onReleasePayment(timeSpent, jobPaymentEstimate);
+    });
 
 
-  it('should release correct amount of tokens on `releasePayment` ' +
-     'when worked for exactly the estimated time, with pauses/resumes', () => {
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
-    const timeSpent = 183;
-    const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
-    return onReleasePayment(timeSpent, jobPaymentEstimate, true);
-  });
+    it('should release correct amount of tokens on `releasePayment` ' +
+      'when worked for exactly the estimated time, with pauses/resumes', () => {
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+      const timeSpent = 183;
+      const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
+      return onReleasePayment(timeSpent, jobPaymentEstimate, true);
+    });
 
-  it('should release correct amount of tokens on `releasePayment` when' +
-     'worked for more than an hour but less than estimated time, with pauses/resumes', () => {
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
-    const timeSpent = 183;
-    const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
-    return onReleasePayment(timeSpent, jobPaymentEstimate, true);
-  });
+    it('should release correct amount of tokens on `releasePayment` when' +
+      'worked for more than an hour but less than estimated time, with pauses/resumes', () => {
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+      const timeSpent = 183;
+      const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
+      return onReleasePayment(timeSpent, jobPaymentEstimate, true);
+    });
 
-  it('should release correct amount of tokens on `releasePayment` when' +
-     'worked for more than estimated time but less than estimated time and an hour, with pauses/resumes', () => {
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
-    const timeSpent = 299;
-    const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
-    return onReleasePayment(timeSpent, jobPaymentEstimate, true);
-  });
+    it('should release correct amount of tokens on `releasePayment` when' +
+      'worked for more than estimated time but less than estimated time and an hour, with pauses/resumes', () => {
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+      const timeSpent = 299;
+      const jobPaymentEstimate = workerRate * timeSpent + workerOnTop;
+      return onReleasePayment(timeSpent, jobPaymentEstimate, true);
+    });
 
-  it('should release possible maximum of tokens(estimate + 1 hour)' +
-     'when worked for more than estimate and an hour, with pauses/resumes', () => {
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
-    const timeSpent = 340;
-    const jobPaymentEstimate = workerRate * (jobEstimate + 60) + workerOnTop;
-    return onReleasePayment(timeSpent, jobPaymentEstimate, true);
-  });
+    it('should release possible maximum of tokens(estimate + 1 hour)' +
+      'when worked for more than estimate and an hour, with pauses/resumes', () => {
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+      const timeSpent = 340;
+      const jobPaymentEstimate = workerRate * (jobEstimate + 60) + workerOnTop;
+      return onReleasePayment(timeSpent, jobPaymentEstimate, true);
+    });
 
-  it('should release minimum an hour of work on `releasePayment`' +
-     'when worked for less than an hour, with pauses/resumes', () => {
-    const workerRate = 200000000000;
-    const workerOnTop = 1000000000;
-    const jobEstimate = 240;
-    const timeSpent = 17;
-    const jobPaymentEstimate = workerRate * 60 + workerOnTop;
-    return onReleasePayment(timeSpent, jobPaymentEstimate, true);
+    it('should release minimum an hour of work on `releasePayment`' +
+      'when worked for less than an hour, with pauses/resumes', () => {
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+      const timeSpent = 17;
+      const jobPaymentEstimate = workerRate * 60 + workerOnTop;
+      return onReleasePayment(timeSpent, jobPaymentEstimate, true);
+    });
+
   });
 
 });
