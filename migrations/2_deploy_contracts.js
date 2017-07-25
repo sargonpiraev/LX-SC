@@ -10,6 +10,7 @@ const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
 const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
+const RatingsAndReputationLibrary = artifacts.require('./RatingsAndReputationLibrary.sol');
 const Recovery = artifacts.require('./Recovery.sol');
 const Roles2Library = artifacts.require('./Roles2Library.sol');
 const SkillsLibrary = artifacts.require('./SkillsLibrary.sol');
@@ -46,6 +47,7 @@ module.exports = deployer => {
   .then(() => deployer.deploy(UserProxy))
   .then(() => deployer.deploy(UserProxyTester))
   .then(() => deployer.deploy(UserFactory, Mock.address))
+  .then(() => deployer.deploy(RatingsAndReputationLibrary, Storage.address, 'RatingsAndReputationLibrary', Mock.address))
   .then(() => deployer.deploy(IPFSLibrary, Storage.address, 'IPFSLibrary', Mock.address))
   .then(() => deployer.deploy(SkillsLibrary, Storage.address, 'SkillsLibrary', Mock.address))
   .then(() => deployer.deploy(Roles2Library, Storage.address, 'Roles2Library'))

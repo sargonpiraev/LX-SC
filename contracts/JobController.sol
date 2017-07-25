@@ -32,11 +32,12 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     StorageInterface.UIntUIntMapping jobState;
     StorageInterface.UIntUIntMapping jobStartTime;
     StorageInterface.UIntUIntMapping jobFinishTime;
-
     StorageInterface.UIntBoolMapping jobPaused;
     StorageInterface.UIntUIntMapping jobPausedAt;
     StorageInterface.UIntUIntMapping jobPausedFor;
 
+    // At which state job has been marked as FINALIZED
+    StorageInterface.UIntUIntMapping jobFinalizedAt;
 
     enum JobState { NOT_SET, CREATED, ACCEPTED, PENDING_START, STARTED, PENDING_FINISH, FINISHED, FINALIZED }
 
@@ -94,6 +95,8 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         jobPaused.init('jobPaused');
         jobPausedAt.init('jobPausedAt');
         jobPausedFor.init('jobPausedFor');
+
+        jobFinalizedAt.init('jobFinalizedAt');
     }
 
     function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
@@ -113,7 +116,6 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         userLibrary = _userLibrary;
         return true;
     }
-
 
     function calculateLockAmount(uint _jobId) constant returns(uint) {
         address worker = store.get(jobWorker, _jobId);
@@ -324,6 +326,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return true;
     }
 
+
     function cancelJob(uint _jobId) onlyClient(_jobId) returns(bool) {
         if (
             store.get(jobState, _jobId) != uint(JobState.ACCEPTED) &&
@@ -348,6 +351,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         ) {
             return false;
         }
+        store.set(jobFinalizedAt, _jobId, getJobState(_jobId));
         store.set(jobState, _jobId, uint(JobState.FINALIZED));
         _emitJobCanceled(_jobId);
         return true;
@@ -368,11 +372,11 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         ) {
             return false;
         }
+        store.set(jobFinalizedAt, _jobId, getJobState(_jobId));
         store.set(jobState, _jobId, uint(JobState.FINALIZED));
         _emitPaymentReleased(_jobId);
         return true;
     }
-
 
     function getJobClient(uint _jobId) constant returns(address) {
         return store.get(jobClient, _jobId);
@@ -400,6 +404,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
 
     function getJobState(uint _jobId) constant returns(uint) {
         return uint(store.get(jobState, _jobId));
+    }
+
+    function getFinalState(uint _jobId) constant returns(uint) {
+        return store.get(jobFinalizedAt, _jobId);
     }
 
     function _emitJobPosted(

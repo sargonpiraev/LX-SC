@@ -1,8 +1,6 @@
 "use strict";
 
-const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
-const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const StorageManager = artifacts.require('./StorageManager.sol');
 
 const Asserts = require('./helpers/asserts');
@@ -16,30 +14,9 @@ contract('StorageManager', function(accounts) {
   const asserts = Asserts(assert);
   let storageManager;
   let multiEventsHistory;
-  let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
-  let mock;
-
-  const assertExpectations = (expected = 0, callsCount = null) => {
-    let expectationsCount;
-    return () => {
-      return mock.expectationsLeft()
-      .then(asserts.equal(expected))
-      .then(() => mock.expectationsCount())
-      .then(result => expectationsCount = result)
-      .then(() => mock.callsCount())
-      .then(result => asserts.equal(callsCount === null ? expectationsCount : callsCount)(result));
-    };
-  };
-
-  const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
-  };
 
   before('setup', () => {
-    return Mock.deployed()
-    .then(instance => mock = instance)
-    .then(() => ignoreAuth())
-    .then(() => StorageManager.deployed())
+    return StorageManager.deployed()
     .then(instance => storageManager = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
@@ -48,22 +25,9 @@ contract('StorageManager', function(accounts) {
     .then(reverter.snapshot);
   });
 
-  it('should check auth on setup event history', () => {
-    const caller = accounts[1];
-    return Promise.resolve()
-    .then(() => ignoreAuth(false))
-    .then(() => mock.expect(
-      storageManager.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
-        storageManager.address,
-        storageManager.contract.setupEventsHistory.getData().slice(0, 10)
-      ), 0)
-    )
-    .then(() => storageManager.setupEventsHistory(multiEventsHistory.address, {from: caller}))
-    .then(assertExpectations());
-  });
+  it('should NOT allow to setup events history by non-owner');  // TODO
+
+  it('should allow owner to setup events history');  // TODO
 
   it('should not be accessible when empty', () => {
     const address = '0xffffffffffffffffffffffffffffffffffffffff';
@@ -157,7 +121,7 @@ contract('StorageManager', function(accounts) {
     .then(result => assert.isTrue(result));
   });
 
-  it('should not allow access for unset roles', () => {
+  it('should NOT allow access for unset roles', () => {
     const address = '0xffffffffffffffffffffffffffffffffffffffff';
     const role1 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const role2 = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
@@ -168,47 +132,12 @@ contract('StorageManager', function(accounts) {
     .then(result => assert.isFalse(result));
   });
 
-  it('should check auth on giving an access', () => {
-    const caller = accounts[1];
-    const address = '0xffffffffffffffffffffffffffffffffffffffff';
-    const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => ignoreAuth(false))
-    .then(() => mock.expect(
-      storageManager.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
-        storageManager.address,
-        storageManager.contract.giveAccess.getData().slice(0, 10)
-      ), 0)
-    )
-    .then(() => storageManager.giveAccess(address, role, {from: caller}))
-    .then(assertExpectations())
-    .then(() => storageManager.isAllowed(address, role))
-    .then(result => assert.isFalse(result));
-  });
+  it('should NOT allow to give an access by non-owner');  // TODO
 
-  it('should check auth on blocking an access', () => {
-    const caller = accounts[1];
-    const address = '0xffffffffffffffffffffffffffffffffffffffff';
-    const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => storageManager.giveAccess(address, role))
-    .then(() => ignoreAuth(false))
-    .then(() => mock.expect(
-      storageManager.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
-        storageManager.address,
-        storageManager.contract.blockAccess.getData().slice(0, 10)
-      ), 0)
-    )
-    .then(() => storageManager.blockAccess(address, role, {from: caller}))
-    .then(assertExpectations())
-    .then(() => storageManager.isAllowed(address, role))
-    .then(result => assert.isTrue(result));
-  });
+  it('should NOT allow to block an access by non-owner');  // TODO
+
+  it('should allow owner to give an access');  // TODO
+
+  it('should allow owner to block an access');  // TODO
 
 });

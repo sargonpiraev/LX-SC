@@ -2,7 +2,7 @@ pragma solidity 0.4.8;
 
 contract Mock {
     event UnexpectedCall(uint index, address from, uint value, bytes input, bytes32 callHash);
-    
+
     struct Expect {
         bytes32 callHash;
         bytes32 callReturn;
@@ -50,5 +50,9 @@ contract Mock {
 
     function expectationsLeft() constant returns(uint) {
         return expectationsCount - (nextExpectation - 1);
+    }
+
+    function resetCallsCount() returns(bool) {
+        callsCount = 0;
     }
 }

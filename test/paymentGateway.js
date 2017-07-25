@@ -91,7 +91,7 @@ contract('PaymentGateway', function(accounts) {
     .then(reverter.snapshot);
   });
 
-  it('should check auth on setup event history', () => {
+  it('should check auth on setup events history', () => {
     const caller = accounts[1];
     const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()

@@ -24,33 +24,17 @@ contract('UserFactory', function(accounts) {
   let userFactory;
   let mock;
 
-  const assertExpectations = (expected = 0, callsCount = null) => {
-    let expectationsCount;
-    return () => {
-      return mock.expectationsLeft()
-      .then(asserts.equal(expected))
-      .then(() => mock.expectationsCount())
-      .then(result => expectationsCount = result)
-      .then(() => mock.callsCount())
-      .then(result => asserts.equal(callsCount === null ? expectationsCount : callsCount)(result));
-    };
-  };
-
-  const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
-  };
-
   before('setup', () => {
     return Mock.deployed()
     .then(instance => mock = instance)
-    .then(() => ignoreAuth())
+    .then(() => helpers.ignoreAuth(mock))
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
     .then(() => UserFactory.deployed())
     .then(instance => userFactory = instance)
     .then(() => multiEventsHistory.authorize(userFactory.address))
     .then(() => userFactory.setupEventsHistory(multiEventsHistory.address))
-    .then(() => userFactory.setupUserLibrary(mock.address))
+    .then(() => userFactory.setUserLibrary(mock.address))
     .then(reverter.snapshot);
   });
 
@@ -58,7 +42,7 @@ contract('UserFactory', function(accounts) {
     const caller = accounts[1];
     const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => ignoreAuth(false))
+    .then(() => helpers.ignoreAuth(mock, false))
     .then(() => mock.expect(
       userFactory.address,
       0,
@@ -69,25 +53,25 @@ contract('UserFactory', function(accounts) {
       ), 0)
     )
     .then(() => userFactory.setupEventsHistory(newAddress, {from: caller}))
-    .then(assertExpectations());
+    .then(helpers.assertExpectations(mock));
   });
 
   it('should check auth on setup user library', () => {
     const caller = accounts[1];
     const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => ignoreAuth(false))
+    .then(() => helpers.ignoreAuth(mock, false))
     .then(() => mock.expect(
       userFactory.address,
       0,
       roles2LibraryInterface.canCall.getData(
         caller,
         userFactory.address,
-        userFactory.contract.setupUserLibrary.getData().slice(0, 10)
+        userFactory.contract.setUserLibrary.getData().slice(0, 10)
       ), 0)
     )
-    .then(() => userFactory.setupUserLibrary(newAddress, {from: caller}))
-    .then(assertExpectations());
+    .then(() => userFactory.setUserLibrary(newAddress, {from: caller}))
+    .then(helpers.assertExpectations(mock));
   });
 
   it('should check auth on user creation', () => {
@@ -101,7 +85,7 @@ contract('UserFactory', function(accounts) {
       "createUserWithProxyAndRecovery(address,address,uint8[],uint256,uint256[],uint256[])"
     );
     return Promise.resolve()
-    .then(() => ignoreAuth(false))
+    .then(() => helpers.ignoreAuth(mock, false))
     .then(() => mock.expect(
       userFactory.address,
       0,
@@ -114,7 +98,7 @@ contract('UserFactory', function(accounts) {
     .then(() => userFactory.createUserWithProxyAndRecovery(
       owner, recovery, roles, areas, categories, skills, {from: caller}
     ))
-    .then(assertExpectations());
+    .then(helpers.assertExpectations(mock));
   });
 
   it('should create users with roles', () => {

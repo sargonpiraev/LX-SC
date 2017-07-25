@@ -29,6 +29,10 @@ contract('Storage', function(accounts) {
     .then(reverter.snapshot);
   });
 
+  it('should NOT allow to set storage manager by non-owner');  // TODO
+
+  it('should allow owner to set storage manager');  // TODO
+
   it('should store uint values', () => {
     const value = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
     return storage.setUInt(CRATE, KEY, value)

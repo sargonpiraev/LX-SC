@@ -78,13 +78,6 @@ contract('UserLibrary', function(accounts) {
   });
 
   describe('Skills', function() {
-    const getFlag = index => {
-      return web3.toBigNumber(2).pow(index*2);
-    };
-
-    const getEvenFlag = index => {
-      return web3.toBigNumber(2).pow(index*2 + 1);
-    };
 
     const addFlags = (...flags) => {
       if (flags.length == 1) {
@@ -93,8 +86,8 @@ contract('UserLibrary', function(accounts) {
       return addFlags(flags[0].add(flags[1]), ...flags.slice(2));
     };
 
-    const partialFlag = getFlag;
-    const fullFlag = getEvenFlag;
+    const partialFlag = helpers.getFlag;
+    const fullFlag = helpers.getEvenFlag;
     const partialAndFullFlag = index => partialFlag(index).add(fullFlag(index));
 
     const equal = (a, b) => {
@@ -291,7 +284,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const areas = addFlags(partialFlag(0));
         const categories = [addFlags(partialFlag(0))];
-        const skills = [addFlags(getFlag(0))];
+        const skills = [addFlags(helpers.getFlag(0))];
         const expectedSkills = [ areas, categories, skills ];
         return Promise.resolve()
         .then(() => userLibrary.setMany(user, areas, categories, skills))
@@ -303,7 +296,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const areas = addFlags(partialFlag(0));
         const categories = [addFlags(partialFlag(0))];
-        const skills = [addFlags(getFlag(0), getFlag(1))];
+        const skills = [addFlags(helpers.getFlag(0), helpers.getFlag(1))];
         const expectedSkills = [ areas, categories, skills ];
         return Promise.resolve()
         .then(() => userLibrary.setMany(user, areas, categories, skills))
@@ -315,7 +308,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const areas = addFlags(partialFlag(0));
         const categories = [addFlags(partialFlag(0))];
-        const skills = [addFlags(getFlag(0), getEvenFlag(1))];
+        const skills = [addFlags(helpers.getFlag(0), helpers.getEvenFlag(1))];
         const expectedSkills = [ areas, categories, skills ];
         return Promise.resolve()
         .then(() => userLibrary.setMany(user, areas, categories, skills))
@@ -327,7 +320,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const areas = addFlags(partialFlag(0));
         const categories = [addFlags(partialAndFullFlag(0))];
-        const skills = [addFlags(getFlag(0))];
+        const skills = [addFlags(helpers.getFlag(0))];
         const expectedSkills = [ areas, categories, [] ];
         return Promise.resolve()
         .then(() => userLibrary.setMany(user, areas, categories, skills))
@@ -350,7 +343,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const areas = addFlags(partialFlag(0), partialAndFullFlag(3), partialFlag(127));
         const categories = [addFlags(partialFlag(0)), addFlags(partialAndFullFlag(5), partialFlag(10), partialFlag(127))];
-        const skills = [addFlags(getFlag(0), getFlag(1)), addFlags(getFlag(10), getEvenFlag(111)), addFlags(getEvenFlag(111))];
+        const skills = [addFlags(helpers.getFlag(0), helpers.getFlag(1)), addFlags(helpers.getFlag(10), helpers.getEvenFlag(111)), addFlags(helpers.getEvenFlag(111))];
         const expectedSkills = [ areas, categories, skills ];
         return Promise.resolve()
         .then(() => userLibrary.setMany(user, areas, categories, skills))
@@ -363,10 +356,10 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const areas = addFlags(partialFlag(0), partialAndFullFlag(3), partialFlag(127));
         const categories = [addFlags(partialFlag(0)), addFlags(partialAndFullFlag(5), partialFlag(10), partialFlag(127))];
-        const skills = [addFlags(getFlag(0), getFlag(1)), addFlags(getFlag(10), getEvenFlag(111)), addFlags(getEvenFlag(111))];
+        const skills = [addFlags(helpers.getFlag(0), helpers.getFlag(1)), addFlags(helpers.getFlag(10), helpers.getEvenFlag(111)), addFlags(helpers.getEvenFlag(111))];
         const areas2 = addFlags(partialFlag(5));
         const categories2 = [addFlags(partialFlag(1), partialAndFullFlag(2))];
-        const skills2 = [addFlags(getFlag(20), getEvenFlag(122))];
+        const skills2 = [addFlags(helpers.getFlag(20), helpers.getEvenFlag(122))];
         const expectedSkills = [ areas2, categories2, skills2 ];
         return Promise.resolve()
         .then(() => userLibrary.setMany(user, areas, categories, skills))
@@ -538,7 +531,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const areas = addFlags(partialFlag(0));
         const categories = [addFlags(partialFlag(0))];
-        const skills = [addFlags(getFlag(0))];
+        const skills = [addFlags(helpers.getFlag(0))];
         const expectedSkills = [ areas, categories, skills ];
         return Promise.resolve()
         .then(() => userLibrary.addMany(user, areas, categories, skills))
@@ -550,7 +543,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const areas = addFlags(partialFlag(0));
         const categories = [addFlags(partialFlag(0))];
-        const skills = [addFlags(getFlag(0), getFlag(1))];
+        const skills = [addFlags(helpers.getFlag(0), helpers.getFlag(1))];
         const expectedSkills = [ areas, categories, skills ];
         return Promise.resolve()
         .then(() => userLibrary.addMany(user, areas, categories, skills))
@@ -562,7 +555,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const areas = addFlags(partialFlag(0));
         const categories = [addFlags(partialFlag(0))];
-        const skills = [addFlags(getFlag(0), getEvenFlag(1))];
+        const skills = [addFlags(helpers.getFlag(0), helpers.getEvenFlag(1))];
         const expectedSkills = [ areas, categories, skills ];
         return Promise.resolve()
         .then(() => userLibrary.addMany(user, areas, categories, skills))
@@ -574,7 +567,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const areas = addFlags(partialFlag(0));
         const categories = [addFlags(partialAndFullFlag(0))];
-        const skills = [addFlags(getFlag(0))];
+        const skills = [addFlags(helpers.getFlag(0))];
         const expectedSkills = [ areas, categories, [] ];
         return Promise.resolve()
         .then(() => userLibrary.addMany(user, areas, categories, skills))
@@ -597,7 +590,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const areas = addFlags(partialFlag(0), partialAndFullFlag(3), partialFlag(127));
         const categories = [addFlags(partialFlag(0)), addFlags(partialAndFullFlag(5), partialFlag(10), partialFlag(127))];
-        const skills = [addFlags(getFlag(0), getFlag(1)), addFlags(getFlag(10), getEvenFlag(111)), addFlags(getEvenFlag(111))];
+        const skills = [addFlags(helpers.getFlag(0), helpers.getFlag(1)), addFlags(helpers.getFlag(10), helpers.getEvenFlag(111)), addFlags(helpers.getEvenFlag(111))];
         const expectedSkills = [ areas, categories, skills ];
         return Promise.resolve()
         .then(() => userLibrary.addMany(user, areas, categories, skills))
@@ -610,10 +603,10 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const areas = addFlags(partialFlag(0), partialAndFullFlag(3), partialFlag(127));
         const categories = [addFlags(partialFlag(0)), addFlags(partialAndFullFlag(5), partialFlag(10), partialFlag(127))];
-        const skills = [addFlags(getFlag(0), getFlag(1)), addFlags(getFlag(10), getEvenFlag(111)), addFlags(getEvenFlag(111))];
+        const skills = [addFlags(helpers.getFlag(0), helpers.getFlag(1)), addFlags(helpers.getFlag(10), helpers.getEvenFlag(111)), addFlags(helpers.getEvenFlag(111))];
         const areas2 = addFlags(partialFlag(0));
         const categories2 = [addFlags(partialFlag(0), partialAndFullFlag(2))];
-        const skills2 = [addFlags(getFlag(20))];
+        const skills2 = [addFlags(helpers.getFlag(20))];
         const expectedSkills = [ areas, categories2.concat(categories.slice(1)), skills2.concat(skills.slice(1)) ];
         return Promise.resolve()
         .then(() => userLibrary.setMany(user, areas, categories, skills))
@@ -860,7 +853,7 @@ contract('UserLibrary', function(accounts) {
         const category = partialFlag(15);
         const categories = [addFlags(partialAndFullFlag(1), category)];
         const categoriesCleared = [addFlags(partialAndFullFlag(2))];
-        const skills = [addFlags(getFlag(11), getFlag(111))];
+        const skills = [addFlags(helpers.getFlag(11), helpers.getFlag(111))];
         const expectedSkills = [ area, categories, skills ];
         return Promise.resolve()
         .then(() => userLibrary.setSkills(user, area, category, skills))
@@ -928,7 +921,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const area = partialFlag(0);
         const category = partialFlag(10);
-        const skills = [addFlags(getFlag(15))];
+        const skills = [addFlags(helpers.getFlag(15))];
         const expectedSkills = [ 0, [], [] ];
         return Promise.resolve()
         .then(() => ignoreAuth(false))
@@ -951,7 +944,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const area = partialFlag(0);
         const category = partialFlag(10);
-        const skills = [addFlags(getFlag(15))];
+        const skills = [addFlags(helpers.getFlag(15))];
         const expectedSkills = [ area, [category], skills ];
         return Promise.resolve()
         .then(() => userLibrary.setSkills(user, area, category, skills[0]))
@@ -987,7 +980,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const area = partialFlag(0);
         const category = partialFlag(10);
-        const skills = [addFlags(getFlag(15), getEvenFlag(35))];
+        const skills = [addFlags(helpers.getFlag(15), helpers.getEvenFlag(35))];
         const expectedSkills = [ area, [category], skills ];
         return Promise.resolve()
         .then(() => userLibrary.setSkills(user, area, category, skills[0]))
@@ -999,8 +992,8 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const area = partialFlag(0);
         const category = partialFlag(10);
-        const skills = [addFlags(getFlag(15), getEvenFlag(35))];
-        const skills2 = [addFlags(getFlag(2))];
+        const skills = [addFlags(helpers.getFlag(15), helpers.getEvenFlag(35))];
+        const skills2 = [addFlags(helpers.getFlag(2))];
         const expectedSkills = [ area, [category], skills2 ];
         return Promise.resolve()
         .then(() => userLibrary.setSkills(user, area, category, skills[0]))
@@ -1013,7 +1006,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const area = partialFlag(0);
         const category = partialFlag(10);
-        const skills = [addFlags(getFlag(15), getEvenFlag(35))];
+        const skills = [addFlags(helpers.getFlag(15), helpers.getEvenFlag(35))];
         const skills2 = [0];
         const expectedSkills = [ area, [category], skills ];
         return Promise.resolve()
@@ -1027,7 +1020,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const area = addFlags(partialFlag(0), partialFlag(1));
         const category = partialFlag(10);
-        const skills = [addFlags(getFlag(15))];
+        const skills = [addFlags(helpers.getFlag(15))];
         const expectedSkills = [ 0, [], [] ];
         return Promise.resolve()
         .then(() => userLibrary.setSkills(user, area, category, skills[0]))
@@ -1039,7 +1032,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const area = partialAndFullFlag(0);
         const category = partialFlag(10);
-        const skills = [addFlags(getFlag(15))];
+        const skills = [addFlags(helpers.getFlag(15))];
         const expectedSkills = [ 0, [], [] ];
         return Promise.resolve()
         .then(() => userLibrary.setSkills(user, area, category, skills[0]))
@@ -1051,7 +1044,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const area = partialFlag(0);
         const category = addFlags(partialFlag(10), partialAndFullFlag(15));
-        const skills = [addFlags(getFlag(15))];
+        const skills = [addFlags(helpers.getFlag(15))];
         const expectedSkills = [ 0, [], [] ];
         return Promise.resolve()
         .then(() => userLibrary.setSkills(user, area, category, skills[0]))
@@ -1063,7 +1056,7 @@ contract('UserLibrary', function(accounts) {
         const user = accounts[1];
         const area = partialFlag(0);
         const category = partialAndFullFlag(10);
-        const skills = [addFlags(getFlag(15))];
+        const skills = [addFlags(helpers.getFlag(15))];
         const expectedSkills = [ 0, [], [] ];
         return Promise.resolve()
         .then(() => userLibrary.setSkills(user, area, category, skills[0]))
@@ -1076,7 +1069,7 @@ contract('UserLibrary', function(accounts) {
         const area = partialAndFullFlag(0);
         const area2 = partialFlag(5);
         const category = partialFlag(10);
-        const skills = [addFlags(getFlag(15))];
+        const skills = [addFlags(helpers.getFlag(15))];
         const expectedSkills = [ addFlags(area, area2), [category], skills ];
         return Promise.resolve()
         .then(() => userLibrary.setAreas(user, area))
@@ -1090,7 +1083,7 @@ contract('UserLibrary', function(accounts) {
         const area = partialFlag(0);
         const category = partialAndFullFlag(10);
         const category2 = partialFlag(20);
-        const skills = [addFlags(getFlag(15))];
+        const skills = [addFlags(helpers.getFlag(15))];
         const expectedSkills = [ area, [addFlags(category, category2)], skills ];
         return Promise.resolve()
         .then(() => userLibrary.setCategories(user, area, category))

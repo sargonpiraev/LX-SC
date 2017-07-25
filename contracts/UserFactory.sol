@@ -59,7 +59,7 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         return true;
     }
 
-    function setupUserLibrary(UserLibraryInterface _userLibrary) auth() returns(bool) {
+    function setUserLibrary(UserLibraryInterface _userLibrary) auth() returns(bool) {
         userLibrary = _userLibrary;
         return true;
     }
