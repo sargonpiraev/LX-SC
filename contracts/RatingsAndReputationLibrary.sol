@@ -55,11 +55,9 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     event SkillEvaluated(address indexed rater, address indexed to, uint8 rating, uint area, uint category, uint skill);
 
 
-    modifier canSetRating(uint _jobId, address _to) {
+    modifier canSetRating(uint _jobId) {
         if (
-            jobController.getJobState(_jobId) != 7 ||  // Ensure job is FINALIZED
-            jobController.getJobClient(_jobId) != msg.sender ||
-            jobController.getJobWorker(_jobId) != _to
+            jobController.getJobState(_jobId) != 7  // Ensure job is FINALIZED
         ) {
             return;
         }
@@ -71,11 +69,24 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
         if (rating > 0) {
             return;
         }
+
+        address client = jobController.getJobClient(_jobId);
+        address worker = jobController.getJobWorker(_jobId);
+        if (
+            ! (  // If it's neither actual client -> worker, nor worker -> client, return
+                (client == msg.sender && worker == _to) ||
+                (client == _to && worker == msg.sender)
+            )
+        ) {
+            return;
+        }
         _;
     }
 
-    modifier canSetSkillRating(uint _jobId) {
+    modifier canSetSkillRating(uint _jobId, address _to) {
         if (
+            jobController.getJobClient(_jobId) != msg.sender ||
+            jobController.getJobWorker(_jobId) != _to ||
             jobController.getFinalState(_jobId) < 4 ||  // Ensure job is at least STARTED
             store.get(skillRatingSet, _jobId)  // Ensure skill rating wasn't set yet
         ) {
@@ -120,7 +131,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     function setUserRating(address _to, uint _rating) returns(bool) {
-        if (_rating > 10) {
+        if (_rating > 10 || _rating < 1) {
             return false;
         }
         store.set(userRatingsGiven, msg.sender, _to, _rating);
@@ -136,13 +147,12 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     function setJobRating(address _to, uint8 _rating,  uint _jobId)
-        canSetRating(_jobId, _to)
+        canSetRating(_jobId)
         canSetJobRating(_jobId, _to)
     returns(bool) {
-        if (_rating > 10) {
+        if (_rating > 10 || _rating < 1) {
             return false;
         }
-        // Check if rating is already set
         store.set(jobRatingsGiven, _to, _jobId, msg.sender, _rating);
         _emitJobRatingGiven(msg.sender, _to, _jobId, _rating);
         return true;
@@ -154,8 +164,8 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     function rateWorkerSkills(uint _jobId, address _to, uint _area, uint _category, uint[] _skills, uint8[] _ratings)
         singleOddFlag(_area)
         singleOddFlag(_category)
-        canSetRating(_jobId, _to)
-        canSetSkillRating(_jobId)
+        canSetRating(_jobId)
+        canSetSkillRating(_jobId, _to)
     returns(bool) {
         if (!_checkAreaAndCategory(_jobId, _area, _category)) {
             return false;
@@ -175,14 +185,15 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     function _checkSetSkill(uint _jobId, address _to, uint8 _rating, uint _area, uint _category, uint _skill)
         internal
     {
-        _assert(_hasFlag(jobController.getJobSkills(_jobId), _skill));
+        _assert(_isSingleFlag(_skill));  // Ensure skill is repserented correctly, as a single bit flag
+        _assert(_hasFlag(jobController.getJobSkills(_jobId), _skill));  // Ensure the job has given skill
         _setSkillRating(_to, _rating, _area, _category, _skill, _jobId, true);
     }
 
     function _setSkillRating(address _to, uint8 _rating, uint _area, uint _category, uint _skill,  uint _jobId, bool _throws)
         internal
     returns(bool) {
-        if ((_rating > 10) || !userLibrary.hasSkill(_to, _area, _category, _skill)) {
+        if ((_rating > 10 || _rating < 1) || !userLibrary.hasSkill(_to, _area, _category, _skill)) {
             if (_throws) {
                 throw;
             }
@@ -214,7 +225,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     function _evaluateArea(address _to, uint8 _rating, uint _area, bool _throws) internal returns(bool) {
-        if ((_rating > 10) || !userLibrary.hasArea(_to, _area)) {
+        if ((_rating > 10 || _rating < 1) || !userLibrary.hasArea(_to, _area)) {
             if (_throws) {
                 throw;
             }
@@ -238,7 +249,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     function _evaluateCategory(address _to, uint8 _rating, uint _area, uint _category, bool _throws)
         internal
     returns(bool) {
-        if ((_rating > 10) || !userLibrary.hasCategory(_to, _area, _category)) {
+        if ((_rating > 10 || _rating < 1) || !userLibrary.hasCategory(_to, _area, _category)) {
             if (_throws) {
                 throw;
             }
@@ -262,7 +273,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     function _evaluateSkill(address _to, uint8 _rating, uint _area, uint _category, uint _skill, bool _throws) internal returns(bool) {
-        if ((_rating > 10) || !userLibrary.hasSkill(_to, _area, _category, _skill)) {
+        if ((_rating > 10 || _rating < 1) || !userLibrary.hasSkill(_to, _area, _category, _skill)) {
             if (_throws) {
                 throw;
             }
