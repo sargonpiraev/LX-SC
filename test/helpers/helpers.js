@@ -58,4 +58,21 @@ module.exports = {
     assert.equal(tx.logs[0].args.self, contract.address);
     assert.isTrue(web3.toAscii(tx.logs[0].args.msg).includes(text));
   },
+  assertLogs: (length, logs) => {
+    return (tx) => {
+      assert.equal(tx.logs.length, length);
+      for (let i in logs) {
+        let log = logs[i];
+        if (log.address) {
+          assert.equal(tx.logs[i].address, log.address);
+        }
+        if (log.event) {
+          assert.equal(tx.logs[i].event, log.event);
+        }
+        for (let a in log.args) {
+          assert.equal(tx.logs[i].args[a], log.args[a])
+        }
+      }
+    }
+  },
 }

@@ -26,11 +26,21 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     event Transferred(address indexed self, address indexed contractAddress, address from, address indexed to, uint value);
 
     modifier notNull(uint _value) {
-        if (_value == 0) {
-            _emitError("Value is empty");
+        if (!_notNull(_value, false)) {
             return;
         }
         _;
+    }
+
+    function _notNull(uint _value, bool _throws) internal returns(bool) {
+        if (_value == 0) {
+            if (_throws) {
+                throw;
+            }
+            _emitError("Value is empty");
+            return false;
+        }
+        return true;
     }
 
     function PaymentGateway(Storage _store, bytes32 _crate, address _roles2Library, address _erc20Library)
@@ -94,7 +104,9 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         return true;
     }
 
-    function withdraw(uint _value, address _contract) notNull(_value) returns(bool) {
+    function withdraw(uint _value, address _contract)
+        notNull(_value)
+    returns(bool) {
         if (store.get(balances, _contract, msg.sender) < _value) {
             _emitError("Not enough balance");
             return false;
@@ -129,7 +141,6 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         uint _additionalFee,
         address _contract
     )
-        notNull(_value)
     returns(bool) {
         address[] memory toArray = new address[](1);
         toArray[0] = _to;
@@ -147,9 +158,11 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         address _contract
     )
         auth()  // only payment processor
+        notNull(uint(_from))
         onlySupportedContract(_contract)
     returns(bool) {
         if (_to.length != _value.length) {
+            _emitError("Invalid array arguments");
             return false;
         }
         uint total = 0;
@@ -178,6 +191,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         address _contract
     )
         auth()  // only payment processor
+        notNull(uint(_from))
         onlySupportedContract(_contract)
     returns(bool) {
         uint total = _value;
@@ -206,13 +220,15 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         address _contract
     )
         auth()  // only payment processor
+        notNull(uint(_to))
         onlySupportedContract(_contract)
     returns(bool) {
         if (_from.length != _value.length) {
+            _emitError("Invalid array arguments");
             return false;
         }
         uint total = 0;
-        for(uint i = 0; i < _from.length; i++) {
+        for (uint i = 0; i < _from.length; i++) {
             _subBalance(_from[i], _value[i], _contract);
             _emitTransferred(_from[i], _to, _value[i], _contract);
             total = _safeAdd(total, _value[i]);
@@ -221,7 +237,9 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         return true;
     }
 
-    function forwardFee(uint _value, address _contract) returns(bool) {
+    function forwardFee(uint _value, address _contract)
+        notNull(_value)
+    returns(bool) {
         if (getFeeAddress() == 0x0) {
             return false;
         }
@@ -248,6 +266,39 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     function getBalanceHolder() constant returns(BalanceHolderInterface) {
         return BalanceHolderInterface(store.get(balanceHolder));
     }
+
+
+    // HELPERS
+
+    function _assert(bool _assertion) internal {
+        if (!_assertion) {
+            throw;
+        }
+    }
+
+    function _safeSub(uint _a, uint _b) internal constant returns(uint) {
+        _assert(_b <= _a);
+        return _a - _b;
+    }
+
+    function _safeAdd(uint _a, uint _b) internal constant returns(uint) {
+        uint c = _a + _b;
+        _assert(c >= _a);
+        return c;
+    }
+
+    function _addBalance(address _to, uint _value, address _contract) internal {
+        _notNull(uint(_to), true);
+        _notNull(_value, true);
+        store.set(balances, _contract, _to, _safeAdd(getBalance(_to, _contract), _value));
+    }
+
+    function _subBalance(address _from, uint _value, address _contract) internal {
+        _notNull(uint(_from), true);
+        _notNull(_value, true);
+        store.set(balances, _contract, _from, _safeSub(getBalance(_from, _contract), _value));
+    }
+
 
 
     // EVENTS
@@ -284,31 +335,4 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         Transferred(_self(), _contract, _from, _to, _value);
     }
 
-
-    // HELPERS
-
-    function _assert(bool _assertion) internal {
-        if (!_assertion) {
-            throw;
-        }
-    }
-
-    function _safeSub(uint _a, uint _b) internal constant returns(uint) {
-        _assert(_b <= _a);
-        return _a - _b;
-    }
-
-    function _safeAdd(uint _a, uint _b) internal constant returns(uint) {
-        uint c = _a + _b;
-        _assert(c >= _a);
-        return c;
-    }
-
-    function _addBalance(address _to, uint _value, address _contract) internal {
-        store.set(balances, _contract, _to, _safeAdd(getBalance(_to, _contract), _value));
-    }
-
-    function _subBalance(address _from, uint _value, address _contract) internal {
-        store.set(balances, _contract, _from, _safeSub(getBalance(_from, _contract), _value));
-    }
 }
