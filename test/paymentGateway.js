@@ -91,376 +91,412 @@ contract('PaymentGateway', function(accounts) {
     .then(reverter.snapshot);
   });
 
-  it('should check auth on setup events history', () => {
-    const caller = accounts[1];
-    const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => ignoreAuth(false))
-    .then(() => mock.expect(
-      paymentGateway.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
-        paymentGateway.address,
-        paymentGateway.contract.setupEventsHistory.getData().slice(0, 10)
-      ), 0)
-    )
-    .then(() => paymentGateway.setupEventsHistory(newAddress, {from: caller}))
-    .then(assertExpectations());
-  });
 
-  it('should check auth on setting ERC20 library', () => {
-    const caller = accounts[1];
-    const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => ignoreAuth(false))
-    .then(() => mock.expect(
-      paymentGateway.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
-        paymentGateway.address,
-        paymentGateway.contract.setERC20Library.getData().slice(0, 10)
-      ), 0)
-    )
-    .then(() => paymentGateway.setERC20Library(newAddress, {from: caller}))
-    .then(assertExpectations());
-  });
+  describe("Contract setup", () => {
 
-  it('should check auth on setting balance holder', () => {
-    const caller = accounts[1];
-    const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => ignoreAuth(false))
-    .then(() => mock.expect(
-      paymentGateway.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
-        paymentGateway.address,
-        paymentGateway.contract.setBalanceHolder.getData().slice(0, 10)
-      ), 0)
-    )
-    .then(() => paymentGateway.setBalanceHolder(newAddress, {from: caller}))
-    .then(assertExpectations());
-  });
-
-  it('should set fee address', () => {
-    const feeAddress = '0xffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => paymentGateway.setFeeAddress(feeAddress))
-    .then(() => paymentGateway.getFeeAddress())
-    .then(asserts.equal(feeAddress));
-  });
-
-  it.skip('should not set fee address if not allowed', () => {
-    const feeAddress = '0xffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => paymentGateway.setFeeAddress(feeAddress, {from: accounts[1]}))
-    .then(() => paymentGateway.getFeeAddress())
-    .then(asserts.equal('0x0000000000000000000000000000000000000000'));
-  });
-
-  it('should check auth on setting fee', () => {
-    const caller = accounts[1];
-    const feeAddress = '0xffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => ignoreAuth(false))
-    .then(() => mock.expect(
-      paymentGateway.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
-        paymentGateway.address,
-        paymentGateway.contract.setFeeAddress.getData().slice(0, 10)
-      ), 0)
-    )
-    .then(() => paymentGateway.setFeeAddress(feeAddress, {from: caller}))
-    .then(assertExpectations())
-    .then(() => paymentGateway.getFeeAddress())
-    .then(asserts.equal('0x0000000000000000000000000000000000000000'));
-  });
-
-  it('should set fee percent', () => {
-    const feePercent = 1333;
-    return Promise.resolve()
-    .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
-    .then(() => paymentGateway.getFeePercent(fakeCoin.address))
-    .then(asserts.equal(feePercent));
-  });
-
-  it.skip('should not set fee percent if not allowed', () => {
-    const feePercent = 1333;
-    return Promise.resolve()
-    .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address, {from: accounts[1]}))
-    .then(() => paymentGateway.getFeePercent(fakeCoin.address))
-    .then(asserts.equal(0));
-  });
-
-  it('should check auth on setting fee percent', () => {
-    const caller = accounts[1];
-    const feePercent = 1333;
-    return Promise.resolve()
-    .then(() => ignoreAuth(false))
-    .then(() => mock.expect(
-      paymentGateway.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
-        paymentGateway.address,
-        paymentGateway.contract.setFeePercent.getData().slice(0, 10)
-      ), 0)
-    )
-    .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address, {from: caller}))
-    .then(assertExpectations())
-    .then(() => paymentGateway.getFeePercent(fakeCoin.address))
-    .then(asserts.equal(0));
-  });
-
-  it('should not set fee percent for not supported contract', () => {
-    const feePercent = 1333;
-    const notSupported = '0x00000000000000000000000000000000000000ff';
-    return Promise.resolve()
-    .then(() => paymentGateway.setFeePercent(feePercent, notSupported))
-    .then(() => paymentGateway.getFeePercent(notSupported))
-    .then(asserts.equal(0));
-  });
-
-  it('should set fee percent for different contracts', () => {
-    const feePercent = 1333;
-    const feePercent2 = 1;
-    const supported2 = '0x00000000000000000000000000000000000000ff';
-    return Promise.resolve()
-    .then(() => erc20Library.addContract(supported2))
-    .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
-    .then(() => paymentGateway.setFeePercent(feePercent2, supported2))
-    .then(() => paymentGateway.getFeePercent(fakeCoin.address))
-    .then(asserts.equal(feePercent))
-    .then(() => paymentGateway.getFeePercent(supported2))
-    .then(asserts.equal(feePercent2));
-  });
-
-  it('should emit FeeSet event in MultiEventsHistory', () => {
-    const feePercent = 1333;
-    return Promise.resolve()
-    .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, multiEventsHistory.address);
-      assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
-      assert.equal(result.logs[0].args.feePercent, 1333);
-      assert.equal(result.logs[0].args.self, paymentGateway.address);
+    it('should check auth on setup events history', () => {
+      const caller = accounts[1];
+      const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+        .then(() => ignoreAuth(false))
+        .then(() => mock.expect(
+          paymentGateway.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            paymentGateway.address,
+            paymentGateway.contract.setupEventsHistory.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => paymentGateway.setupEventsHistory(newAddress, {from: caller}))
+        .then(assertExpectations());
     });
-  });
 
-  it('should not set fee percent higher than or equal to 100%', () => {
-    const feePercent = 10000;
-    return Promise.resolve()
-    .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
-    .then(() => paymentGateway.getFeePercent(fakeCoin.address))
-    .then(asserts.equal(0))
-    .then(() => paymentGateway.setFeePercent(feePercent - 1, fakeCoin.address))
-    .then(() => paymentGateway.getFeePercent(fakeCoin.address))
-    .then(asserts.equal(feePercent - 1));
-  });
-
-  it('should deposit', () => {
-    const sender = accounts[6];
-    const value = 1000;
-    return Promise.resolve()
-    .then(() => fakeCoin.mint(sender, value))
-    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
-    .then(asserts.equal(value))
-    .then(() => fakeCoin.balanceOf(balanceHolder.address))
-    .then(asserts.equal(value))
-    .then(() => fakeCoin.balanceOf(sender))
-    .then(asserts.equal(0));
-  });
-
-  it('should emit Deposited event in MultiEventsHistory', () => {
-    const sender = accounts[6];
-    const value = 1000;
-    return Promise.resolve()
-    .then(() => fakeCoin.mint(sender, value))
-    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, multiEventsHistory.address);
-      assert.equal(result.logs[0].event, 'Deposited');
-      assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
-      assert.equal(result.logs[0].args.by, sender);
-      assert.equal(result.logs[0].args.value.valueOf(), value);
+    it('should check auth on setting ERC20 library', () => {
+      const caller = accounts[1];
+      const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+        .then(() => ignoreAuth(false))
+        .then(() => mock.expect(
+          paymentGateway.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            paymentGateway.address,
+            paymentGateway.contract.setERC20Library.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => paymentGateway.setERC20Library(newAddress, {from: caller}))
+        .then(assertExpectations());
     });
-  });
 
-  it('should deposit only credited amount', () => {
-    const sender = accounts[6];
-    const value = 1000;
-    const fee = 100;
-    const result = 900;
-    return Promise.resolve()
-    .then(() => fakeCoin.mint(sender, value))
-    .then(() => fakeCoin.setFee(fee))
-    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
-    .then(asserts.equal(result))
-    .then(() => fakeCoin.balanceOf(balanceHolder.address))
-    .then(asserts.equal(result))
-    .then(() => fakeCoin.balanceOf(sender))
-    .then(asserts.equal(0));
-  });
-
-  it('should not deposit if not supported', () => {
-    const sender = accounts[6];
-    const value = 1000;
-    return Promise.resolve()
-    .then(() => fakeCoin.mint(sender, value))
-    .then(() => erc20Library.removeContract(fakeCoin.address))
-    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
-    .then(asserts.equal(0))
-    .then(() => fakeCoin.balanceOf(balanceHolder.address))
-    .then(asserts.equal(0))
-    .then(() => fakeCoin.balanceOf(sender))
-    .then(asserts.equal(value));
-  });
-
-  it('should not deposit if balanceHolder.deposit failed', () => {
-    const sender = accounts[6];
-    const value = 1000;
-    return Promise.resolve()
-    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
-    .then(asserts.equal(0))
-    .then(() => fakeCoin.balanceOf(balanceHolder.address))
-    .then(asserts.equal(0));
-  });
-
-  it('should not deposit if overflow happened', () => {
-    const sender = accounts[6];
-    const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => fakeCoin.mint(sender, value))
-    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => fakeCoin.mint(sender, 1))
-    .then(() => asserts.throws(paymentGateway.deposit(1, fakeCoin.address, {from: sender})));
-  });
-
-  it('should not deposit if overflow happened in ERC20 contract', () => {
-    const sender = accounts[6];
-    const receiver = accounts[7];
-    const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => fakeCoin.mint(sender, value))
-    .then(() => fakeCoin.mint(receiver, 1))
-    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => asserts.throws(paymentGateway.deposit(1, fakeCoin.address, {from: receiver})));
-  });
-
-  it('should withdraw', () => {
-    const sender = accounts[6];
-    const value = 1000;
-    const withdraw = 300;
-    const result = 700;
-    return Promise.resolve()
-    .then(() => fakeCoin.mint(sender, value))
-    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender}))
-    .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
-    .then(asserts.equal(result))
-    .then(() => fakeCoin.balanceOf(balanceHolder.address))
-    .then(asserts.equal(result))
-    .then(() => fakeCoin.balanceOf(sender))
-    .then(asserts.equal(withdraw));
-  });
-
-  it('should emit Withdrawn event in MultiEventsHistory', () => {
-    const sender = accounts[6];
-    const value = 1000;
-    const withdraw = 300;
-    const result = 700;
-    return Promise.resolve()
-    .then(() => fakeCoin.mint(sender, value))
-    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender}))
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, multiEventsHistory.address);
-      assert.equal(result.logs[0].event, 'Withdrawn');
-      assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
-      assert.equal(result.logs[0].args.by, sender);
-      assert.equal(result.logs[0].args.value.valueOf(), withdraw);
+    it('should check auth on setting balance holder', () => {
+      const caller = accounts[1];
+      const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+        .then(() => ignoreAuth(false))
+        .then(() => mock.expect(
+          paymentGateway.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            paymentGateway.address,
+            paymentGateway.contract.setBalanceHolder.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => paymentGateway.setBalanceHolder(newAddress, {from: caller}))
+        .then(assertExpectations());
     });
+
+    it('should check auth on setting fee address', () => {
+      const caller = accounts[1];
+      const feeAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+        .then(() => ignoreAuth(false))
+        .then(() => mock.expect(
+          paymentGateway.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            paymentGateway.address,
+            paymentGateway.contract.setFeeAddress.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => paymentGateway.setFeeAddress(feeAddress, {from: caller}))
+        .then(assertExpectations())
+        .then(() => paymentGateway.getFeeAddress())
+        .then(asserts.equal('0x0000000000000000000000000000000000000000'));
+    });
+
+    it('should set fee address', () => {
+      const feeAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+      .then(() => paymentGateway.setFeeAddress(feeAddress))
+      .then(() => paymentGateway.getFeeAddress())
+      .then(asserts.equal(feeAddress));
+    });
+
+    it('should check auth on setting fee percent', () => {
+      const caller = accounts[1];
+      const feePercent = 1333;
+      return Promise.resolve()
+      .then(() => ignoreAuth(false))
+      .then(() => mock.expect(
+        paymentGateway.address,
+        0,
+        roles2LibraryInterface.canCall.getData(
+          caller,
+          paymentGateway.address,
+          paymentGateway.contract.setFeePercent.getData().slice(0, 10)
+        ), 0)
+      )
+      .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address, {from: caller}))
+      .then(assertExpectations())
+      .then(() => paymentGateway.getFeePercent(fakeCoin.address))
+      .then(asserts.equal(0));
+    });
+
+    it('should set fee percent', () => {
+      const feePercent = 1333;
+      return Promise.resolve()
+      .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
+      .then(() => paymentGateway.getFeePercent(fakeCoin.address))
+      .then(asserts.equal(feePercent));
+    });
+
+    it('should NOT set fee percent for not supported contract', () => {
+      const feePercent = 1333;
+      const notSupported = '0x00000000000000000000000000000000000000ff';
+      return Promise.resolve()
+      .then(() => paymentGateway.setFeePercent(feePercent, notSupported))
+      .then(() => paymentGateway.getFeePercent(notSupported))
+      .then(asserts.equal(0));
+    });
+
+    it('should set fee percent for different contracts', () => {
+      const feePercent = 1333;
+      const feePercent2 = 1;
+      const supported2 = '0x00000000000000000000000000000000000000ff';
+      return Promise.resolve()
+      .then(() => erc20Library.addContract(supported2))
+      .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
+      .then(() => paymentGateway.setFeePercent(feePercent2, supported2))
+      .then(() => paymentGateway.getFeePercent(fakeCoin.address))
+      .then(asserts.equal(feePercent))
+      .then(() => paymentGateway.getFeePercent(supported2))
+      .then(asserts.equal(feePercent2));
+    });
+
+    it('should emit FeeSet event in MultiEventsHistory', () => {
+      const feePercent = 1333;
+      return Promise.resolve()
+      .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
+      .then(result => {
+        assert.equal(result.logs.length, 1);
+        assert.equal(result.logs[0].address, multiEventsHistory.address);
+        assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
+        assert.equal(result.logs[0].args.feePercent, 1333);
+        assert.equal(result.logs[0].args.self, paymentGateway.address);
+      });
+    });
+
+    it('should NOT set fee percent higher than or equal to 100%', () => {
+      const feePercent = 10000;
+      return Promise.resolve()
+      .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
+      .then(() => paymentGateway.getFeePercent(fakeCoin.address))
+      .then(asserts.equal(0))
+      .then(() => paymentGateway.setFeePercent(feePercent - 1, fakeCoin.address))
+      .then(() => paymentGateway.getFeePercent(fakeCoin.address))
+      .then(asserts.equal(feePercent - 1));
+    });
+
   });
 
-  it('should withdraw whole charged amount', () => {
-    const sender = accounts[6];
-    const value = 1000;
-    const withdraw = 300;
-    const fee = 100;
-    const result = 600;
-    return Promise.resolve()
-    .then(() => fakeCoin.mint(sender, value))
-    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => fakeCoin.setFee(fee))
-    .then(() => fakeCoin.setFeeFromPayer())
-    .then(() => paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender}))
-    .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
-    .then(asserts.equal(result))
-    .then(() => fakeCoin.balanceOf(balanceHolder.address))
-    .then(asserts.equal(result))
-    .then(() => fakeCoin.balanceOf(sender))
-    .then(asserts.equal(withdraw));
+
+  describe("Deposit", () => {
+
+    it('should NOT deposit if given ERC20 contract is not supported', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => erc20Library.removeContract(fakeCoin.address))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
+        .then(asserts.equal(0))
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(asserts.equal(0))
+        .then(() => fakeCoin.balanceOf(sender))
+        .then(asserts.equal(value));
+    });
+
+    it('should THROW on deposit when value overflow occurs', () => {
+      const sender = accounts[6];
+      const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => fakeCoin.mint(sender, 1))
+        .then(() => asserts.throws(
+          paymentGateway.deposit(1, fakeCoin.address, {from: sender}))
+        )
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(result => assert.equal('0x'+result.toString(16), value));
+    });
+
+    it('should NOT deposit no tokens', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => paymentGateway.deposit(0, fakeCoin.address, {from: sender}))
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(asserts.equal(0))
+        .then(() => fakeCoin.balanceOf(sender))
+        .then(asserts.equal(value))
+        .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
+        .then(asserts.equal(0));
+    });
+
+    it('should NOT deposit if sender has not ' +
+       'enough tokens at the target contract', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      return Promise.resolve()
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
+        .then(asserts.equal(0))
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(asserts.equal(0));
+    });
+
+    it('should NOT deposit if sender has not given ' +
+       'allowance to transfer his coins to balanceHolder'); // TODO
+
+    it('should deposit', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
+        .then(asserts.equal(value))
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(asserts.equal(value))
+        .then(() => fakeCoin.balanceOf(sender))
+        .then(asserts.equal(0));
+    });
+
+    it('should emit Deposited event in MultiEventsHistory', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(result => {
+          assert.equal(result.logs.length, 1);
+          assert.equal(result.logs[0].address, multiEventsHistory.address);
+          assert.equal(result.logs[0].event, 'Deposited');
+          assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
+          assert.equal(result.logs[0].args.by, sender);
+          assert.equal(result.logs[0].args.value.valueOf(), value);
+        });
+    });
+
+    it('should deposit only credited amount', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      const fee = 100;
+      const result = 900;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => fakeCoin.setFee(fee))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
+        .then(asserts.equal(result))
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(asserts.equal(result))
+        .then(() => fakeCoin.balanceOf(sender))
+        .then(asserts.equal(0));
+    });
+
   });
 
-  it('should withdraw even if not supported', () => {
-    const sender = accounts[6];
-    const value = 1000;
-    const withdraw = 300;
-    const result = 700;
-    return Promise.resolve()
-    .then(() => fakeCoin.mint(sender, value))
-    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => erc20Library.removeContract(fakeCoin.address))
-    .then(() => paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender}))
-    .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
-    .then(asserts.equal(result))
-    .then(() => fakeCoin.balanceOf(balanceHolder.address))
-    .then(asserts.equal(result))
-    .then(() => fakeCoin.balanceOf(sender))
-    .then(asserts.equal(withdraw));
+
+  describe("Withdraw", () => {
+
+    it('should THROW on withdraw when value underflow occurs', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => fakeCoin.transferFrom(balanceHolder.address, '0x0', 1))
+        .then(() => asserts.throws(
+          paymentGateway.withdraw(value, fakeCoin.address, {from: sender}))
+        )
+        .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
+        .then(asserts.equal(value))
+        .then(() => fakeCoin.balanceOf(sender))
+        .then(asserts.equal(0))
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(asserts.equal(value - 1))
+    });
+
+    it('should NOT allow to withdraw more than is deposited', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => paymentGateway.withdraw.call(value + 1, fakeCoin.address, {from: sender}))
+        .then(assert.isFalse);
+    });
+
+    it('should NOT withdraw no tokens', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => paymentGateway.withdraw.call(0, fakeCoin.address, {from: sender}))
+        .then(assert.isFalse);
+    });
+
+    it('should THROW on withdraw if whole charged amount ' +
+       '(with fee) is greater than user balance', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      const withdraw = 1000;
+      const fee = 100;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => fakeCoin.mint(balanceHolder.address, fee))
+        .then(() => fakeCoin.setFee(fee))
+        .then(() => fakeCoin.setFeeFromPayer())
+        .then(() => asserts.throws(
+          paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender}))
+        );
+    });
+
+    it('should withdraw', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      const withdraw = 300;
+      const result = 700;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender}))
+        .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
+        .then(asserts.equal(result))
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(asserts.equal(result))
+        .then(() => fakeCoin.balanceOf(sender))
+        .then(asserts.equal(withdraw));
+    });
+
+    it('should emit Withdrawn event in MultiEventsHistory', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      const withdraw = 300;
+      const result = 700;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender}))
+        .then(result => {
+          assert.equal(result.logs.length, 1);
+          assert.equal(result.logs[0].address, multiEventsHistory.address);
+          assert.equal(result.logs[0].event, 'Withdrawn');
+          assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
+          assert.equal(result.logs[0].args.by, sender);
+          assert.equal(result.logs[0].args.value.valueOf(), withdraw);
+        });
+    });
+
+    it('should withdraw whole charged amount', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      const withdraw = 300;
+      const fee = 100;
+      const result = 600;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => fakeCoin.setFee(fee))
+        .then(() => fakeCoin.setFeeFromPayer())
+        .then(() => paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender}))
+        .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
+        .then(asserts.equal(result))
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(asserts.equal(result))
+        .then(() => fakeCoin.balanceOf(sender))
+        .then(asserts.equal(withdraw));
+    });
+
+    it('should withdraw even if not supported', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      const withdraw = 300;
+      const result = 700;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => erc20Library.removeContract(fakeCoin.address))
+        .then(() => paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender}))
+        .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
+        .then(asserts.equal(result))
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(asserts.equal(result))
+        .then(() => fakeCoin.balanceOf(sender))
+        .then(asserts.equal(withdraw));
+    });
+
   });
 
-  it('should not withdraw if balanceHolder.withdraw failed', () => {
-    const sender = accounts[6];
-    const value = 1000;
-    const withdraw = 300;
-    const result = 700;
-    return Promise.resolve()
-    .then(() => fakeCoin.mint(sender, value))
-    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => fakeCoin.transferFrom(balanceHolder.address, '0x0', result + 1))
-    .then(() => paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender}))
-    .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
-    .then(asserts.equal(value))
-    .then(() => fakeCoin.balanceOf(sender))
-    .then(asserts.equal(0));
-  });
-
-  it('should not withdraw if whole charged amount is greater than user balance', () => {
-    const sender = accounts[6];
-    const value = 1000;
-    const withdraw = 1000;
-    const fee = 100;
-    return Promise.resolve()
-    .then(() => fakeCoin.mint(sender, value))
-    .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-    .then(() => fakeCoin.mint(balanceHolder.address, fee))
-    .then(() => fakeCoin.setFee(fee))
-    .then(() => fakeCoin.setFeeFromPayer())
-    .then(() => asserts.throws(paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender})));
-  });
 
   it('should perform internal transfer', () => {
     const sender = accounts[6];

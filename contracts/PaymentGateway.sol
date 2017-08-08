@@ -15,24 +15,31 @@ contract BalanceHolderInterface {
 }
 
 contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAndERC20LibraryAdapter {
-    StorageInterface.Address feeAddress;
-    StorageInterface.AddressUIntMapping fees; // 10000 is 100%.
     StorageInterface.Address balanceHolder;
     StorageInterface.AddressAddressUIntMapping balances; // contract => user => balance
+    StorageInterface.Address feeAddress;
+    StorageInterface.AddressUIntMapping fees; // 10000 is 100%.
 
     event FeeSet(address indexed self, address indexed contractAddress, uint feePercent);
     event Deposited(address indexed self, address indexed contractAddress, address indexed by, uint value);
     event Withdrawn(address indexed self, address indexed contractAddress, address indexed by, uint value);
     event Transferred(address indexed self, address indexed contractAddress, address from, address indexed to, uint value);
 
+    modifier notNull(uint _value) {
+        if (_value == 0) {
+            return;
+        }
+        _;
+    }
+
     function PaymentGateway(Storage _store, bytes32 _crate, address _roles2Library, address _erc20Library)
         StorageAdapter(_store, _crate)
         Roles2LibraryAndERC20LibraryAdapter(_roles2Library, _erc20Library)
     {
-        feeAddress.init('feeAddress');
-        fees.init('fees');
         balanceHolder.init('balanceHolder');
         balances.init('balances');
+        feeAddress.init('feeAddress');
+        fees.init('fees');
     }
 
     function setupEventsHistory(address _eventsHistory) auth() returns(bool) {  // only owner
@@ -69,6 +76,45 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         return store.get(fees, _contract);
     }
 
+    function deposit(uint _value, address _contract)
+        notNull(_value)
+        onlySupportedContract(_contract)
+    returns(bool) {
+        uint balanceBefore = getBalanceOf(getBalanceHolder(), _contract);
+        _safeAdd(balanceBefore, _value);  // Overflow check
+
+        if (!getBalanceHolder().deposit(msg.sender, _value, _contract)) {
+            return false;
+        }
+        uint depositedAmount = _safeSub(getBalanceOf(getBalanceHolder(), _contract), balanceBefore);
+        store.set(balances, _contract, msg.sender, _safeAdd(getBalance(msg.sender, _contract), depositedAmount));
+        _emitDeposited(msg.sender, depositedAmount, _contract);
+        return true;
+    }
+
+    function withdraw(uint _value, address _contract) notNull(_value) returns(bool) {
+        if (store.get(balances, _contract, msg.sender) < _value) {
+            return false;
+        }
+        return _withdraw(msg.sender, _value, _contract);
+    }
+
+    function _withdraw(address _from, uint _value, address _contract) internal returns(bool) {
+        uint balanceBefore = getBalanceOf(getBalanceHolder(), _contract);
+        _safeSub(balanceBefore, _value);  // Underflow check
+
+        if (!getBalanceHolder().withdraw(_from, _value, _contract)) {
+            return false;
+        }
+        uint withdrawnAmount = _safeSub(balanceBefore, getBalanceOf(getBalanceHolder(), _contract));
+        if (withdrawnAmount == 0) {
+            return false;
+        }
+        store.set(balances, _contract, _from, _safeSub(getBalance(_from, _contract), withdrawnAmount));
+        _emitWithdrawn(_from, _value, _contract);
+        return true;
+    }
+
     // Will be optimized later if used.
     function transfer(address _from, address _to, uint _value, address _contract) returns(bool) {
         return transferWithFee(_from, _to, _value, _value, 0, _contract);
@@ -82,6 +128,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         uint _additionalFee,
         address _contract
     )
+        notNull(_value)
     returns(bool) {
         address[] memory toArray = new address[](1);
         toArray[0] = _to;
@@ -105,7 +152,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
             return false;
         }
         uint total = 0;
-        for(uint i = 0; i < _to.length; i++) {
+        for (uint i = 0; i < _to.length; i++) {
             _addBalance(_to[i], _value[i], _contract);
             _emitTransferred(_from, _to[i], _value[i], _contract);
             total = _safeAdd(total, _value[i]);
@@ -196,35 +243,6 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         uint c = _a + _b;
         _assert(c >= _a);
         return c;
-    }
-
-    function deposit(uint _value, address _contract) onlySupportedContract(_contract) returns(bool) {
-        uint balanceBefore = getBalanceOf(getBalanceHolder(), _contract);
-        if (!getBalanceHolder().deposit(msg.sender, _value, _contract)) {
-            return false;
-        }
-        uint depositedAmount = _safeSub(getBalanceOf(getBalanceHolder(), _contract), balanceBefore);
-        store.set(balances, _contract, msg.sender, _safeAdd(getBalance(msg.sender, _contract), depositedAmount));
-        _emitDeposited(msg.sender, depositedAmount, _contract);
-        return true;
-    }
-
-    function withdraw(uint _value, address _contract) returns(bool) {
-        return _withdraw(msg.sender, _value, _contract);
-    }
-
-    function _withdraw(address _from, uint _value, address _contract) internal returns(bool) {
-        uint balanceBefore = getBalanceOf(getBalanceHolder(), _contract);
-        if (!getBalanceHolder().withdraw(_from, _value, _contract)) {
-            return false;
-        }
-        uint withdrawnAmount = _safeSub(balanceBefore, getBalanceOf(getBalanceHolder(), _contract));
-        if (withdrawnAmount == 0) {
-            return false;
-        }
-        store.set(balances, _contract, _from, _safeSub(getBalance(_from, _contract), withdrawnAmount));
-        _emitWithdrawn(_from, _value, _contract);
-        return true;
     }
 
     function forwardFee(uint _value, address _contract) returns(bool) {

@@ -3,24 +3,61 @@ pragma solidity 0.4.8;
 // For testing purposes.
 contract FakeCoin {
     mapping(address => uint) public balanceOf;
+
+    // Owner of account approves the transfer of an amount to another account
+    mapping(address => mapping (address => uint256)) allowed;
+
     uint public fee;
     bool public feeFromPayer;
+    bool public approvalMode;
 
     function mint(address _to, uint _value) {
         balanceOf[_to] += _value;
     }
 
-    function transfer(address _to, uint _value) returns(bool) {
-        return transferFrom(msg.sender, _to, _value);
+    function enableApproval() {
+        approvalMode = true;
     }
 
-    function transferFrom(address _from, address _to, uint _value) returns(bool) {
-        if (balanceOf[_from] < _value) {
-            return false;
+    function disableApproval() {
+        approvalMode = false;
+    }
+
+    function approve(address _spender, uint256 _amount) returns (bool success) {
+        allowed[msg.sender][_spender] = _amount;
+        return true;
+    }
+
+    modifier enoughCoins(address _spender, uint _value) {
+        if (balanceOf[_spender] < (feeFromPayer ? _value + fee : _value)) {
+            return ;
         }
-        balanceOf[_from] -= feeFromPayer ? _value + fee : _value;
+        _;
+    }
+
+    function transfer(address _to, uint _value)
+        enoughCoins(msg.sender, _value)
+    returns(bool) {
+        balanceOf[msg.sender] -= feeFromPayer ? _value + fee : _value;
         balanceOf[_to] += feeFromPayer ? _value : _value - fee;
         return true;
+    }
+
+    function transferFrom(address _from, address _to, uint _value)
+        enoughCoins(_from, _value)
+    returns(bool) {
+        if (!approvalMode) {
+            balanceOf[_from] -= feeFromPayer ? _value + fee : _value;
+            balanceOf[_to] += feeFromPayer ? _value : _value - fee;
+            return true;
+        } else {
+            if (allowed[_from][msg.sender] >= (feeFromPayer ? _value + fee : _value)) {
+                balanceOf[_from] -= feeFromPayer ? _value + fee : _value;
+                allowed[_from][msg.sender] -= feeFromPayer ? _value + fee : _value;
+                balanceOf[_to] += feeFromPayer ? _value : _value - fee;
+                return true;
+            }
+        }
     }
 
     function setFee(uint _value) {
