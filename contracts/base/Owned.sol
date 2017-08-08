@@ -1,5 +1,6 @@
 pragma solidity 0.4.8;
 
+
 /**
  * @title Owned contract with safe ownership pass.
  *

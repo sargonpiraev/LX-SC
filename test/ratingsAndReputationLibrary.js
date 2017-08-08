@@ -1,1132 +1,1425 @@
-const Reverter = require('./helpers/reverter');
-const Asserts = require('./helpers/asserts');
-const Mock = artifacts.require('./Mock.sol');
-const Storage = artifacts.require('./Storage.sol');
+"use strict";
+
+const FakeCoin = artifacts.require('./FakeCoin.sol');
+const JobController = artifacts.require('./JobController.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
+const Mock = artifacts.require('./Mock.sol');
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
+const PaymentGateway = artifacts.require('./PaymentGateway.sol');
 const RatingsAndReputationLibrary = artifacts.require('./RatingsAndReputationLibrary.sol');
+const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const Storage = artifacts.require('./Storage.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
-const EventsHistory = artifacts.require('./EventsHistory.sol');
+const UserFactory = artifacts.require('./UserFactory.sol');
+
+
+const BalanceHolder = artifacts.require('./BalanceHolder.sol');
+const ERC20Library = artifacts.require('./ERC20Library.sol');
+const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
+
+
+const Asserts = require('./helpers/asserts');
+const Promise = require('bluebird');
+const Reverter = require('./helpers/reverter');
+
+const helpers = require('./helpers/helpers');
 
 contract('RatingsAndReputationLibrary', function(accounts) {
   const reverter = new Reverter(web3);
   afterEach('revert', reverter.revert);
 
   const asserts = Asserts(assert);
+
+  const client = accounts[1];
+  const worker = accounts[2];
+
   const SENDER = accounts[1];
+  let fakeCoin;
   let storage;
   let mock;
-  let eventsHistory;
+  let jobController;
+  let multiEventsHistory;
+  let paymentGateway;
   let userLibrary = web3.eth.contract(UserLibrary.abi).at('0x0');
   let ratingsLibrary;
+  let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
+  let userFactory;
 
-  const getFlag = index => {
-    return web3.toBigNumber(2).pow(index*2);
-  };
+  let balanceHolder;
+  let paymentProcessor;
+  let erc20Library;
 
-  const getEvenFlag = index => {
-    return web3.toBigNumber(2).pow(index*2 + 1);
-  };
+  let FINALIZED_JOB;
+  let NOT_FINALIZED_JOB;
 
   const equal = (a, b) => {
     return a.valueOf() === b.valueOf();
   };
 
-  const assertExpectations = (expected = 0, callsCount = null) => {
-    let expectationsCount;
-    return () => {
-      return mock.expectationsLeft()
-      .then(asserts.equal(expected))
-      .then(() => mock.expectationsCount())
-      .then(result => expectationsCount = result)
-      .then(() => mock.callsCount())
-      .then(result => asserts.equal(callsCount === null ? expectationsCount : callsCount)(result));
-    };
-  };
+  const p = (...data) => {
+    console.log(...data);
+  }
+
+  const setupJob = (_jobArea, _jobCategory, _jobSkills, _client=client, _worker=worker) => {
+    let jobId;
+    const jobArea = helpers.getFlag(_jobArea);
+    const jobCategory = helpers.getFlag(_jobCategory);
+    const jobSkills = _jobSkills;  // uint
+
+    const roles = [];
+    const recovery = "0xffffffffffffffffffffffffffffffffffffffff";
+
+    return Promise.resolve()
+      .then(() => fakeCoin.mint(_client, '0xfffffffffffffffffff'))
+      .then(() => paymentGateway.deposit(
+        '0xfffffffffffffffffff', fakeCoin.address, {from: _client})
+      )
+      .then(() => userFactory.createUserWithProxyAndRecovery(
+        _worker, recovery, roles, jobArea, [jobCategory], [jobSkills]
+      ))
+      .then(() => jobController.postJob(
+        jobArea, jobCategory, jobSkills, "Job details", {from: _client}
+      ))
+      .then(result => jobId = result.logs[0].args.jobId)
+      .then(() => jobController.postJobOffer(
+        jobId, fakeCoin.address, 100, 100, 100, {from: _worker}
+      ))
+      .then(() => jobController.acceptOffer(jobId, _worker, {from: _client}))
+      .then(() => jobId);
+  }
+
+  const finishJob = (jobId, _client=client, _worker=worker) => {
+    return Promise.resolve()
+      .then(() => jobController.startWork(jobId, {from: _worker}))
+      .then(() => jobController.confirmStartWork(jobId, {from: _client}))
+      .then(() => jobController.endWork(jobId, {from: _worker}))
+      .then(() => jobController.confirmEndWork(jobId, {from: _client}))
+      .then(() => jobController.releasePayment(jobId))
+      .then(tx => helpers.eventEquals(tx, 'PaymentReleased'))
+      .then(() => jobId);
+  }
+
 
   before('setup', () => {
-    return Storage.deployed()
+    return Mock.deployed()
+    .then(instance => mock = instance)
+    .then(() => helpers.ignoreAuth(mock))
+    .then(() => FakeCoin.deployed())
+    .then(instance => fakeCoin = instance)
+    .then(() => Storage.deployed())
     .then(instance => storage = instance)
     .then(() => ManagerMock.deployed())
     .then(instance => storage.setManager(instance.address))
+    .then(() => ERC20Library.deployed())
+    .then(instance => erc20Library = instance)
+    .then(() => MultiEventsHistory.deployed())
+    .then(instance => multiEventsHistory = instance)
+    .then(() => JobController.deployed())
+    .then(instance => jobController = instance)
+    .then(() => UserFactory.deployed())
+    .then(instance => userFactory = instance)
+    .then(() => BalanceHolder.deployed())
+    .then(instance => balanceHolder = instance)
+    .then(() => PaymentGateway.deployed())
+    .then(instance => paymentGateway = instance)
+    .then(() => PaymentProcessor.deployed())
+    .then(instance => paymentProcessor = instance)
     .then(() => RatingsAndReputationLibrary.deployed())
     .then(instance => ratingsLibrary = instance)
-    .then(() => EventsHistory.deployed())
-    .then(instance => eventsHistory = instance)
-    .then(() => Mock.deployed())
-    .then(instance => mock = instance)
-    .then(() => ratingsLibrary.setupUserLibrary(mock.address))
-    .then(() => ratingsLibrary.setupEventsHistory(eventsHistory.address))
-    .then(() => eventsHistory.addVersion(ratingsLibrary.address, '_', '_'))
+
+    .then(() => multiEventsHistory.authorize(erc20Library.address))
+    .then(() => multiEventsHistory.authorize(jobController.address))
+    .then(() => multiEventsHistory.authorize(ratingsLibrary.address))
+    .then(() => multiEventsHistory.authorize(userFactory.address))
+    .then(() => multiEventsHistory.authorize(paymentGateway.address))
+
+    .then(() => erc20Library.setupEventsHistory(multiEventsHistory.address))
+    .then(() => userFactory.setupEventsHistory(multiEventsHistory.address))
+    .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
+    .then(() => jobController.setupEventsHistory(multiEventsHistory.address))
+    .then(() => ratingsLibrary.setupEventsHistory(multiEventsHistory.address))
+
+    .then(() => erc20Library.addContract(fakeCoin.address))
+    .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
+    .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
+
+    .then(() => userFactory.setUserLibrary(mock.address))
+    .then(() => jobController.setUserLibrary(mock.address))
+    .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
+
+    .then(() => ratingsLibrary.setJobController(jobController.address))
+    .then(() => ratingsLibrary.setUserLibrary(mock.address))
+
+    .then(() => setupJob(0, 0, 7))
+    .then(jobId => finishJob(jobId))  // jobId#1, to test finished jobs
+    .then(jobId => FINALIZED_JOB = jobId.toNumber())
+
+    .then(() => setupJob(0, 0, 7))  // jobId#2, to test canceled jobs
+    .then(jobId => NOT_FINALIZED_JOB = jobId.toNumber())
+
+    .then(() => mock.resetCallsCount())
     .then(reverter.snapshot);
   });
 
-  it('should be able to set valid user rating', () => {
-    const rating = 5;
-    const address = '0xffffffffffffffffffffffffffffffffffffffff';
-    return ratingsLibrary.setUserRating(address, rating, {from: SENDER})
-    .then(() => ratingsLibrary.getUserRating(SENDER, address))
-    .then(asserts.equal(rating));
-  });
 
-  it('should not be able to set invalid user rating', () => {
-    const rating = -3;
-    const address = '0xffffffffffffffffffffffffffffffffffffffff';
-    return ratingsLibrary.setUserRating(address, rating, {from: SENDER})
-    .then(() => ratingsLibrary.getUserRating(SENDER, address))
-    .then(asserts.equal(0));
-  });
+  describe('Contract setup', () => {
 
-  it('should rewrite user rating', () => {
-    const rating1 = 5;
-    const rating2 = 6;
-    const address = '0xffffffffffffffffffffffffffffffffffffffff';
-    return ratingsLibrary.setUserRating(address, rating1, {from: SENDER})
-    .then(() => ratingsLibrary.setUserRating(address, rating2, {from: SENDER}))
-    .then(() => ratingsLibrary.getUserRating(SENDER, address))
-    .then(asserts.equal(rating2));
-  });
-
-   it('should not rewrite to invalid user rating', () => {
-    const rating1 = 5;
-    const rating2 = 11;
-    const address = '0xffffffffffffffffffffffffffffffffffffffff';
-    return ratingsLibrary.setUserRating(address, rating1, {from: SENDER})
-    .then(() => ratingsLibrary.setUserRating(address, rating2, {from: SENDER}))
-    .then(() => ratingsLibrary.getUserRating(SENDER, address))
-    .then(asserts.equal(rating1));
-  });
-
-  it('should store user rating for different addresses', () => {
-    const rating1 = 5;
-    const rating2 = 6;
-    const address1 = '0xffffffffffffffffffffffffffffffffffffffff';
-    const address2 = '0xffffffffffffffffffffffffffffffffffffff00';
-    return ratingsLibrary.setUserRating(address1, rating1, {from: SENDER})
-    .then(() => ratingsLibrary.setUserRating(address2, rating2, {from: SENDER}))
-    .then(() => ratingsLibrary.getUserRating(SENDER, address1))
-    .then(asserts.equal(rating1))
-    .then(() => ratingsLibrary.getUserRating(SENDER, address2))
-    .then(asserts.equal(rating2));
-  });
-
-  it('should store user rating from different raters', () => {
-    const sender2 = accounts[3];
-    const rating1 = 5;
-    const rating2 = 6;
-    const address = '0xffffffffffffffffffffffffffffffffffffffff';
-    return ratingsLibrary.setUserRating(address, rating1, {from: SENDER})
-    .then(() => ratingsLibrary.setUserRating(address, rating2, {from: sender2}))
-    .then(() => ratingsLibrary.getUserRating(SENDER, address))
-    .then(asserts.equal(rating1))
-    .then(() => ratingsLibrary.getUserRating(sender2, address))
-    .then(asserts.equal(rating2));
-  });
-
-  it('should emit "UserRatingGiven" event when user rating set', () => {
-    const rating = 5;
-    const address = '0xffffffffffffffffffffffffffffffffffffffff';
-    return ratingsLibrary.setUserRating(address, rating, {from: SENDER})
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, 'UserRatingGiven');
-      assert.equal(result.logs[0].args.rater, SENDER);
-      assert.equal(result.logs[0].args.to, address);
-      assert.equal(result.logs[0].args.rating, rating);
+    it('should check auth on setup events history', () => {
+      const caller = accounts[1];
+      const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+        .then(() => helpers.ignoreAuth(mock, false))
+        .then(() => mock.expect(
+          ratingsLibrary.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            ratingsLibrary.address,
+            ratingsLibrary.contract.setupEventsHistory.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => ratingsLibrary.setupEventsHistory(newAddress, {from: caller}))
+        .then(helpers.assertExpectations(mock));
     });
+
+    it('should check auth on setup user library', () => {
+      const caller = accounts[1];
+      const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+        .then(() => helpers.ignoreAuth(mock, false))
+        .then(() => mock.expect(
+          ratingsLibrary.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            ratingsLibrary.address,
+            ratingsLibrary.contract.setUserLibrary.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => ratingsLibrary.setUserLibrary(newAddress, {from: caller}))
+        .then(helpers.assertExpectations(mock));
+    });
+
+    it('should check auth on setup job controller', () => {
+      const caller = accounts[1];
+      const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+        .then(() => helpers.ignoreAuth(mock, false))
+        .then(() => mock.expect(
+          ratingsLibrary.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            caller,
+            ratingsLibrary.address,
+            ratingsLibrary.contract.setJobController.getData().slice(0, 10)
+          ), 0)
+        )
+        .then(() => ratingsLibrary.setJobController(newAddress, {from: caller}))
+        .then(helpers.assertExpectations(mock));
+    });
+
   });
 
-  it('should not emit "UserRatingGiven" event when invalid user rating set', () => {
-    const rating = 55;
-    const address = '0xffffffffffffffffffffffffffffffffffffffff';
-    return ratingsLibrary.setUserRating(address, rating, {from: SENDER})
-    .then(result => assert.equal(result.logs.length, 0));
+
+  describe('User rating', () => {
+
+    it('should NOT be able to set invalid user rating', () => {
+      const ratings = [-1, 0, 11, 100500];
+      const address = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.each(ratings, rating => {
+        return ratingsLibrary.setUserRating(address, rating, {from: SENDER})
+          .then(() => ratingsLibrary.getUserRating(SENDER, address))
+          .then(asserts.equal(0));
+      });
+    });
+
+    it('should NOT emit "UserRatingGiven" event when invalid user rating set', () => {
+      const rating = 55;
+      const address = '0xffffffffffffffffffffffffffffffffffffffff';
+      return ratingsLibrary.setUserRating(address, rating, {from: SENDER})
+        .then(result => assert.equal(result.logs.length, 0));
+    });
+
+    it('should NOT rewrite to invalid user rating', () => {
+      const rating1 = 5;
+      const rating2 = 11;
+      const address = '0xffffffffffffffffffffffffffffffffffffffff';
+      return ratingsLibrary.setUserRating(address, rating1, {from: SENDER})
+        .then(() => ratingsLibrary.setUserRating(address, rating2, {from: SENDER}))
+        .then(() => ratingsLibrary.getUserRating(SENDER, address))
+        .then(asserts.equal(rating1));
+    });
+
+
+    it('should rewrite user rating', () => {
+      const rating1 = 5;
+      const rating2 = 6;
+      const address = '0xffffffffffffffffffffffffffffffffffffffff';
+      return ratingsLibrary.setUserRating(address, rating1, {from: SENDER})
+        .then(() => ratingsLibrary.setUserRating(address, rating2, {from: SENDER}))
+        .then(() => ratingsLibrary.getUserRating(SENDER, address))
+        .then(asserts.equal(rating2));
+    });
+
+    it('should store user rating for different addresses', () => {
+      const rating1 = 5;
+      const rating2 = 6;
+      const address1 = '0xffffffffffffffffffffffffffffffffffffffff';
+      const address2 = '0xffffffffffffffffffffffffffffffffffffff00';
+      return ratingsLibrary.setUserRating(address1, rating1, {from: SENDER})
+        .then(() => ratingsLibrary.setUserRating(address2, rating2, {from: SENDER}))
+        .then(() => ratingsLibrary.getUserRating(SENDER, address1))
+        .then(asserts.equal(rating1))
+        .then(() => ratingsLibrary.getUserRating(SENDER, address2))
+        .then(asserts.equal(rating2));
+    });
+
+    it('should store user rating from different raters', () => {
+      const sender2 = accounts[3];
+      const rating1 = 5;
+      const rating2 = 6;
+      const address = '0xffffffffffffffffffffffffffffffffffffffff';
+      return ratingsLibrary.setUserRating(address, rating1, {from: SENDER})
+        .then(() => ratingsLibrary.setUserRating(address, rating2, {from: sender2}))
+        .then(() => ratingsLibrary.getUserRating(SENDER, address))
+        .then(asserts.equal(rating1))
+        .then(() => ratingsLibrary.getUserRating(sender2, address))
+        .then(asserts.equal(rating2));
+    });
+
+    it('should emit "UserRatingGiven" event when user rating set', () => {
+      const rating = 5;
+      const address = '0xffffffffffffffffffffffffffffffffffffffff';
+      return ratingsLibrary.setUserRating(address, rating, {from: SENDER})
+        .then(result => {
+          assert.equal(result.logs.length, 1);
+          assert.equal(result.logs[0].address, multiEventsHistory.address);
+          assert.equal(result.logs[0].args.self, ratingsLibrary.address);
+          assert.equal(result.logs[0].event, 'UserRatingGiven');
+          assert.equal(result.logs[0].args.rater, SENDER);
+          assert.equal(result.logs[0].args.to, address);
+          assert.equal(result.logs[0].args.rating, rating);
+        });
+    });
+
   });
 
-  it('should set valid rating', () => {
-    const rating = 2;
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const jobId = 10;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'),  true)
-    .then(() => ratingsLibrary.setRating(worker, rating, jobId, {from: client}))    
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, 'RatingGiven');
-      assert.equal(result.logs[0].args.rater, client);
-      assert.equal(result.logs[0].args.to, worker);
-      assert.equal(result.logs[0].args.rating, rating);
-      assert.equal(result.logs[0].args.jobId, jobId);
-    })
-    .then(() => ratingsLibrary.getRating(worker, jobId))
-    .then(result => {
-      assert.equal(result[1], rating);
-      assert.equal(result[0], client);
-    })
-    .then(assertExpectations);
+
+  describe('Job rating', () => {
+
+    it('should NOT set invalid job rating', () => {
+      const ratings = [-1, 0, 11, 100500];
+      const jobId = FINALIZED_JOB;
+      return Promise.each(ratings, rating => {
+        return ratingsLibrary.setJobRating(worker, rating, jobId, {from: client})
+        .then(result => assert.equal(result.logs.length, 0))
+        .then(() => ratingsLibrary.getJobRating(worker, jobId))
+        .then(result => {
+          assert.equal(result[1], 0);
+          assert.equal(result[0], 0);
+        })
+        .then(() => helpers.assertExpectations(mock));
+      })
+    });
+
+    it("should NOT allow to rate a job if it's not at FINALIZED state", () => {
+      const jobId = NOT_FINALIZED_JOB;
+      const rating = 5;
+      return Promise.resolve()
+        .then(() => ratingsLibrary.setJobRating.call(
+          worker, rating, jobId, {from: client}
+        ))
+        .then(assert.isFalse)
+    });
+
+    it("should NOT allow to rate a job if already rated", () => {
+      const jobId = FINALIZED_JOB;
+      const rating = 5;
+      return Promise.resolve()
+        .then(() => ratingsLibrary.setJobRating(
+          worker, rating, jobId, {from: client}
+        ))
+        .then(() => ratingsLibrary.setJobRating.call(
+          worker, rating, jobId, {from: client}
+        ))
+        .then(assert.isFalse)
+    });
+
+    it("should NOT rate non-existent job", () => {
+      const jobId = 3;
+      const rating = 5;
+      return Promise.resolve()
+        .then(() => ratingsLibrary.setJobRating.call(
+          worker, rating, jobId, {from: client}
+        ))
+        .then(assert.isFalse)
+    });
+
+    it('should NOT allow to rate a job with worker not by client', () => {
+      const jobId = FINALIZED_JOB;
+      const rating = 5;
+      return Promise.resolve()
+        .then(() => ratingsLibrary.setJobRating.call(
+          worker, rating, jobId, {from: accounts[9]}
+        ))
+        .then(assert.isFalse)
+    });
+
+    it('should NOT allow to rate a job with client not by worker', () => {
+      const jobId = FINALIZED_JOB;
+      const rating = 5;
+      return Promise.resolve()
+        .then(() => ratingsLibrary.setJobRating.call(
+          client, rating, jobId, {from: accounts[9]}
+        ))
+        .then(assert.isFalse)
+    });
+
+
+    it('should allow to rate a job with worker by client', () => {
+      const jobId = FINALIZED_JOB;
+      const rating = 1;
+      return Promise.resolve()
+        .then(() => ratingsLibrary.setJobRating.call(
+          worker, rating, jobId, {from: client}
+        ))
+        .then(assert.isTrue)
+    });
+
+    it('should allow to rate a job with client by worker', () => {
+      const jobId = FINALIZED_JOB;
+      const rating = 3;
+      return Promise.resolve()
+        .then(() => ratingsLibrary.setJobRating.call(
+          client, rating, jobId, {from: worker}
+        ))
+        .then(assert.isTrue)
+    });
+
+    it('should set valid job rating, emitting "JobRatingGiven" event', () => {
+      const rating = 2;
+      const jobId = 1;
+      return ratingsLibrary.setJobRating(worker, rating, jobId, {from: client})
+        .then(result => {
+          assert.equal(result.logs.length, 1);
+          assert.equal(result.logs[0].address, multiEventsHistory.address);
+          assert.equal(result.logs[0].args.self, ratingsLibrary.address);
+          assert.equal(result.logs[0].event, 'JobRatingGiven');
+          assert.equal(result.logs[0].args.rater, client);
+          assert.equal(result.logs[0].args.to, worker);
+          assert.equal(result.logs[0].args.rating, rating);
+          assert.equal(result.logs[0].args.jobId, jobId);
+        })
+        .then(() => ratingsLibrary.getJobRating(worker, jobId))
+        .then(result => {
+          assert.equal(result[1], rating);
+          assert.equal(result[0], client);
+        })
+        .then(() => helpers.assertExpectations(mock));
+    });
+
+    it('should allow to rate a canceled job', () => {
+      const jobId = NOT_FINALIZED_JOB;
+      const rating = 5;
+      return Promise.resolve()
+        .then(() => jobController.cancelJob(jobId, {from: client}))
+        .then(() => ratingsLibrary.setJobRating.call(
+          worker, rating, jobId, {from: client}
+        ))
+        .then(assert.isTrue);
+    });
+
+    it('should store different job ratings', () => {
+      const clientRating1 = 3;
+      const clientRating2 = 4;
+      const workerRating1 = 5;
+      const workerRating2 = 6;
+      const client1 = accounts[2];
+      const client2 = accounts[3];
+      const worker1 = accounts[4];
+      const worker2 = accounts[5];
+      let jobId1;
+      let jobId2;
+      return Promise.resolve()
+        .then(() => setupJob(1, 1, 1, client1, worker1))
+        .then(result => jobId1 = result.toNumber())
+        .then(() => finishJob(jobId1, client1, worker1))
+        .then(() => setupJob(2, 2, 2, client2, worker2))
+        .then(result => jobId2 = result.toNumber())
+        .then(() => finishJob(jobId2, client2, worker2))
+
+        .then(() => ratingsLibrary.setJobRating(worker1, workerRating1, jobId1, {from: client1}))
+        .then(() => ratingsLibrary.setJobRating(worker2, workerRating2, jobId2, {from: client2}))
+        .then(() => ratingsLibrary.setJobRating(client1, clientRating1, jobId1, {from: worker1}))
+        .then(() => ratingsLibrary.setJobRating(client2, clientRating2, jobId2, {from: worker2}))
+
+        .then(() => ratingsLibrary.getJobRating(worker1, jobId1))
+        .then(result => {
+          assert.equal(result[1], workerRating1);
+          assert.equal(result[0], client1);
+        })
+        .then(() => ratingsLibrary.getJobRating(worker2, jobId2))
+        .then(result => {
+          assert.equal(result[1], workerRating2);
+          assert.equal(result[0], client2);
+        })
+        .then(() => ratingsLibrary.getJobRating(client1, jobId1))
+        .then(result => {
+          assert.equal(result[1], clientRating1);
+          assert.equal(result[0], worker1);
+        })
+        .then(() => ratingsLibrary.getJobRating(client2, jobId2))
+        .then(result => {
+          assert.equal(result[1], clientRating2);
+          assert.equal(result[0], worker2);
+        });
+      });
+
   });
 
-  it('should set valid worker area rating', () => {
-    const area = getFlag(3);
-    const rating = 7;
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const jobId = 10;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  true))
-    .then(() => ratingsLibrary.setAreaRating(worker, rating, area, jobId, {from: client}))
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, 'AreaRatingGiven');
-      assert.equal(result.logs[0].args.rater, client);
-      assert.equal(result.logs[0].args.to, worker);
-      assert.equal(result.logs[0].args.rating, rating);
-      assert.equal(result.logs[0].args.jobId, jobId);
-      equal(result.logs[0].args.area, area);
-    })    
-    .then(() => ratingsLibrary.getAreaRating(worker, area, jobId))
-    .then(result => {
-      assert.equal(result[1].valueOf(), rating);
-      assert.equal(result[0], client);
-    })
-    .then(assertExpectations);
+
+  describe('Skill rating', () => {
+
+    it('should NOT allow to rate worker skills for non-existent job', () => {
+      return Promise.resolve()
+        .then(() => ratingsLibrary.rateWorkerSkills.call(
+          3, worker, 1, 1, [1], [1], {from: client}
+        ))
+        .then(assert.isFalse);
+    });
+
+    it("should NOT allow to rate worker skills if a job is not at FINALIZED state", () => {
+      const jobId = NOT_FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      const call = ratingsLibrary.rateWorkerSkills;
+      const args = [jobId, worker, area, category, skills, ratings, {from: client}];
+      return Promise.resolve()
+        .then(() => call(...args))
+        .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => call(...args))
+        .then(() => jobController.confirmStartWork(jobId, {from: client}))
+        .then(() => call(...args))
+        .then(() => jobController.endWork(jobId, {from: worker}))
+        .then(() => call(...args))
+        .then(() => jobController.confirmEndWork(jobId, {from: client}))
+        .then(() => jobController.getJobState(jobId))
+        .then(asserts.equal(6))  // Ensure all previous stage changes was successful
+        .then(() => call(...args))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
+    it('should NOT allow to rate worker skills not from job client', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => Promise.each(accounts.slice(2), account => {
+          return ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: account}
+          )
+          .then(() => Promise.each(skills, skill => {
+            return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+          }));
+        }));
+    });
+
+    it('should NOT allow to rate worker skills not for job worker', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => Promise.each(accounts.slice(3), account => {
+          return ratingsLibrary.rateWorkerSkills(
+            jobId, account, area, category, skills, ratings, {from: client}
+          )
+          .then(() => Promise.each(skills, skill => {
+            return ratingsLibrary.getSkillRating(
+              account, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+          }));
+        }))
+        // Ensure actual worker doesn't have skills rated
+        .then(() => Promise.each(skills, skill => {
+            return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+          }));
+    });
+
+    it('should NOT allow to rate worker skills if a job was canceled on ACCEPTED state', () => {
+      const jobId = NOT_FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => jobController.cancelJob(jobId, {from: client}))
+        .then(() => jobController.getJobState(jobId))
+        .then(asserts.equal(7))  // Ensure the job is FINALIZED
+        .then(() => jobController.getFinalState(jobId))
+        .then(asserts.equal(2))  // Ensure the job was canceled at ACCEPTED state
+        .then(() => ratingsLibrary.rateWorkerSkills(
+          jobId, worker, area, category, skills, ratings, {from: client}
+        ))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
+    it('should NOT allow to rate worker skills if a job was canceled on PENDING START state', () => {
+      const jobId = NOT_FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => jobController.cancelJob(jobId, {from: client}))
+        .then(() => jobController.getJobState(jobId))
+        .then(asserts.equal(7))  // Ensure the job is FINALIZED
+        .then(() => jobController.getFinalState(jobId))
+        .then(asserts.equal(3))  // Ensure the job was canceled at PENDING_START state
+        .then(() => ratingsLibrary.rateWorkerSkills(
+          jobId, worker, area, category, skills, ratings, {from: client}
+        ))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
+    it('should NOT allow to set skills if they are already set', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+          ))
+        .then(() => Promise.each(skills, (skill, i) => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], client);
+              assert.equal(result[1], ratings[i]);
+            });
+        }))
+        .then(() => ratingsLibrary.rateWorkerSkills.call(
+          jobId, worker, area, category, skills, ratings, {from: client}
+        ))
+        .then(assert.isFalse);
+    });
+
+    it('should NOT rate worker skills with even flag job area', () => {
+      const jobId = FINALIZED_JOB;
+      const area = 2;
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+          ))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
+    it('should NOT rate worker skills with multi-flag job area', () => {
+      const jobId = FINALIZED_JOB;
+      const area = 3;
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+          ))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
+    it('should NOT rate worker skills with area that is unrelated to the given job', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(1);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+          ))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
+    it('should NOT rate worker skills with even flag job category', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = 2;
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+          ))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
+    it('should NOT rate worker skills with multi-flag job category', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = 3;
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+          ))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
+    it('should NOT rate worker skills with category that is unrelated to the given job', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(1);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+          ))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
+    it('should NOT rate worker skills with multi-flag skill', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 5];  // "5" is multi-flag int, incorrect skill
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => asserts.throws(ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+        )))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
+    it('should NOT rate worker skills with skill that is not unrelated to the given job', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 8];  // There's no "8" skill in the job
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => asserts.throws(ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+        )))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
+    it('should NOT set skill ratings that are more than 10', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 11];  // "11" is a bit too much!
+      return Promise.resolve()
+        .then(() => asserts.throws(ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+        )))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
+    it('should NOT set skill ratings that are less than 1', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 0];  // "0" is a bit not enough!
+      return Promise.resolve()
+        .then(() => asserts.throws(ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+        )))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
+
+    it('should allow to rate worker skills with valid parameters on successfully finished job', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+          ))
+        .then(() => Promise.each(skills, (skill, i) => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], client);
+              assert.equal(result[1], ratings[i]);
+            });
+        }));
+    });
+
+    it('should allow to rate worker skills on canceled job if it ended up with STARTED state', () => {
+      const jobId = NOT_FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => jobController.confirmStartWork(jobId, {from: client}))
+        .then(() => jobController.cancelJob(jobId, {from: client}))
+        .then(() => jobController.getJobState(jobId))
+        .then(asserts.equal(7))  // Ensure the job is FINALIZED
+        .then(() => jobController.getFinalState(jobId))
+        .then(asserts.equal(4))  // Ensure the job was canceled at STARTED state
+        .then(() => ratingsLibrary.rateWorkerSkills(
+          jobId, worker, area, category, skills, ratings, {from: client}
+        ))
+        .then(() => Promise.each(skills, (skill, i) => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], client);
+              assert.equal(result[1], ratings[i]);
+            });
+        }));
+    });
+
+    it('should allow to rate worker skills on canceled job if it ended up with PENDING_FINISH state', () => {
+      const jobId = NOT_FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => jobController.confirmStartWork(jobId, {from: client}))
+        .then(() => jobController.endWork(jobId, {from: worker}))
+        .then(() => jobController.cancelJob(jobId, {from: client}))
+        .then(() => jobController.getJobState(jobId))
+        .then(asserts.equal(7))  // Ensure the job is FINALIZED
+        .then(() => jobController.getFinalState(jobId))
+        .then(asserts.equal(5))  // Ensure the job was canceled at PENDING_FINISH state
+        .then(() => ratingsLibrary.rateWorkerSkills(
+          jobId, worker, area, category, skills, ratings, {from: client}
+        ))
+        .then(() => Promise.each(skills, (skill, i) => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], client);
+              assert.equal(result[1], ratings[i]);
+            });
+        }));
+    });
+
+    it('should emit "SkillRatingGiven" event on rate worker skills with valid parameters', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+          ))
+        .then(tx => {
+          assert.equal(tx.logs.length, 3);
+          return Promise.each(skills, (skill, i) => {
+            assert.equal(tx.logs[i].event, "SkillRatingGiven");
+            assert.equal(tx.logs[i].args.jobId, jobId);
+            assert.equal(tx.logs[i].args.rater, client);
+            assert.equal(tx.logs[i].args.to, worker);
+            assert.equal(tx.logs[i].args.area.toString(), area.toString());
+            assert.equal(tx.logs[i].args.category.toString(), category.toString());
+            assert.equal(tx.logs[i].args.skill.toString(), skills[i].toString());
+            assert.equal(tx.logs[i].args.rating, ratings[i]);
+          });
+        });
+    });
+
+    it('should store different skill ratings', () => {
+      const area1 = helpers.getFlag(1);
+      const category1 = helpers.getFlag(1);
+      const skill1 = 1;
+      const area2 = helpers.getFlag(2);
+      const category2 = helpers.getFlag(2);
+      const skill2 = 2;
+      const rating1 = 5;
+      const rating2 = 10;
+      const client1 = accounts[2];
+      const client2 = accounts[3];
+      const worker1 = accounts[4];
+      const worker2 = accounts[5];
+      let jobId1;
+      let jobId2;
+      return Promise.resolve()
+        .then(() => setupJob(1, 1, 1, client1, worker1))
+        .then(result => jobId1 = result.toNumber())
+        .then(() => finishJob(jobId1, client1, worker1))
+        .then(() => setupJob(2, 2, 2, client2, worker2))
+        .then(result => jobId2 = result.toNumber())
+        .then(() => finishJob(jobId2, client2, worker2))
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId1, worker1, area1, category1, [skill1], [rating1], {from: client1}
+        ))
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId2, worker2, area2, category2, [skill2], [rating2], {from: client2}
+        ))
+
+        .then(() => ratingsLibrary.getSkillRating(worker1, area1, category1, skill1, jobId1))
+        .then(result => {
+          assert.equal(result[0], client1);
+          assert.equal(result[1], rating1);
+        })
+        .then(() => ratingsLibrary.getSkillRating(worker2, area2, category2, skill2, jobId2))
+        .then(result => {
+          assert.equal(result[0], client2);
+          assert.equal(result[1], rating2);
+        });
+    });
+
   });
 
-  it('should set valid worker area evaluation ', () => {
-    const area = getFlag(3);
+
+  describe('Skill evaluation', () => {
+
+    it('should check auth on area evaluation', () => {
+      const area = helpers.getFlag(4);
+      const rating = 7;
+      const evaluator = accounts[6];
+      const user = accounts[7];
+      return Promise.resolve()
+        .then(() => helpers.ignoreAuth(mock))
+        .then(() => mock.expect(
+          ratingsLibrary.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            evaluator,
+            ratingsLibrary.address,
+            ratingsLibrary.contract.evaluateArea.getData().slice(0, 10)
+          ),
+          0
+        ))
+        .then(() => ratingsLibrary.evaluateArea(user, rating, area, {from: evaluator}))
+        .then(() => helpers.assertExpectations(mock));
+    });
+
+    it('should check auth on category evaluation', () => {
+      const area = helpers.getFlag(4);
+      const category = helpers.getFlag(4);
+      const rating = 7;
+      const evaluator = accounts[6];
+      const user = accounts[7];
+      return Promise.resolve()
+        .then(() => helpers.ignoreAuth(mock))
+        .then(() => mock.expect(
+          ratingsLibrary.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            evaluator,
+            ratingsLibrary.address,
+            ratingsLibrary.contract.evaluateCategory.getData().slice(0, 10)
+          ),
+          0
+        ))
+        .then(() => ratingsLibrary.evaluateCategory(user, rating, area, category, {from: evaluator}))
+        .then(() => helpers.assertExpectations(mock));
+    });
+
+    it('should check auth on skill evaluation', () => {
+      const area = helpers.getFlag(4);
+      const category = helpers.getFlag(4);
+      const skill = 4;
+      const rating = 7;
+      const evaluator = accounts[6];
+      const user = accounts[7];
+      return Promise.resolve()
+        .then(() => helpers.ignoreAuth(mock))
+        .then(() => mock.expect(
+          ratingsLibrary.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            evaluator,
+            ratingsLibrary.address,
+            ratingsLibrary.contract.evaluateCategory.getData().slice(0, 10)
+          ),
+          0
+        ))
+        .then(() => ratingsLibrary.evaluateCategory(user, rating, area, category, skill, {from: evaluator}))
+        .then(() => helpers.assertExpectations(mock));
+    });
+
+    it('should check auth on multiple evaluation', () => {
+      const areas = helpers.getFlag(4);
+      const categories = [helpers.getFlag(4)];
+      const skills = [4, 8, 16];
+      const ratings = [7, 1, 4];
+      const evaluator = accounts[6];
+      const user = accounts[7];
+      const expectedSig = helpers.getSig(
+        "evaluateMany(address,uint256,uint256[],uint256[],uint8[])"
+      );
+      return Promise.resolve()
+        .then(() => helpers.ignoreAuth(mock))
+        .then(() => mock.expect(
+          ratingsLibrary.address,
+          0,
+          roles2LibraryInterface.canCall.getData(
+            evaluator,
+            ratingsLibrary.address,
+            expectedSig
+          ),
+          0
+        ))
+        .then(() => ratingsLibrary.evaluateMany(user, areas, categories, skills, ratings, {from: evaluator}))
+        .then(() => helpers.assertExpectations(mock));
+    });
+
+
+    it('should not set invalid worker area evaluation', () => {
+      const area = helpers.getFlag(4);
+      const rating = 823847;
+      const evaluator = accounts[2];
+      const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      return Promise.resolve()
+      .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  true))
+      .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))
+      .then(result => assert.equal(result.logs.length, 0))
+      .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
+      .then(result => assert.equal(result.valueOf(), 0))
+      .then(() => helpers.assertExpectations(mock));
+    });
+
+    it('should not set invalid worker category evaluation', () => {
+      const area = helpers.getFlag(4);
+      const category = helpers.getFlag(7);
+      const rating = 823847;
+      const evaluator = accounts[2];
+      const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      return Promise.resolve()
+      .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
+      .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
+      .then(result => assert.equal(result.logs.length, 0))
+      .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
+      .then(result => assert.equal(result.valueOf(), 0))
+      .then(() => helpers.assertExpectations(mock));
+    });
+
+    it('should not set invalid worker skill evaluation', () => {
+      const area = helpers.getFlag(4);
+      const category = helpers.getFlag(7);
+      const skill = helpers.getFlag(9);
+      const rating = 823847;
+      const evaluator = accounts[2];
+      const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      return Promise.resolve()
+      .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
+      .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
+      .then(result => assert.equal(result.logs.length, 0))
+      .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
+      .then(result => assert.equal(result.valueOf(), 0))
+      .then(() => helpers.assertExpectations(mock));
+    });
+
+
+    it('should not set worker area evaluation if worker doesn\'t have that area', () => {
+      const area = helpers.getFlag(4);
+      const rating = 3;
+      const evaluator = accounts[2];
+      const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      return Promise.resolve()
+      .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  false))
+      .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))
+      .then(result => assert.equal(result.logs.length, 0))
+      .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
+      .then(result => assert.equal(result.valueOf(), 0))
+      .then(() => helpers.assertExpectations(mock));
+    });
+
+    it('should not set worker category evaluation if worker doesn\'t have that category', () => {
+      const area = helpers.getFlag(4);
+      const category = helpers.getFlag(7);
+      const rating = 4;
+      const evaluator = accounts[2];
+      const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      return Promise.resolve()
+      .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  false))
+      .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
+      .then(result => assert.equal(result.logs.length, 0))
+      .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
+      .then(result => assert.equal(result.valueOf(), 0))
+      .then(() => helpers.assertExpectations(mock));
+    });
+
+    it('should not set worker skill evaluation if worker doesn\'t have that skill', () => {
+    const area = helpers.getFlag(4);
+    const category = helpers.getFlag(7);
+    const skill = helpers.getFlag(9);
     const rating = 8;
     const evaluator = accounts[2];
     const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  true))
-    .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))    
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, 'AreaEvaluated');
-      assert.equal(result.logs[0].args.rater, evaluator);
-      assert.equal(result.logs[0].args.to, worker);
-      assert.equal(result.logs[0].args.rating, rating);
-      equal(result.logs[0].args.area, area);
-    })    
-    .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
-    .then(result => assert.equal(result.valueOf(), rating))
-    .then(assertExpectations);
-  });
-
-  it('should set valid worker category rating', () => {
-    const area = getFlag(2);
-    const category = getFlag(3);
-    const rating = 7;
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const jobId = 10;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
-    .then(() => ratingsLibrary.setCategoryRating(worker, rating, area, category, jobId, {from: client}))
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, 'CategoryRatingGiven');
-      assert.equal(result.logs[0].args.rater, client);
-      assert.equal(result.logs[0].args.to, worker);
-      assert.equal(result.logs[0].args.rating, rating);
-      assert.equal(result.logs[0].args.jobId, jobId);
-      equal(result.logs[0].args.area, area);
-      equal(result.logs[0].args.category, category);
-    })    
-    .then(() => ratingsLibrary.getCategoryRating(worker, area, category, jobId))
-    .then(result => {
-      assert.equal(result[1].valueOf(), rating);
-      assert.equal(result[0], client);
-    })
-    .then(assertExpectations);
-  });
-
-  it('should set valid worker category evaluation ', () => {
-    const area = getFlag(4);
-    const category = getFlag(7);
-    const rating = 8;
-    const evaluator = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
-    .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))    
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, 'CategoryEvaluated');
-      assert.equal(result.logs[0].args.rater, evaluator);
-      assert.equal(result.logs[0].args.to, worker);
-      assert.equal(result.logs[0].args.rating, rating);
-      equal(result.logs[0].args.area, area);
-      equal(result.logs[0].args.category, category);
-    })    
-    .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
-    .then(result => assert.equal(result.valueOf(), rating))
-    .then(assertExpectations);
-  });
-
-  it('should set valid worker skill rating', () => {
-    const area = getFlag(1);
-    const category = getFlag(2);
-    const skill = getFlag(3);
-    const rating = 7;
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const jobId = 100500;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
-    .then(() => ratingsLibrary.setSkillRating(worker, rating, area, category, skill, jobId, {from: client}))
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, 'SkillRatingGiven');
-      assert.equal(result.logs[0].args.rater, client);
-      assert.equal(result.logs[0].args.to, worker);
-      assert.equal(result.logs[0].args.rating, rating);
-      assert.equal(result.logs[0].args.jobId, jobId);
-      equal(result.logs[0].args.area, area);
-      equal(result.logs[0].args.category, category);
-      equal(result.logs[0].args.skill, skill);
-    })    
-    .then(() => ratingsLibrary.getSkillRating(worker, area, category, skill, jobId))
-    .then(result => {
-      assert.equal(result[1].valueOf(), rating);
-      assert.equal(result[0], client);
-    })
-    .then(assertExpectations);
-  });
-
-  it('should set valid worker skill evaluation ', () => {
-    const area = getFlag(4);
-    const category = getFlag(7);
-    const skill = getFlag(9);
-    const rating = 8;
-    const evaluator = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
-    .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))    
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
-      assert.equal(result.logs[0].event, 'SkillEvaluated');
-      assert.equal(result.logs[0].args.rater, evaluator);
-      assert.equal(result.logs[0].args.to, worker);
-      assert.equal(result.logs[0].args.rating, rating);
-      equal(result.logs[0].args.area, area);
-      equal(result.logs[0].args.category, category);
-      equal(result.logs[0].args.skill, skill);
-    })    
-    .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
-    .then(result => assert.equal(result.valueOf(), rating))
-    .then(assertExpectations);
-  });
-  
-  it('should not set invalid rating', () => {
-    const rating = 100500;
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const jobId = 10;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'),  true)
-    .then(() => ratingsLibrary.setRating(worker, rating, jobId, {from: client}))    
-    .then(result => assert.equal(result.logs.length, 0))
-    .then(() => ratingsLibrary.getRating(worker, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
-  });
-
-  it('should not set invalid worker area rating', () => {
-    const area = getFlag(4);
-    const rating = 25;
-    const client = accounts[2];
-    const jobId = 1039383;
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  true))
-    .then(() => ratingsLibrary.setAreaRating(worker, rating, area, jobId, {from: client}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getAreaRating(worker, area, client, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
-  });
-
-  it('should not set invalid worker category rating', () => {
-    const area = getFlag(4);
-    const category = getFlag(7);
-    const rating = 100500;
-    const client = accounts[2];
-    const jobId = 199;
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
-    .then(() => ratingsLibrary.setCategoryRating(worker, rating, area, category, jobId, {from: client}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getCategoryRating(worker, area, category, client, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
-  });
-
-  it('should not set invalid worker skill rating', () => {
-    const area = getFlag(3);
-    const category = getFlag(2);
-    const skill = getFlag(1);
-    const rating = 100500;
-    const client = accounts[2];
-    const jobId = 9874234;
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
-    .then(() => ratingsLibrary.setCategoryRating(worker, rating, area, category, jobId, {from: client}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getCategoryRating(worker, area, category, client, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
-  });
-
-  it('should not set invalid worker area evaluation', () => {
-    const area = getFlag(4);
-    const rating = 823847;
-    const evaluator = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  true))
-    .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(assertExpectations);
-  });
-  
-  it('should not set invalid worker category evaluation', () => {
-    const area = getFlag(4);
-    const category = getFlag(7);
-    const rating = 823847;
-    const evaluator = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
-    .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(assertExpectations);
-  });
-
-  it('should not set invalid worker skill evaluation', () => {
-    const area = getFlag(4);
-    const category = getFlag(7);
-    const skill = getFlag(9);
-    const rating = 823847;
-    const evaluator = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
-    .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(assertExpectations);
-  });
- 
-  it('should not set worker area rating if worker doesn\'t have that area', () => {
-    const area = getFlag(4);
-    const rating = 1;
-    const client = accounts[2];
-    const jobId = 345234;
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  false))
-    .then(() => ratingsLibrary.setAreaRating(worker, rating, area, jobId, {from: client}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getAreaRating(worker, area, client, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
-  });
-
-  it('should not set worker category rating if worker doesn\'t have that category', () => {
-    const area = getFlag(4);
-    const category = getFlag(7);
-    const rating = 0;
-    const client = accounts[2];
-    const jobId = 199;
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  false))
-    .then(() => ratingsLibrary.setCategoryRating(worker, rating, area, category, jobId, {from: client}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getCategoryRating(worker, area, category, client, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
-  });
-
-  it('should not set worker skill rating if worker doesn\'t have that skill', () => {
-    const area = getFlag(3);
-    const category = getFlag(2);
-    const skill = getFlag(1);
-    const rating = 1;
-    const client = accounts[2];
-    const jobId = 9874234;
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  false))
-    .then(() => ratingsLibrary.setCategoryRating(worker, rating, area, category, jobId, {from: client}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getCategoryRating(worker, area, category, client, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
-  });
-
-  it('should not set worker area evaluation if worker doesn\'t have that area', () => {
-    const area = getFlag(4);
-    const rating = 3;
-    const evaluator = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  false))
-    .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(assertExpectations);
-  });
-
-  it('should not set worker category evaluation if worker doesn\'t have that category', () => {
-    const area = getFlag(4);
-    const category = getFlag(7);
-    const rating = 4;
-    const evaluator = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  false))
-    .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(assertExpectations);
-  });
-
-  it('should not set worker skill evaluation if worker doesn\'t have that skill', () => {
-    const area = getFlag(4);
-    const category = getFlag(7);
-    const skill = getFlag(9);
-    const rating = 8;
-    const evaluator = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), true)
+    return Promise.resolve()
     .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  false))
-    .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))    
-    .then(result => assert.equal(result.logs.length, 0))    
+    .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
+    .then(result => assert.equal(result.logs.length, 0))
     .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
     .then(result => assert.equal(result.valueOf(), 0))
-    .then(assertExpectations);
-  });
-  
-  it('should not set rating if doesn\'t have role', () => {
-    const rating = 2;
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const jobId = 12245;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'),  false)
-    .then(() => ratingsLibrary.setRating(worker, rating, jobId, {from: client}))    
-    .then(() => ratingsLibrary.getRating(worker, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
+    .then(() => helpers.assertExpectations(mock));
   });
 
-  it('should not set worker area rating if doesn\'t have role', () => {
-    const area = getFlag(4);
-    const rating = 1;
-    const client = accounts[2];
-    const jobId = 1039383;
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), false)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  true))
-    .then(() => ratingsLibrary.setAreaRating(worker, rating, area, jobId, {from: client}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getAreaRating(worker, area, client, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
-  });
 
-  it('should not set worker category rating if doesn\'t have role', () => {
-    const area = getFlag(4);
-    const category = getFlag(7);
-    const rating = 2;
-    const client = accounts[2];
-    const jobId = 234345;
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), false)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
-    .then(() => ratingsLibrary.setCategoryRating(worker, rating, area, category, jobId, {from: client}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getCategoryRating(worker, area, category, client, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
-  });
+    it('should set valid worker area evaluation ', () => {
+      const area = helpers.getFlag(3);
+      const rating = 8;
+      const evaluator = accounts[2];
+      const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      return Promise.resolve()
+        .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area), true))
+        .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))
+        .then(result => {
+          assert.equal(result.logs.length, 1);
+          assert.equal(result.logs[0].address, multiEventsHistory.address);
+          assert.equal(result.logs[0].args.self, ratingsLibrary.address);
+          assert.equal(result.logs[0].event, 'AreaEvaluated');
+          assert.equal(result.logs[0].args.rater, evaluator);
+          assert.equal(result.logs[0].args.to, worker);
+          assert.equal(result.logs[0].args.rating, rating);
+          equal(result.logs[0].args.area, area);
+        })
+        .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
+        .then(result => assert.equal(result.valueOf(), rating))
+        .then(() => helpers.assertExpectations(mock));
+    });
 
-  it('should not set worker skill rating if doesn\'t have role', () => {
-    const area = getFlag(3);
-    const category = getFlag(2);
-    const skill = getFlag(1);
-    const rating = 10;
-    const client = accounts[2];
-    const jobId = 9874234;
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), false)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
-    .then(() => ratingsLibrary.setCategoryRating(worker, rating, area, category, jobId, {from: client}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getCategoryRating(worker, area, category, client, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
-  });
+    it('should set valid worker category evaluation ', () => {
+      const area = helpers.getFlag(4);
+      const category = helpers.getFlag(7);
+      const rating = 8;
+      const evaluator = accounts[2];
+      const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      return Promise.resolve()
+      .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
+      .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
+      .then(result => {
+        assert.equal(result.logs.length, 1);
+        assert.equal(result.logs[0].address, multiEventsHistory.address);
+        assert.equal(result.logs[0].args.self, ratingsLibrary.address);
+        assert.equal(result.logs[0].event, 'CategoryEvaluated');
+        assert.equal(result.logs[0].args.rater, evaluator);
+        assert.equal(result.logs[0].args.to, worker);
+        assert.equal(result.logs[0].args.rating, rating);
+        equal(result.logs[0].args.area, area);
+        equal(result.logs[0].args.category, category);
+      })
+      .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
+      .then(result => assert.equal(result.valueOf(), rating))
+      .then(() => helpers.assertExpectations(mock));
+    });
 
-  it('should not set worker area evaluation if doesn\'t have role', () => {
-    const area = getFlag(4);
-    const rating = 7;
-    const evaluator = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), false)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  true))
-    .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(assertExpectations);
-  });
+    it('should set valid worker skill evaluation ', () => {
+      const area = helpers.getFlag(4);
+      const category = helpers.getFlag(7);
+      const skill = helpers.getFlag(9);
+      const rating = 8;
+      const evaluator = accounts[2];
+      const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      return Promise.resolve()
+      .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
+      .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
+      .then(result => {
+        assert.equal(result.logs.length, 1);
+        assert.equal(result.logs[0].address, multiEventsHistory.address);
+        assert.equal(result.logs[0].args.self, ratingsLibrary.address);
+        assert.equal(result.logs[0].event, 'SkillEvaluated');
+        assert.equal(result.logs[0].args.rater, evaluator);
+        assert.equal(result.logs[0].args.to, worker);
+        assert.equal(result.logs[0].args.rating, rating);
+        equal(result.logs[0].args.area, area);
+        equal(result.logs[0].args.category, category);
+        equal(result.logs[0].args.skill, skill);
+      })
+      .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
+      .then(result => assert.equal(result.valueOf(), rating))
+      .then(() => helpers.assertExpectations(mock));
+    });
 
-  it('should not set worker category evaluation if doesn\'t have role', () => {
-    const area = getFlag(4);
-    const category = getFlag(7);
-    const rating = 5;
-    const evaluator = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), false)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
-    .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(assertExpectations);
-  });
 
-  it('should not set worker skill evaluation if doesn\'t have role', () => {
-    const area = getFlag(4);
-    const category = getFlag(7);
-    const skill = getFlag(9);
-    const rating = 4;
-    const evaluator = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), false)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
-    .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))    
-    .then(result => assert.equal(result.logs.length, 0))    
-    .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(assertExpectations);
-  });
+    it('should store different area evaluations', () => {
+      const area1 = helpers.getFlag(1);
+      const area2 = helpers.getFlag(2);
+      const rating1 = 8;
+      const rating2 = 9;
+      const evaluator1 = accounts[2];
+      const evaluator2 = accounts[3];
+      const worker1 = '0xeeeeeeee11eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      return Promise.resolve()
+      .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker1, area1),  true))
+      .then(() => ratingsLibrary.evaluateArea(worker1, rating1, area1, {from: evaluator1}))
+      .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker2, area2),  true))
+      .then(() => ratingsLibrary.evaluateArea(worker2, rating2, area2, {from: evaluator2}))
+      .then(() => ratingsLibrary.getAreaEvaluation(worker1, area1, evaluator1))
+      .then(result => assert.equal(result.valueOf(), rating1))
+      .then(() => ratingsLibrary.getAreaEvaluation(worker2, area2, evaluator2))
+      .then(result => assert.equal(result.valueOf(), rating2))
+      .then(() => helpers.assertExpectations(mock));
+    });
 
-  it('should store different ratings', () => {
-    const rating1 = 1;
-    const rating2 = 2;
-    const rating3 = 3;
-    const client1 = accounts[2];
-    const client2 = accounts[3];
-    const worker1 = '0xeeeeeffeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const worker2 = accounts[4];
-    const jobId1 = 10;
-    const jobId2 = 20;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client1, 'simpleRater'),  true)
-    .then(() => ratingsLibrary.setRating(worker1, rating1, jobId1, {from: client1}))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client2, 'simpleRater'),  true))
-    .then(() => ratingsLibrary.setRating(worker2, rating2, jobId2, {from: client2}))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(worker2, 'simpleRater'),  true))
-    .then(() => ratingsLibrary.setRating(client2, rating3, jobId2, {from: worker2}))
-    .then(() => ratingsLibrary.getRating(worker1, jobId1))
-    .then(result => {
-      assert.equal(result[1], rating1);
-      assert.equal(result[0], client1);
-    })
-    .then(() => ratingsLibrary.getRating(worker2, jobId2))
-    .then(result => {
-      assert.equal(result[1], rating2);
-      assert.equal(result[0], client2);
-    })
-    .then(() => ratingsLibrary.getRating(client2, jobId2))
-    .then(result => {
-      assert.equal(result[1], rating3);
-      assert.equal(result[0], worker2);
-    })
-    .then(assertExpectations);
-  })
+    it('should store different category evaluations', () => {
+      const area1 = helpers.getFlag(1);
+      const category1 = helpers.getFlag(1);
+      const area2 = helpers.getFlag(2);
+      const category2 = helpers.getFlag(2);
+      const rating1 = 8;
+      const rating2 = 9;
+      const evaluator1 = accounts[2];
+      const evaluator2 = accounts[3];
+      const worker1 = '0xeeeeeeee11eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      return Promise.resolve()
+      .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker1, area1, category1),  true))
+      .then(() => ratingsLibrary.evaluateCategory(worker1, rating1, area1, category1, {from: evaluator1}))
+      .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker2, area2, category2),  true))
+      .then(() => ratingsLibrary.evaluateCategory(worker2, rating2, area2, category2, {from: evaluator2}))
+      .then(() => ratingsLibrary.getCategoryEvaluation(worker1, area1, category1, evaluator1))
+      .then(result => assert.equal(result.valueOf(), rating1))
+      .then(() => ratingsLibrary.getCategoryEvaluation(worker2, area2, category2, evaluator2))
+      .then(result => assert.equal(result.valueOf(), rating2))
+      .then(() => helpers.assertExpectations(mock));
+    });
 
-  it('should store different area ratings', () => {
-    const area1 = getFlag(1);
-    const area2 = getFlag(2);
-    const rating1 = 1;
-    const rating2 = 2;
-    const client1 = accounts[2];
-    const client2 = accounts[3];
-    const worker1 = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeffe';
-    const worker2 = '0xeeeeeeeeeeeeeeeeeeeeeeeeffeeeeeeeeeeeeee';
-    const jobId1 = 100501;
-    const jobId2 = 100502;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client1, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker1, area1),  true))
-    .then(() => ratingsLibrary.setAreaRating(worker1, rating1, area1, jobId1, {from: client1}))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client2, 'simpleRater'), true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker2, area2),  true))
-    .then(() => ratingsLibrary.setAreaRating(worker2, rating2, area2, jobId2, {from: client2}))
-    .then(() => ratingsLibrary.getAreaRating(worker1, area1, jobId1))
-    .then(result => {
-      assert.equal(result[1], rating1);
-      assert.equal(result[0], client1);
-    })
-    .then(() => ratingsLibrary.getAreaRating(worker2, area2, jobId2))
-    .then(result => {
-      assert.equal(result[1], rating2);
-      assert.equal(result[0], client2);
-    })
-    .then(assertExpectations);
-  })
-
-  it('should store different category ratings', () => {
-    const area1 = getFlag(1);
-    const category1 = getFlag(1);
-    const area2 = getFlag(2);
-    const category2 = getFlag(2);
-    const rating1 = 1;
-    const rating2 = 2;
-    const client1 = accounts[2];
-    const client2 = accounts[3];
-    const worker1 = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeffe';
-    const worker2 = '0xeeeeeeeeeeeeeeeeeeeeeeeeffeeeeeeeeeeeeee';
-    const jobId1 = 100501;
-    const jobId2 = 100502;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client1, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker1, area1, category1),  true))
-    .then(() => ratingsLibrary.setCategoryRating(worker1, rating1, area1, category1, jobId1, {from: client1}))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client2, 'simpleRater'), true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker2, area2),  true))
-    .then(() => ratingsLibrary.setCategoryRating(worker2, rating2, area2, category2, jobId2, {from: client2}))
-    .then(() => ratingsLibrary.getCategoryRating(worker1, area1, category1, jobId1))
-    .then(result => {
-      assert.equal(result[1], rating1);
-      assert.equal(result[0], client1);
-    })
-    .then(() => ratingsLibrary.getCategoryRating(worker2, area2, category2, jobId2))
-    .then(result => {
-      assert.equal(result[1], rating2);
-      assert.equal(result[0], client2);
-    })
-    .then(assertExpectations);
-  })
-
-  it('should store different skill ratings', () => {
-    const area1 = getFlag(1);
-    const category1 = getFlag(1);
-    const skill1 = getFlag(2);
-    const area2 = getFlag(2);
-    const category2 = getFlag(2);
-    const skill2 = getFlag(2);
-    const rating1 = 1;
-    const rating2 = 2;
-    const client1 = accounts[2];
-    const client2 = accounts[3];
-    const worker1 = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeffe';
-    const worker2 = '0xeeeeeeeeeeeeeeeeeeeeeeeeffeeeeeeeeeeeeee';
-    const jobId1 = 100501;
-    const jobId2 = 100502;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client1, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker1, area1, category1, skill1),  true))
-    .then(() => ratingsLibrary.setSkillRating(worker1, rating1, area1, category1, skill1, jobId1, {from: client1}))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client2, 'simpleRater'), true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker2, area2, category2, skill2),  true))
-    .then(() => ratingsLibrary.setSkillRating(worker2, rating2, area2, category2, skill2, jobId2, {from: client2}))
-    .then(() => ratingsLibrary.getSkillRating(worker1, area1, category1, skill1, jobId1))
-    .then(result => {
-      assert.equal(result[1], rating1);
-      assert.equal(result[0], client1);
-    })
-    .then(() => ratingsLibrary.getSkillRating(worker2, area2, category2, skill2, jobId2))
-    .then(result => {
-      assert.equal(result[1], rating2);
-      assert.equal(result[0], client2);
-    })
-    .then(assertExpectations);
-  })
-
-  it('should store different area evaluations', () => {
-    const area1 = getFlag(1);
-    const area2 = getFlag(2);
+    it('should store different skill evaluations', () => {
+    const area1 = helpers.getFlag(1);
+    const category1 = helpers.getFlag(1);
+    const skill1 = helpers.getFlag(1);
+    const area2 = helpers.getFlag(2);
+    const category2 = helpers.getFlag(2);
+    const skill2 = helpers.getFlag(2);
     const rating1 = 8;
     const rating2 = 9;
     const evaluator1 = accounts[2];
     const evaluator2 = accounts[3];
     const worker1 = '0xeeeeeeee11eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
     const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator1, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker1, area1),  true))
-    .then(() => ratingsLibrary.evaluateArea(worker1, rating1, area1, {from: evaluator1}))    
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator2, 'skillRater'), true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker2, area2),  true))
-    .then(() => ratingsLibrary.evaluateArea(worker2, rating2, area2, {from: evaluator2}))    
-    .then(() => ratingsLibrary.getAreaEvaluation(worker1, area1, evaluator1))
-    .then(result => assert.equal(result.valueOf(), rating1))
-    .then(() => ratingsLibrary.getAreaEvaluation(worker2, area2, evaluator2))
-    .then(result => assert.equal(result.valueOf(), rating2))
-    .then(assertExpectations);
-  })
-
-  it('should store different category evaluations', () => {
-    const area1 = getFlag(1);
-    const category1 = getFlag(1);
-    const area2 = getFlag(2);
-    const category2 = getFlag(2);
-    const rating1 = 8;
-    const rating2 = 9;
-    const evaluator1 = accounts[2];
-    const evaluator2 = accounts[3];
-    const worker1 = '0xeeeeeeee11eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator1, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker1, area1, category1),  true))
-    .then(() => ratingsLibrary.evaluateCategory(worker1, rating1, area1, category1, {from: evaluator1}))    
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator2, 'skillRater'), true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker2, area2, category2),  true))
-    .then(() => ratingsLibrary.evaluateCategory(worker2, rating2, area2, category2, {from: evaluator2}))    
-    .then(() => ratingsLibrary.getCategoryEvaluation(worker1, area1, category1, evaluator1))
-    .then(result => assert.equal(result.valueOf(), rating1))
-    .then(() => ratingsLibrary.getCategoryEvaluation(worker2, area2, category2, evaluator2))
-    .then(result => assert.equal(result.valueOf(), rating2))
-    .then(assertExpectations);
-  })
-
-  it('should store different skill evaluations', () => {
-    const area1 = getFlag(1);
-    const category1 = getFlag(1);
-    const skill1 = getFlag(1);
-    const area2 = getFlag(2);
-    const category2 = getFlag(2);
-    const skill2 = getFlag(2);
-    const rating1 = 8;
-    const rating2 = 9;
-    const evaluator1 = accounts[2];
-    const evaluator2 = accounts[3];
-    const worker1 = '0xeeeeeeee11eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator1, 'skillRater'), true)
+    return Promise.resolve()
     .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker1, area1, category1, skill1),  true))
     .then(() => ratingsLibrary.evaluateSkill(worker1, rating1, area1, category1, skill1, {from: evaluator1}))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator2, 'skillRater'), true))
     .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker2, area2, category2, skill2),  true))
     .then(() => ratingsLibrary.evaluateSkill(worker2, rating2, area2, category2, skill2, {from: evaluator2}))
     .then(() => ratingsLibrary.getSkillEvaluation(worker1, area1, category1, skill1, evaluator1))
     .then(result => assert.equal(result.valueOf(), rating1))
     .then(() => ratingsLibrary.getSkillEvaluation(worker2, area2, category2, skill2, evaluator2))
     .then(result => assert.equal(result.valueOf(), rating2))
-    .then(assertExpectations);
-  })
+    .then(() => helpers.assertExpectations(mock));
+  });
 
-  it('should not have area rating set when category rating set', () => {
-    const area = getFlag(1);
-    const category = getFlag(2);
-    const rating = 2;
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeffe';
-    const jobId = 234534;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
-    .then(() => ratingsLibrary.setCategoryRating(worker, rating, area, category, jobId, {from: client}))
-    .then(() => ratingsLibrary.getCategoryRating(worker, area, category, jobId))
-    .then(result => {
-      assert.equal(result[1], rating);
-      assert.equal(result[0], client);
-    })
-    .then(() => ratingsLibrary.getAreaRating(worker, area, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
-  })
 
-  it('should not have category and area rating set when skill rating set', () => {
-    const area = getFlag(1);
-    const category = getFlag(2);
-    const skill = getFlag(2);
-    const rating = 2;
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeffe';
-    const jobId = 234534;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
-    .then(() => ratingsLibrary.setSkillRating(worker, rating, area, category, skill, jobId, {from: client}))
-    .then(() => ratingsLibrary.getSkillRating(worker, area, category, skill, jobId))
-    .then(result => {
-      assert.equal(result[1], rating);
-      assert.equal(result[0], client);
+    it('should not have area evaluation set when category evaluation set', () => {
+      const area = helpers.getFlag(4);
+      const category = helpers.getFlag(7);
+      const rating = 8;
+      const evaluator = accounts[2];
+      const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      return Promise.resolve()
+      .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
+      .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
+      .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
+      .then(result => assert.equal(result.valueOf(), rating))
+      .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
+      .then(result => assert.equal(result.valueOf(), 0))
+      .then(() => helpers.assertExpectations(mock));
     })
-    .then(() => ratingsLibrary.getCategoryRating(worker, area, category, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(() => ratingsLibrary.getAreaRating(worker, area, jobId))
-    .then(result => {
-      assert.equal(result[1], 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
-  })
 
-  it('should not have area evaluation set when category evaluation set', () => {
-    const area = getFlag(4);
-    const category = getFlag(7);
-    const rating = 8;
-    const evaluator = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
-    .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))    
-    .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
-    .then(result => assert.equal(result.valueOf(), rating))
-    .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(assertExpectations);
-  })
+    it('should not have category and area evaluation set when skill evaluation set', () => {
+      const area = helpers.getFlag(4);
+      const category = helpers.getFlag(7);
+      const skill = helpers.getFlag(9);
+      const rating = 8;
+      const evaluator = accounts[2];
+      const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+      return Promise.resolve()
+      .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
+      .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
+      .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
+      .then(result => assert.equal(result.valueOf(), rating))
+      .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
+      .then(result => assert.equal(result.valueOf(), 0))
+      .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
+      .then(result => assert.equal(result.valueOf(), 0))
+      .then(() => helpers.assertExpectations(mock));
+    })
 
-  it('should not have category and area evaluation set when skill evaluation set', () => {
-    const area = getFlag(4);
-    const category = getFlag(7);
-    const skill = getFlag(9);
-    const rating = 8;
-    const evaluator = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(evaluator, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
-    .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
-    .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
-    .then(result => assert.equal(result.valueOf(), rating))
-    .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(assertExpectations);
-  })
 
-  it('should set many rates', () => {
-    const areas = getFlag(4).add(getEvenFlag(5)).add(getFlag(5));
-    const categories = [getFlag(7).add(getEvenFlag(9)).add(getFlag(9)).add(getFlag(10)).add(getFlag(25))];
-    const skills = [getFlag(9), getFlag(12), getFlag(13).add(getEvenFlag(23))];
-    const ratings = [9, 8, 7, 6, 5];
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const jobId = 10;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(7), getFlag(9)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, getFlag(4), getFlag(9)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(10), getFlag(12)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(25), getFlag(13).add(getEvenFlag(23))),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, getFlag(5)),  true))
-    .then(() => ratingsLibrary.setManyRatings(worker, areas, categories, skills, ratings, jobId, {from: client}))    
-    .then(() => ratingsLibrary.getSkillRating(worker, getFlag(4), getFlag(7), getFlag(9), jobId))
-    .then(result => {
-      assert.equal(result[1].valueOf(), ratings[0]);
-      assert.equal(result[0], client);
-    })
-    .then(() => ratingsLibrary.getCategoryRating(worker, getFlag(4), getFlag(9), jobId))
-    .then(result => {
-      assert.equal(result[1].valueOf(), ratings[1]);
-      assert.equal(result[0], client);
-    })
-    .then(() => ratingsLibrary.getSkillRating(worker, getFlag(4), getFlag(10), getFlag(12), jobId))
-    .then(result => {
-      assert.equal(result[1].valueOf(), ratings[2]);
-      assert.equal(result[0], client);
-    })
-    .then(() => ratingsLibrary.getSkillRating(worker, getFlag(4), getFlag(25), getFlag(13).add(getEvenFlag(23)), jobId))
-    .then(result => {
-      assert.equal(result[1].valueOf(), ratings[3]);
-      assert.equal(result[0], client);
-    })
-    .then(() => ratingsLibrary.getAreaRating(worker, getFlag(5), jobId))
-    .then(result => {
-      assert.equal(result[1].valueOf(), ratings[4]);
-      assert.equal(result[0], client);
-    })
-    .then(assertExpectations);
-  })
+    it('should set many evaluations', () => {
+      const areas = helpers.getFlag(4).add(helpers.getEvenFlag(5)).add(helpers.getFlag(5));
+      const categories = [helpers.getFlag(7).add(helpers.getEvenFlag(9)).add(helpers.getFlag(9)).add(helpers.getFlag(10)).add(helpers.getFlag(25))];
+      const skills = [helpers.getFlag(9), helpers.getFlag(12), helpers.getFlag(13).add(helpers.getEvenFlag(23))];
+      const ratings = [9, 8, 7, 6, 5];
+      return Promise.resolve()
+        .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(7), helpers.getFlag(9)),  true))
+        .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, helpers.getFlag(4), helpers.getFlag(9)),  true))
+        .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(10), helpers.getFlag(12)),  true))
+        .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(25), helpers.getFlag(13).add(helpers.getEvenFlag(23))),  true))
+        .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, helpers.getFlag(5)),  true))
+        .then(() => ratingsLibrary.evaluateMany(worker, areas, categories, skills, ratings, {from: client}))
+        .then(() => ratingsLibrary.getSkillEvaluation(worker, helpers.getFlag(4), helpers.getFlag(7), helpers.getFlag(9), client))
+        .then(result => assert.equal(result.valueOf(), ratings[0]))
+        .then(() => ratingsLibrary.getCategoryEvaluation(worker, helpers.getFlag(4), helpers.getFlag(9), client))
+        .then(result => assert.equal(result.valueOf(), ratings[1]))
+        .then(() => ratingsLibrary.getSkillEvaluation(worker, helpers.getFlag(4), helpers.getFlag(10), helpers.getFlag(12), client))
+        .then(result => assert.equal(result.valueOf(), ratings[2]))
+        .then(() => ratingsLibrary.getSkillEvaluation(worker, helpers.getFlag(4), helpers.getFlag(25), helpers.getFlag(13).add(helpers.getEvenFlag(23)), client))
+        .then(result => assert.equal(result.valueOf(), ratings[3]))
+        .then(() => ratingsLibrary.getAreaEvaluation(worker, helpers.getFlag(5), client))
+        .then(result => assert.equal(result.valueOf(), ratings[4]))
+        .then(() => helpers.assertExpectations(mock));
+    });
 
-  it('should not set many rates if doesn\'t have role', () => {
-    const areas = getFlag(4).add(getEvenFlag(5)).add(getFlag(5));
-    const categories = [getFlag(7).add(getEvenFlag(9)).add(getFlag(9)).add(getFlag(10)).add(getFlag(25))];
-    const skills = [getFlag(9), getFlag(12), getFlag(13).add(getEvenFlag(23))];
-    const ratings = [9, 8, 7, 6, 5];
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const jobId = 10;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), false)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(7), getFlag(9)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, getFlag(4), getFlag(9)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(10), getFlag(12)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(25), getFlag(13).add(getEvenFlag(23))),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, getFlag(5)),  true))
-    .then(() => ratingsLibrary.setManyRatings(worker, areas, categories, skills, ratings, jobId, {from: client}))    
-    .then(() => ratingsLibrary.getSkillRating(worker, getFlag(4), getFlag(7), getFlag(9), jobId))
-    .then(result => {
-      assert.equal(result[1].valueOf(), 0);
-      assert.equal(result[0], 0);
+    it("should not set many evaluations if doesn't have at least one of listed areas/categories/skills", () => {
+      const areas = helpers.getFlag(4).add(helpers.getEvenFlag(5)).add(helpers.getFlag(5));
+      const categories = [helpers.getFlag(7).add(helpers.getEvenFlag(9)).add(helpers.getFlag(9)).add(helpers.getFlag(10)).add(helpers.getFlag(25))];
+      const skills = [helpers.getFlag(9), helpers.getFlag(12), helpers.getFlag(13).add(helpers.getEvenFlag(23))];
+      const ratings = [9, 8, 7, 6, 5];
+      return Promise.resolve()
+        .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(7), helpers.getFlag(9)),  true))
+        .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, helpers.getFlag(4), helpers.getFlag(9)),  true))
+        .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(10), helpers.getFlag(12)),  true))
+        .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(25), helpers.getFlag(13).add(helpers.getEvenFlag(23))),  true))
+        .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, helpers.getFlag(5)),  false))
+        .then(() => asserts.throws(ratingsLibrary.evaluateMany(worker, areas, categories, skills, ratings, {from: client})))
+        .then(() => helpers.assertExpectations(mock));
     })
-    .then(() => ratingsLibrary.getCategoryRating(worker, getFlag(4), getFlag(9), jobId))
-    .then(result => {
-      assert.equal(result[1].valueOf(), 0);
-      assert.equal(result[0], 0);
-    })
-    .then(() => ratingsLibrary.getSkillRating(worker, getFlag(4), getFlag(10), getFlag(12), jobId))
-    .then(result => {
-      assert.equal(result[1].valueOf(), 0);
-      assert.equal(result[0], 0);
-    })
-    .then(() => ratingsLibrary.getSkillRating(worker, getFlag(4), getFlag(25), getFlag(13).add(getEvenFlag(23)), jobId))
-    .then(result => {
-      assert.equal(result[1].valueOf(), 0);
-      assert.equal(result[0], 0);
-    })
-    .then(() => ratingsLibrary.getAreaRating(worker, getFlag(5), jobId))
-    .then(result => {
-      assert.equal(result[1].valueOf(), 0);
-      assert.equal(result[0], 0);
-    })
-    .then(assertExpectations);
-  })
 
-  it('should not set many rates if doesn\'t have at least one of listed areas/categories/skills', () => {
-    const areas = getFlag(4).add(getEvenFlag(5)).add(getFlag(5));
-    const categories = [getFlag(7).add(getEvenFlag(9)).add(getFlag(9)).add(getFlag(10)).add(getFlag(25))];
-    const skills = [getFlag(9), getFlag(12), getFlag(13).add(getEvenFlag(23))];
-    const ratings = [9, 8, 7, 6, 5];
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    const jobId = 10;
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'simpleRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(7), getFlag(9)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, getFlag(4), getFlag(9)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(10), getFlag(12)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(25), getFlag(13).add(getEvenFlag(23))),  false))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, getFlag(5)),  true))
-    .then(() => asserts.throws(ratingsLibrary.setManyRatings(worker, areas, categories, skills, ratings, jobId, {from: client})))
-    .then(assertExpectations);
-  })
-
-  it('should set many evaluations', () => {
-    const areas = getFlag(4).add(getEvenFlag(5)).add(getFlag(5));
-    const categories = [getFlag(7).add(getEvenFlag(9)).add(getFlag(9)).add(getFlag(10)).add(getFlag(25))];
-    const skills = [getFlag(9), getFlag(12), getFlag(13).add(getEvenFlag(23))];
-    const ratings = [9, 8, 7, 6, 5];
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(7), getFlag(9)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, getFlag(4), getFlag(9)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(10), getFlag(12)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(25), getFlag(13).add(getEvenFlag(23))),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, getFlag(5)),  true))
-    .then(() => ratingsLibrary.evaluateMany(worker, areas, categories, skills, ratings, {from: client}))    
-    .then(() => ratingsLibrary.getSkillEvaluation(worker, getFlag(4), getFlag(7), getFlag(9), client))
-    .then(result => assert.equal(result.valueOf(), ratings[0]))
-    .then(() => ratingsLibrary.getCategoryEvaluation(worker, getFlag(4), getFlag(9), client))
-    .then(result => assert.equal(result.valueOf(), ratings[1]))
-    .then(() => ratingsLibrary.getSkillEvaluation(worker, getFlag(4), getFlag(10), getFlag(12), client))
-    .then(result => assert.equal(result.valueOf(), ratings[2]))
-    .then(() => ratingsLibrary.getSkillEvaluation(worker, getFlag(4), getFlag(25), getFlag(13).add(getEvenFlag(23)), client))
-    .then(result => assert.equal(result.valueOf(), ratings[3]))
-    .then(() => ratingsLibrary.getAreaEvaluation(worker, getFlag(5), client))
-    .then(result => assert.equal(result.valueOf(), ratings[4]))
-    .then(assertExpectations);
-  })
-
-  it('should not set many evaluations if doesn\'t have role', () => {
-    const areas = getFlag(4).add(getEvenFlag(5)).add(getFlag(5));
-    const categories = [getFlag(7).add(getEvenFlag(9)).add(getFlag(9)).add(getFlag(10)).add(getFlag(25))];
-    const skills = [getFlag(9), getFlag(12), getFlag(13).add(getEvenFlag(23))];
-    const ratings = [9, 8, 7, 6, 5];
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'skillRater'), false)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(7), getFlag(9)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, getFlag(4), getFlag(9)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(10), getFlag(12)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(25), getFlag(13).add(getEvenFlag(23))),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, getFlag(5)),  true))
-    .then(() => ratingsLibrary.evaluateMany(worker, areas, categories, skills, ratings, {from: client}))    
-    .then(() => ratingsLibrary.getSkillEvaluation(worker, getFlag(4), getFlag(7), getFlag(9), client))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(() => ratingsLibrary.getCategoryEvaluation(worker, getFlag(4), getFlag(9), client))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(() => ratingsLibrary.getSkillEvaluation(worker, getFlag(4), getFlag(10), getFlag(12), client))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(() => ratingsLibrary.getSkillEvaluation(worker, getFlag(4), getFlag(25), getFlag(13).add(getEvenFlag(23)), client))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(() => ratingsLibrary.getAreaEvaluation(worker, getFlag(5), client))
-    .then(result => assert.equal(result.valueOf(), 0))
-    .then(assertExpectations);
-  })
-
-  it('should not set many evaluations if doesn\'t have at least one of listed areas/categories/skills', () => {
-    const areas = getFlag(4).add(getEvenFlag(5)).add(getFlag(5));
-    const categories = [getFlag(7).add(getEvenFlag(9)).add(getFlag(9)).add(getFlag(10)).add(getFlag(25))];
-    const skills = [getFlag(9), getFlag(12), getFlag(13).add(getEvenFlag(23))];
-    const ratings = [9, 8, 7, 6, 5];
-    const client = accounts[2];
-    const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-    return mock.expect(ratingsLibrary.address, 0, userLibrary.hasRole.getData(client, 'skillRater'), true)
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(7), getFlag(9)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, getFlag(4), getFlag(9)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(10), getFlag(12)),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, getFlag(4), getFlag(25), getFlag(13).add(getEvenFlag(23))),  true))
-    .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, getFlag(5)),  false))
-    .then(() => asserts.throws(ratingsLibrary.evaluateMany(worker, areas, categories, skills, ratings, {from: client})))   
-    .then(assertExpectations);
-  })
-
-  //Here should be more test for cheking jobId
+  });
 
 });

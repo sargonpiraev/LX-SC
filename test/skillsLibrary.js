@@ -1,9 +1,15 @@
-const Reverter = require('./helpers/reverter');
-const Asserts = require('./helpers/asserts');
-const Storage = artifacts.require('./Storage.sol');
+"use strict";
+
 const ManagerMock = artifacts.require('./ManagerMock.sol');
+const Mock = artifacts.require('./Mock.sol');
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
+const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const SkillsLibrary = artifacts.require('./SkillsLibrary.sol');
-const EventsHistory = artifacts.require('./EventsHistory.sol');
+const Storage = artifacts.require('./Storage.sol');
+
+const Asserts = require('./helpers/asserts');
+const Reverter = require('./helpers/reverter');
+
 
 contract('SkillsLibrary', function(accounts) {
   const reverter = new Reverter(web3);
@@ -11,8 +17,26 @@ contract('SkillsLibrary', function(accounts) {
 
   const asserts = Asserts(assert);
   let storage;
-  let eventsHistory;
+  let multiEventsHistory;
   let skillsLibrary;
+  let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
+  let mock;
+
+  const assertExpectations = (expected = 0, callsCount = null) => {
+    let expectationsCount;
+    return () => {
+      return mock.expectationsLeft()
+      .then(asserts.equal(expected))
+      .then(() => mock.expectationsCount())
+      .then(result => expectationsCount = result)
+      .then(() => mock.callsCount())
+      .then(result => asserts.equal(callsCount === null ? expectationsCount : callsCount)(result));
+    };
+  };
+
+  const ignoreAuth = (enabled = true) => {
+    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
+  };
 
   const getFlag = index => {
     return web3.toBigNumber(2).pow(index*2);
@@ -29,16 +53,19 @@ contract('SkillsLibrary', function(accounts) {
   const FROM_NON_OWNER = { from: accounts[1] };
 
   before('setup', () => {
-    return Storage.deployed()
+    return Mock.deployed()
+    .then(instance => mock = instance)
+    .then(() => ignoreAuth())
+    .then(() => Storage.deployed())
     .then(instance => storage = instance)
     .then(() => ManagerMock.deployed())
     .then(instance => storage.setManager(instance.address))
     .then(() => SkillsLibrary.deployed())
     .then(instance => skillsLibrary = instance)
-    .then(() => EventsHistory.deployed())
-    .then(instance => eventsHistory = instance)
-    .then(() => skillsLibrary.setupEventsHistory(eventsHistory.address))
-    .then(() => eventsHistory.addVersion(skillsLibrary.address, '_', '_'))
+    .then(() => MultiEventsHistory.deployed())
+    .then(instance => multiEventsHistory = instance)
+    .then(() => skillsLibrary.setupEventsHistory(multiEventsHistory.address))
+    .then(() => multiEventsHistory.authorize(skillsLibrary.address))
     .then(reverter.snapshot);
   });
 
@@ -79,13 +106,32 @@ contract('SkillsLibrary', function(accounts) {
     .then(() => true);
   });
 
-  it('should not set area from non owner', () => {
+  it.skip('should not set area from non owner', () => {
     const hash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const area = getFlag(0);
     return Promise.resolve()
     .then(() => skillsLibrary.setArea(area, hash, FROM_NON_OWNER))
     .then(() => skillsLibrary.getArea(area))
     .then(asserts.equal(0))
+    .then(() => true);
+  });
+
+  it('should check auth on set area', () => {
+    const hash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    const area = getFlag(0);
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      skillsLibrary.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        accounts[0],
+        skillsLibrary.address,
+        skillsLibrary.contract.setArea.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => skillsLibrary.setArea(area, hash))
+    .then(assertExpectations())
     .then(() => true);
   });
 
@@ -116,7 +162,7 @@ contract('SkillsLibrary', function(accounts) {
     .then(() => skillsLibrary.setArea(area, hash))
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'AreaSet');
       equal(result.logs[0].args.area, area);
       equal(result.logs[0].args.hash, hash);
@@ -182,7 +228,7 @@ contract('SkillsLibrary', function(accounts) {
     .then(() => true);
   });
 
-  it('should not set category from non owner', () => {
+  it.skip('should not set category from non owner', () => {
     const areaHash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const hash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     const area = getFlag(0);
@@ -192,6 +238,28 @@ contract('SkillsLibrary', function(accounts) {
     .then(() => skillsLibrary.setCategory(area, category, hash, FROM_NON_OWNER))
     .then(() => skillsLibrary.getCategory(area, category))
     .then(asserts.equal(0))
+    .then(() => true);
+  });
+
+  it('should check auth on set category', () => {
+    const areaHash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    const hash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
+    const area = getFlag(0);
+    const category = getFlag(0);
+    return Promise.resolve()
+    .then(() => skillsLibrary.setArea(area, areaHash))
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      skillsLibrary.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        accounts[0],
+        skillsLibrary.address,
+        skillsLibrary.contract.setCategory.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => skillsLibrary.setCategory(area, category, hash))
+    .then(assertExpectations())
     .then(() => true);
   });
 
@@ -231,7 +299,7 @@ contract('SkillsLibrary', function(accounts) {
     .then(() => skillsLibrary.setCategory(area, category, hash))
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'CategorySet');
       equal(result.logs[0].args.area, area);
       equal(result.logs[0].args.category, category);
@@ -310,7 +378,7 @@ contract('SkillsLibrary', function(accounts) {
     .then(() => 0);
   });
 
-  it('should not set skill from non owner', () => {
+  it.skip('should not set skill from non owner', () => {
     const areaHash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const categoryHash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     const hash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0000';
@@ -323,6 +391,53 @@ contract('SkillsLibrary', function(accounts) {
     .then(() => skillsLibrary.setSkill(area, category, skill, hash, FROM_NON_OWNER))
     .then(() => skillsLibrary.getSkill(area, category, skill))
     .then(asserts.equal(0))
+    .then(() => true);
+  });
+
+  it('should check auth on set skill', () => {
+    const areaHash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    const categoryHash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
+    const hash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0000';
+    const area = getFlag(0);
+    const category = getFlag(0);
+    const skill = getFlag(0);
+    return Promise.resolve()
+    .then(() => skillsLibrary.setArea(area, areaHash))
+    .then(() => skillsLibrary.setCategory(area, category, hash))
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      skillsLibrary.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        accounts[0],
+        skillsLibrary.address,
+        skillsLibrary.contract.setSkill.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => skillsLibrary.setSkill(area, category, skill, hash))
+    .then(assertExpectations())
+    .then(() => true);
+  });
+
+  it('should not set category from non owner', () => {
+    const areaHash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    const hash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
+    const area = getFlag(0);
+    const category = getFlag(0);
+    return Promise.resolve()
+    .then(() => skillsLibrary.setArea(area, areaHash))
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      skillsLibrary.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        accounts[0],
+        skillsLibrary.address,
+        skillsLibrary.contract.setCategory.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => skillsLibrary.setCategory(area, category, hash))
+    .then(assertExpectations())
     .then(() => true);
   });
 
@@ -371,7 +486,7 @@ contract('SkillsLibrary', function(accounts) {
     .then(() => skillsLibrary.setSkill(area, category, skill, hash))
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'SkillSet');
       equal(result.logs[0].args.area, area);
       equal(result.logs[0].args.category, category);

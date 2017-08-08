@@ -1,38 +1,57 @@
 pragma solidity 0.4.8;
 
-import './EventsHistoryAdapter.sol';
+import './User.sol';
 import './UserLibrary.sol';
 import './UserProxy.sol';
-import './Owned.sol';
-import './User.sol';
+import './adapters/MultiEventsHistoryAdapter.sol';
+import './adapters/Roles2LibraryAdapter.sol';
+
 
 contract UserLibraryInterface {
-    function addRole(address _user, bytes32 _role) returns(bool);
     function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) returns(bool);
 }
 
-contract UserFactory is EventsHistoryAdapter, Owned {
+
+contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     UserLibraryInterface userLibrary;
 
-    event UserCreated(address indexed user, address proxy, address recoveryContract, bytes32[] roles, uint areas, uint[] categories, uint[] skills);
+    event UserCreated(
+        address indexed self,
+        address indexed user,
+        address proxy,
+        address recoveryContract,
+        address owner,
+        uint8[] roles,
+        uint areas,
+        uint[] categories,
+        uint[] skills
+    );
 
-    function createUserWithProxyAndRecovery(address _recoveryContract, bytes32[] _roles, uint _areas, uint[] _categories, uint[] _skills) {
-        UserProxy proxy = new UserProxy();
-        User user = new User();
-        user.setRecoveryContract(_recoveryContract);
-        proxy.changeContractOwnership(user);
-        user.claimContractOwnership();
-        user.setUserProxy(proxy);
-        if(!_setRoles(user, _roles)) {
+    function UserFactory(address _roles2Library) Roles2LibraryAdapter(_roles2Library) {}
+
+
+    function createUserWithProxyAndRecovery(
+        address _owner,
+        address _recoveryContract,
+        uint8[] _roles,
+        uint _areas,
+        uint[] _categories,
+        uint[] _skills
+    )
+        auth()
+    returns(bool) {
+        User user = new User(_owner, _recoveryContract);
+        UserProxy proxy = UserProxy(user.getUserProxy());
+        if(!_setRoles(proxy, _roles)) {
             throw;
         }
-        if(!_setSkills(user, _areas, _categories, _skills)) {
+        if(!_setSkills(proxy, _areas, _categories, _skills)) {
             throw;
         }
-        UserCreated(user, proxy, _recoveryContract, _roles, _areas, _categories, _skills);
+        _emitUserCreated(user, proxy, _recoveryContract, _owner, _roles, _areas, _categories, _skills);
     }
 
-    function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
+    function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
         if (getEventsHistory() != 0x0) {
             return false;
         }
@@ -40,31 +59,78 @@ contract UserFactory is EventsHistoryAdapter, Owned {
         return true;
     }
 
-    function setupUserLibrary(UserLibraryInterface _userLibrary) onlyContractOwner() returns(bool) {
+    function setUserLibrary(UserLibraryInterface _userLibrary) auth() returns(bool) {
         userLibrary = _userLibrary;
         return true;
     }
 
-    function getUserLibrary() returns(address){
+    function getUserLibrary() constant returns(address) {
         return userLibrary;
     }
 
-    function _setRoles(address _user, bytes32[] _roles) internal returns(bool){
-        for(uint i = 0; i < _roles.length; i++) {
-            if(!userLibrary.addRole(_user, _roles[i])) {
+    function _setRoles(address _user, uint8[] _roles) internal returns(bool) {
+        for (uint i = 0; i < _roles.length; i++) {
+            if (!roles2Library.addUserRole(_user, _roles[i])) {
                 return false;
             }
         }
         return true;
     }
 
-    function _setSkills(address _user, uint _areas, uint[] _categories, uint[] _skills) internal returns(bool){
-        if(_areas == 0){
+    function _setSkills(address _user, uint _areas, uint[] _categories, uint[] _skills)
+        internal
+    returns(bool) {
+        if (_areas == 0) {
             return true;
         }
-        if(!userLibrary.setMany(_user, _areas, _categories, _skills)){
+        if (!userLibrary.setMany(_user, _areas, _categories, _skills)) {
             return false;
         }
         return true;
+    }
+
+    function _emitUserCreated(
+        address _user,
+        address _proxy,
+        address _recoveryContract,
+        address _owner,
+        uint8[] _roles,
+        uint _areas,
+        uint[] _categories,
+        uint[] _skills
+    ) internal {
+        UserFactory(getEventsHistory()).emitUserCreated(
+            _user,
+            _proxy,
+            _recoveryContract,
+            _owner,
+            _roles,
+            _areas,
+            _categories,
+            _skills
+        );
+    }
+
+    function emitUserCreated(
+        address _user,
+        address _proxy,
+        address _recoveryContract,
+        address _owner,
+        uint8[] _roles,
+        uint _areas,
+        uint[] _categories,
+        uint[] _skills
+    ) {
+        UserCreated(
+            _self(),
+            _user,
+            _proxy,
+            _recoveryContract,
+            _owner,
+            _roles,
+            _areas,
+            _categories,
+            _skills
+        );
     }
 }

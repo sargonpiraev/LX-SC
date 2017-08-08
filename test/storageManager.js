@@ -1,23 +1,33 @@
-const Reverter = require('./helpers/reverter');
+"use strict";
+
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const StorageManager = artifacts.require('./StorageManager.sol');
-const EventsHistory = artifacts.require('./EventsHistory.sol');
+
+const Asserts = require('./helpers/asserts');
+const Reverter = require('./helpers/reverter');
+
 
 contract('StorageManager', function(accounts) {
   const reverter = new Reverter(web3);
   afterEach('revert', reverter.revert);
 
+  const asserts = Asserts(assert);
   let storageManager;
-  let eventsHistory;
+  let multiEventsHistory;
 
   before('setup', () => {
     return StorageManager.deployed()
     .then(instance => storageManager = instance)
-    .then(() => EventsHistory.deployed())
-    .then(instance => eventsHistory = instance)
-    .then(() => storageManager.setupEventsHistory(eventsHistory.address))
-    .then(() => eventsHistory.addVersion(storageManager.address, '_', '_'))
+    .then(() => MultiEventsHistory.deployed())
+    .then(instance => multiEventsHistory = instance)
+    .then(() => storageManager.setupEventsHistory(multiEventsHistory.address))
+    .then(() => multiEventsHistory.authorize(storageManager.address))
     .then(reverter.snapshot);
   });
+
+  it('should NOT allow to setup events history by non-owner');  // TODO
+
+  it('should allow owner to setup events history');  // TODO
 
   it('should not be accessible when empty', () => {
     const address = '0xffffffffffffffffffffffffffffffffffffffff';
@@ -32,7 +42,7 @@ contract('StorageManager', function(accounts) {
     return storageManager.giveAccess(address, role)
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'AccessGiven');
       assert.equal(result.logs[0].args.actor, address);
       assert.equal(result.logs[0].args.role, role);
@@ -45,7 +55,7 @@ contract('StorageManager', function(accounts) {
     return storageManager.blockAccess(address, role)
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'AccessBlocked');
       assert.equal(result.logs[0].args.actor, address);
       assert.equal(result.logs[0].args.role, role);
@@ -111,7 +121,7 @@ contract('StorageManager', function(accounts) {
     .then(result => assert.isTrue(result));
   });
 
-  it('should not allow access for unset roles', () => {
+  it('should NOT allow access for unset roles', () => {
     const address = '0xffffffffffffffffffffffffffffffffffffffff';
     const role1 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const role2 = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
@@ -122,11 +132,12 @@ contract('StorageManager', function(accounts) {
     .then(result => assert.isFalse(result));
   });
 
-  it('should not modify access when callen by not-owner', () => {
-    const address = '0xffffffffffffffffffffffffffffffffffffffff';
-    const role = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
-    return storageManager.giveAccess(address, role, {from: accounts[1]})
-    .then(() => storageManager.isAllowed(address, role))
-    .then(result => assert.isFalse(result));
-  });
+  it('should NOT allow to give an access by non-owner');  // TODO
+
+  it('should NOT allow to block an access by non-owner');  // TODO
+
+  it('should allow owner to give an access');  // TODO
+
+  it('should allow owner to block an access');  // TODO
+
 });

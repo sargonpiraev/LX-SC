@@ -1,9 +1,15 @@
-const Reverter = require('./helpers/reverter');
-const Asserts = require('./helpers/asserts');
-const Storage = artifacts.require('./Storage.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
+"use strict";
+
 const ERC20Library = artifacts.require('./ERC20Library.sol');
-const EventsHistory = artifacts.require('./EventsHistory.sol');
+const ManagerMock = artifacts.require('./ManagerMock.sol');
+const Mock = artifacts.require('./Mock.sol');
+const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
+const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const Storage = artifacts.require('./Storage.sol');
+
+const Asserts = require('./helpers/asserts');
+const Reverter = require('./helpers/reverter');
+
 
 contract('ERC20Library', function(accounts) {
   const reverter = new Reverter(web3);
@@ -11,20 +17,41 @@ contract('ERC20Library', function(accounts) {
 
   const asserts = Asserts(assert);
   let storage;
-  let eventsHistory;
+  let multiEventsHistory;
   let erc20Library;
+  let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
+  let mock;
+
+  const assertExpectations = (expected = 0, callsCount = null) => {
+    let expectationsCount;
+    return () => {
+      return mock.expectationsLeft()
+      .then(asserts.equal(expected))
+      .then(() => mock.expectationsCount())
+      .then(result => expectationsCount = result)
+      .then(() => mock.callsCount())
+      .then(result => asserts.equal(callsCount === null ? expectationsCount : callsCount)(result));
+    };
+  };
+
+  const ignoreAuth = (enabled = true) => {
+    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
+  };
 
   before('setup', () => {
-    return Storage.deployed()
+    return Mock.deployed()
+    .then(instance => mock = instance)
+    .then(() => ignoreAuth())
+    .then(() => Storage.deployed())
     .then(instance => storage = instance)
     .then(() => ManagerMock.deployed())
     .then(instance => storage.setManager(instance.address))
     .then(() => ERC20Library.deployed())
     .then(instance => erc20Library = instance)
-    .then(() => EventsHistory.deployed())
-    .then(instance => eventsHistory = instance)
-    .then(() => erc20Library.setupEventsHistory(eventsHistory.address))
-    .then(() => eventsHistory.addVersion(erc20Library.address, '_', '_'))
+    .then(() => MultiEventsHistory.deployed())
+    .then(instance => multiEventsHistory = instance)
+    .then(() => erc20Library.setupEventsHistory(multiEventsHistory.address))
+    .then(() => multiEventsHistory.authorize(erc20Library.address))
     .then(reverter.snapshot);
   });
 
@@ -36,13 +63,13 @@ contract('ERC20Library', function(accounts) {
     .then(asserts.isTrue);
   });
 
-  it('should emit ContractAdded event in EventsHistory', () => {
+  it('should emit ContractAdded event in MultiEventsHistory', () => {
     const contract = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
     .then(() => erc20Library.addContract(contract))
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'ContractAdded');
       assert.equal(result.logs[0].args.contractAddress, contract);
     });
@@ -64,19 +91,19 @@ contract('ERC20Library', function(accounts) {
     .then(asserts.isFalse);
   });
 
-  it('should emit ContractRemoved event in EventsHistory', () => {
+  it('should emit ContractRemoved event in MultiEventsHistory', () => {
     const contract = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
     .then(() => erc20Library.removeContract(contract))
     .then(result => {
       assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, eventsHistory.address);
+      assert.equal(result.logs[0].address, multiEventsHistory.address);
       assert.equal(result.logs[0].event, 'ContractRemoved');
       assert.equal(result.logs[0].args.contractAddress, contract);
     });
   });
 
-  it('should not add contract if not allowed', () => {
+  it.skip('should not add contract if not allowed', () => {
     const nonOwner = accounts[2];
     const contract = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
@@ -85,7 +112,25 @@ contract('ERC20Library', function(accounts) {
     .then(asserts.isFalse);
   });
 
-  it('should not remove contract if not allowed', () => {
+  it('should check auth on add contract', () => {
+    const nonOwner = accounts[2];
+    const contract = '0xffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      erc20Library.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        nonOwner,
+        erc20Library.address,
+        erc20Library.contract.addContract.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => erc20Library.addContract(contract, {from: nonOwner}))
+    .then(assertExpectations());
+  });
+
+  it.skip('should not remove contract if not allowed', () => {
     const nonOwner = accounts[2];
     const contract = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
@@ -93,6 +138,24 @@ contract('ERC20Library', function(accounts) {
     .then(() => erc20Library.removeContract(contract, {from: nonOwner}))
     .then(() => erc20Library.includes(contract))
     .then(asserts.isTrue);
+  });
+
+  it('should check auth on remove contract', () => {
+    const nonOwner = accounts[2];
+    const contract = '0xffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => ignoreAuth(false))
+    .then(() => mock.expect(
+      erc20Library.address,
+      0,
+      roles2LibraryInterface.canCall.getData(
+        nonOwner,
+        erc20Library.address,
+        erc20Library.contract.removeContract.getData().slice(0, 10)
+      ), 0)
+    )
+    .then(() => erc20Library.removeContract(contract, {from: nonOwner}))
+    .then(assertExpectations());
   });
 
   it('should add several contracts', () => {

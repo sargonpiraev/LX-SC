@@ -1,12 +1,13 @@
 pragma solidity 0.4.8;
 
-import './Owned.sol';
-import './EventsHistoryAdapter.sol';
+import './adapters/MultiEventsHistoryAdapter.sol';
+import './base/Owned.sol';
 
-contract StorageManager is EventsHistoryAdapter, Owned {
+
+contract StorageManager is MultiEventsHistoryAdapter, Owned {
     mapping(address => mapping(bytes32 => bool)) internal approvedContracts;
-    event AccessGiven(address actor, bytes32 role, uint version);
-    event AccessBlocked(address actor, bytes32 role, uint version);
+    event AccessGiven(address indexed self, address actor, bytes32 role);
+    event AccessBlocked(address indexed self, address actor, bytes32 role);
 
     function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
         if (getEventsHistory() != 0x0) {
@@ -39,12 +40,12 @@ contract StorageManager is EventsHistoryAdapter, Owned {
     function _emitAccessBlocked(address _user, bytes32 _role) internal {
         StorageManager(getEventsHistory()).emitAccessBlocked(_user, _role);
     }
-    
+
     function emitAccessGiven(address _user, bytes32 _role) {
-        AccessGiven(_user, _role, _getVersion());
+        AccessGiven(_self(), _user, _role);
     }
 
     function emitAccessBlocked(address _user, bytes32 _role) {
-        AccessBlocked(_user, _role, _getVersion());
+        AccessBlocked(_self(), _user, _role);
     }
 }

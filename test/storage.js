@@ -1,7 +1,11 @@
-const Reverter = require('./helpers/reverter');
-const Asserts = require('./helpers/asserts');
-const Storage = artifacts.require('./Storage.sol');
+"use strict";
+
 const ManagerMock = artifacts.require('./ManagerMock.sol');
+const Storage = artifacts.require('./Storage.sol');
+
+const Asserts = require('./helpers/asserts');
+const Reverter = require('./helpers/reverter');
+
 
 contract('Storage', function(accounts) {
   const reverter = new Reverter(web3);
@@ -24,6 +28,10 @@ contract('Storage', function(accounts) {
     .then(() => storage.setManager(manager.address))
     .then(reverter.snapshot);
   });
+
+  it('should NOT allow to set storage manager by non-owner');  // TODO
+
+  it('should allow owner to set storage manager');  // TODO
 
   it('should store uint values', () => {
     const value = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
