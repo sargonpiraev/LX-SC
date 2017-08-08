@@ -84,7 +84,6 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => jobController.postJobOffer(
         jobId, fakeCoin.address, 100, 100, 100, {from: _worker}
       ))
-      .then(() => paymentProcessor.approve(jobId))
       .then(() => jobController.acceptOffer(jobId, _worker, {from: _client}))
       .then(() => jobId);
   }
@@ -234,14 +233,11 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       });
     });
 
-    it('should rewrite user rating', () => {
-      const rating1 = 5;
-      const rating2 = 6;
+    it('should NOT emit "UserRatingGiven" event when invalid user rating set', () => {
+      const rating = 55;
       const address = '0xffffffffffffffffffffffffffffffffffffffff';
-      return ratingsLibrary.setUserRating(address, rating1, {from: SENDER})
-        .then(() => ratingsLibrary.setUserRating(address, rating2, {from: SENDER}))
-        .then(() => ratingsLibrary.getUserRating(SENDER, address))
-        .then(asserts.equal(rating2));
+      return ratingsLibrary.setUserRating(address, rating, {from: SENDER})
+        .then(result => assert.equal(result.logs.length, 0));
     });
 
     it('should NOT rewrite to invalid user rating', () => {
@@ -252,6 +248,17 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(() => ratingsLibrary.setUserRating(address, rating2, {from: SENDER}))
         .then(() => ratingsLibrary.getUserRating(SENDER, address))
         .then(asserts.equal(rating1));
+    });
+
+
+    it('should rewrite user rating', () => {
+      const rating1 = 5;
+      const rating2 = 6;
+      const address = '0xffffffffffffffffffffffffffffffffffffffff';
+      return ratingsLibrary.setUserRating(address, rating1, {from: SENDER})
+        .then(() => ratingsLibrary.setUserRating(address, rating2, {from: SENDER}))
+        .then(() => ratingsLibrary.getUserRating(SENDER, address))
+        .then(asserts.equal(rating2));
     });
 
     it('should store user rating for different addresses', () => {
@@ -294,17 +301,25 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
     });
 
-    it('should NOT emit "UserRatingGiven" event when invalid user rating set', () => {
-      const rating = 55;
-      const address = '0xffffffffffffffffffffffffffffffffffffffff';
-      return ratingsLibrary.setUserRating(address, rating, {from: SENDER})
-        .then(result => assert.equal(result.logs.length, 0));
-    });
-
   });
 
 
   describe('Job rating', () => {
+
+    it('should NOT set invalid job rating', () => {
+      const ratings = [-1, 0, 11, 100500];
+      const jobId = FINALIZED_JOB;
+      return Promise.each(ratings, rating => {
+        return ratingsLibrary.setJobRating(worker, rating, jobId, {from: client})
+        .then(result => assert.equal(result.logs.length, 0))
+        .then(() => ratingsLibrary.getJobRating(worker, jobId))
+        .then(result => {
+          assert.equal(result[1], 0);
+          assert.equal(result[0], 0);
+        })
+        .then(() => helpers.assertExpectations(mock));
+      })
+    });
 
     it("should NOT allow to rate a job if it's not at FINALIZED state", () => {
       const jobId = NOT_FINALIZED_JOB;
@@ -339,21 +354,6 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(assert.isFalse)
     });
 
-    it('should NOT set invalid job rating', () => {
-      const ratings = [-1, 0, 11, 100500];
-      const jobId = FINALIZED_JOB;
-      return Promise.each(ratings, rating => {
-        return ratingsLibrary.setJobRating(worker, rating, jobId, {from: client})
-        .then(result => assert.equal(result.logs.length, 0))
-        .then(() => ratingsLibrary.getJobRating(worker, jobId))
-        .then(result => {
-          assert.equal(result[1], 0);
-          assert.equal(result[0], 0);
-        })
-        .then(() => helpers.assertExpectations(mock));
-      })
-    });
-
     it('should NOT allow to rate a job with worker not by client', () => {
       const jobId = FINALIZED_JOB;
       const rating = 5;
@@ -373,6 +373,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         ))
         .then(assert.isFalse)
     });
+
 
     it('should allow to rate a job with worker by client', () => {
       const jobId = FINALIZED_JOB;
@@ -485,6 +486,37 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(assert.isFalse);
     });
 
+    it("should NOT allow to rate worker skills if a job is not at FINALIZED state", () => {
+      const jobId = NOT_FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      const call = ratingsLibrary.rateWorkerSkills;
+      const args = [jobId, worker, area, category, skills, ratings, {from: client}];
+      return Promise.resolve()
+        .then(() => call(...args))
+        .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => call(...args))
+        .then(() => jobController.confirmStartWork(jobId, {from: client}))
+        .then(() => call(...args))
+        .then(() => jobController.endWork(jobId, {from: worker}))
+        .then(() => call(...args))
+        .then(() => jobController.confirmEndWork(jobId, {from: client}))
+        .then(() => jobController.getJobState(jobId))
+        .then(asserts.equal(6))  // Ensure all previous stage changes was successful
+        .then(() => call(...args))
+        .then(() => Promise.each(skills, skill => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], 0);
+              assert.equal(result[1], 0);
+            });
+        }));
+    });
+
     it('should NOT allow to rate worker skills not from job client', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -539,37 +571,6 @@ contract('RatingsAndReputationLibrary', function(accounts) {
               assert.equal(result[1], 0);
             });
           }));
-    });
-
-    it("should NOT allow to rate worker skills if a job is not at FINALIZED state", () => {
-      const jobId = NOT_FINALIZED_JOB;
-      const area = helpers.getFlag(0);
-      const category = helpers.getFlag(0);
-      const skills = [1, 2, 4];
-      const ratings = [3, 7, 9];
-      const call = ratingsLibrary.rateWorkerSkills;
-      const args = [jobId, worker, area, category, skills, ratings, {from: client}];
-      return Promise.resolve()
-        .then(() => call(...args))
-        .then(() => jobController.startWork(jobId, {from: worker}))
-        .then(() => call(...args))
-        .then(() => jobController.confirmStartWork(jobId, {from: client}))
-        .then(() => call(...args))
-        .then(() => jobController.endWork(jobId, {from: worker}))
-        .then(() => call(...args))
-        .then(() => jobController.confirmEndWork(jobId, {from: client}))
-        .then(() => jobController.getJobState(jobId))
-        .then(asserts.equal(6))  // Ensure all previous stage changes was successful
-        .then(() => call(...args))
-        .then(() => Promise.each(skills, skill => {
-          return ratingsLibrary.getSkillRating(
-              worker, area, category, skill, jobId
-            )
-            .then(result => {
-              assert.equal(result[0], 0);
-              assert.equal(result[1], 0);
-            });
-        }));
     });
 
     it('should NOT allow to rate worker skills if a job was canceled on ACCEPTED state', () => {
@@ -649,111 +650,6 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         ))
         .then(assert.isFalse);
     });
-
-
-    it('should allow to rate worker skills with valid parameters on successfully finished job', () => {
-      const jobId = FINALIZED_JOB;
-      const area = helpers.getFlag(0);
-      const category = helpers.getFlag(0);
-      const skills = [1, 2, 4];
-      const ratings = [3, 7, 9];
-      return Promise.resolve()
-        .then(() => ratingsLibrary.rateWorkerSkills(
-            jobId, worker, area, category, skills, ratings, {from: client}
-          ))
-        .then(() => Promise.each(skills, (skill, i) => {
-          return ratingsLibrary.getSkillRating(
-              worker, area, category, skill, jobId
-            )
-            .then(result => {
-              assert.equal(result[0], client);
-              assert.equal(result[1], ratings[i]);
-            });
-        }));
-    });
-
-    it('should allow to rate worker skills on canceled job if it ended up with STARTED state', () => {
-      const jobId = NOT_FINALIZED_JOB;
-      const area = helpers.getFlag(0);
-      const category = helpers.getFlag(0);
-      const skills = [1, 2, 4];
-      const ratings = [3, 7, 9];
-      return Promise.resolve()
-        .then(() => jobController.startWork(jobId, {from: worker}))
-        .then(() => jobController.confirmStartWork(jobId, {from: client}))
-        .then(() => jobController.cancelJob(jobId, {from: client}))
-        .then(() => jobController.getJobState(jobId))
-        .then(asserts.equal(7))  // Ensure the job is FINALIZED
-        .then(() => jobController.getFinalState(jobId))
-        .then(asserts.equal(4))  // Ensure the job was canceled at STARTED state
-        .then(() => ratingsLibrary.rateWorkerSkills(
-          jobId, worker, area, category, skills, ratings, {from: client}
-        ))
-        .then(() => Promise.each(skills, (skill, i) => {
-          return ratingsLibrary.getSkillRating(
-              worker, area, category, skill, jobId
-            )
-            .then(result => {
-              assert.equal(result[0], client);
-              assert.equal(result[1], ratings[i]);
-            });
-        }));
-    });
-
-    it('should allow to rate worker skills on canceled job if it ended up with PENDING_FINISH state', () => {
-      const jobId = NOT_FINALIZED_JOB;
-      const area = helpers.getFlag(0);
-      const category = helpers.getFlag(0);
-      const skills = [1, 2, 4];
-      const ratings = [3, 7, 9];
-      return Promise.resolve()
-        .then(() => jobController.startWork(jobId, {from: worker}))
-        .then(() => jobController.confirmStartWork(jobId, {from: client}))
-        .then(() => jobController.endWork(jobId, {from: worker}))
-        .then(() => jobController.cancelJob(jobId, {from: client}))
-        .then(() => jobController.getJobState(jobId))
-        .then(asserts.equal(7))  // Ensure the job is FINALIZED
-        .then(() => jobController.getFinalState(jobId))
-        .then(asserts.equal(5))  // Ensure the job was canceled at PENDING_FINISH state
-        .then(() => ratingsLibrary.rateWorkerSkills(
-          jobId, worker, area, category, skills, ratings, {from: client}
-        ))
-        .then(() => Promise.each(skills, (skill, i) => {
-          return ratingsLibrary.getSkillRating(
-              worker, area, category, skill, jobId
-            )
-            .then(result => {
-              assert.equal(result[0], client);
-              assert.equal(result[1], ratings[i]);
-            });
-        }));
-    });
-
-    it('should emit "SkillRatingGiven" event on rate worker skills with valid parameters', () => {
-      const jobId = FINALIZED_JOB;
-      const area = helpers.getFlag(0);
-      const category = helpers.getFlag(0);
-      const skills = [1, 2, 4];
-      const ratings = [3, 7, 9];
-      return Promise.resolve()
-        .then(() => ratingsLibrary.rateWorkerSkills(
-            jobId, worker, area, category, skills, ratings, {from: client}
-          ))
-        .then(tx => {
-          assert.equal(tx.logs.length, 3);
-          return Promise.each(skills, (skill, i) => {
-            assert.equal(tx.logs[i].event, "SkillRatingGiven");
-            assert.equal(tx.logs[i].args.jobId, jobId);
-            assert.equal(tx.logs[i].args.rater, client);
-            assert.equal(tx.logs[i].args.to, worker);
-            assert.equal(tx.logs[i].args.area.toString(), area.toString());
-            assert.equal(tx.logs[i].args.category.toString(), category.toString());
-            assert.equal(tx.logs[i].args.skill.toString(), skills[i].toString());
-            assert.equal(tx.logs[i].args.rating, ratings[i]);
-          });
-        });
-    });
-
 
     it('should NOT rate worker skills with even flag job area', () => {
       const jobId = FINALIZED_JOB;
@@ -963,6 +859,110 @@ contract('RatingsAndReputationLibrary', function(accounts) {
               assert.equal(result[1], 0);
             });
         }));
+    });
+
+
+    it('should allow to rate worker skills with valid parameters on successfully finished job', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+          ))
+        .then(() => Promise.each(skills, (skill, i) => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], client);
+              assert.equal(result[1], ratings[i]);
+            });
+        }));
+    });
+
+    it('should allow to rate worker skills on canceled job if it ended up with STARTED state', () => {
+      const jobId = NOT_FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => jobController.confirmStartWork(jobId, {from: client}))
+        .then(() => jobController.cancelJob(jobId, {from: client}))
+        .then(() => jobController.getJobState(jobId))
+        .then(asserts.equal(7))  // Ensure the job is FINALIZED
+        .then(() => jobController.getFinalState(jobId))
+        .then(asserts.equal(4))  // Ensure the job was canceled at STARTED state
+        .then(() => ratingsLibrary.rateWorkerSkills(
+          jobId, worker, area, category, skills, ratings, {from: client}
+        ))
+        .then(() => Promise.each(skills, (skill, i) => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], client);
+              assert.equal(result[1], ratings[i]);
+            });
+        }));
+    });
+
+    it('should allow to rate worker skills on canceled job if it ended up with PENDING_FINISH state', () => {
+      const jobId = NOT_FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => jobController.confirmStartWork(jobId, {from: client}))
+        .then(() => jobController.endWork(jobId, {from: worker}))
+        .then(() => jobController.cancelJob(jobId, {from: client}))
+        .then(() => jobController.getJobState(jobId))
+        .then(asserts.equal(7))  // Ensure the job is FINALIZED
+        .then(() => jobController.getFinalState(jobId))
+        .then(asserts.equal(5))  // Ensure the job was canceled at PENDING_FINISH state
+        .then(() => ratingsLibrary.rateWorkerSkills(
+          jobId, worker, area, category, skills, ratings, {from: client}
+        ))
+        .then(() => Promise.each(skills, (skill, i) => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], client);
+              assert.equal(result[1], ratings[i]);
+            });
+        }));
+    });
+
+    it('should emit "SkillRatingGiven" event on rate worker skills with valid parameters', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      return Promise.resolve()
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+          ))
+        .then(tx => {
+          assert.equal(tx.logs.length, 3);
+          return Promise.each(skills, (skill, i) => {
+            assert.equal(tx.logs[i].event, "SkillRatingGiven");
+            assert.equal(tx.logs[i].args.jobId, jobId);
+            assert.equal(tx.logs[i].args.rater, client);
+            assert.equal(tx.logs[i].args.to, worker);
+            assert.equal(tx.logs[i].args.area.toString(), area.toString());
+            assert.equal(tx.logs[i].args.category.toString(), category.toString());
+            assert.equal(tx.logs[i].args.skill.toString(), skills[i].toString());
+            assert.equal(tx.logs[i].args.rating, ratings[i]);
+          });
+        });
     });
 
     it('should store different skill ratings', () => {

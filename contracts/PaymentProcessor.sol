@@ -45,8 +45,8 @@ contract PaymentProcessor is Roles2LibraryAdapter {
     }
 
     // Only contract owner
-    function approve(bytes32 _operationId) auth() returns(bool) {
-        approved[_operationId] = true;
+    function approve(uint _operationId) auth() returns(bool) {
+        approved[bytes32(_operationId)] = true;
         return true;
     }
 

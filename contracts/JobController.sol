@@ -18,23 +18,28 @@ contract PaymentProcessorInterface {
 contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAndERC20LibraryAdapter, BitOps {
     PaymentProcessorInterface public paymentProcessor;
     UserLibraryInterface public userLibrary;
-    StorageInterface.UIntAddressMapping jobClient;
-    StorageInterface.UIntUIntMapping jobSkillsArea;
-    StorageInterface.UIntUIntMapping jobSkillsCategory;
-    StorageInterface.UIntUIntMapping jobSkills;
-    StorageInterface.UIntBytes32Mapping jobDetailsIPFSHash;
+
     StorageInterface.UInt jobsCount;
-    StorageInterface.UIntAddressAddressMapping jobOfferERC20Contract; // Paid with.
-    StorageInterface.UIntAddressUIntMapping jobOfferRate; // Per minute.
-    StorageInterface.UIntAddressUIntMapping jobOfferEstimate; // In minutes.
-    StorageInterface.UIntAddressUIntMapping jobOfferOntop; // Getting to the workplace, etc.
-    StorageInterface.UIntAddressMapping jobWorker;
+
     StorageInterface.UIntUIntMapping jobState;
+    StorageInterface.UIntAddressMapping jobClient;  // jobId => jobClient
+    StorageInterface.UIntAddressMapping jobWorker;  // jobId => jobWorker
+    StorageInterface.UIntBytes32Mapping jobDetailsIPFSHash;
+
+    StorageInterface.UIntUIntMapping jobSkillsArea;  // jobId => jobSkillsArea
+    StorageInterface.UIntUIntMapping jobSkillsCategory;  // jobId => jobSkillsCategory
+    StorageInterface.UIntUIntMapping jobSkills;  // jobId => jobSkills
+
     StorageInterface.UIntUIntMapping jobStartTime;
     StorageInterface.UIntUIntMapping jobFinishTime;
     StorageInterface.UIntBoolMapping jobPaused;
     StorageInterface.UIntUIntMapping jobPausedAt;
     StorageInterface.UIntUIntMapping jobPausedFor;
+
+    StorageInterface.UIntAddressAddressMapping jobOfferERC20Contract; // Paid with.
+    StorageInterface.UIntAddressUIntMapping jobOfferRate; // Per minute.
+    StorageInterface.UIntAddressUIntMapping jobOfferEstimate; // In minutes.
+    StorageInterface.UIntAddressUIntMapping jobOfferOntop; // Getting to the workplace, etc.
 
     // At which state job has been marked as FINALIZED
     StorageInterface.UIntUIntMapping jobFinalizedAt;
@@ -77,24 +82,27 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         StorageAdapter(_store, _crate)
         Roles2LibraryAndERC20LibraryAdapter(_roles2Library, _erc20Library)
     {
+        jobsCount.init('jobsCount');
+
+        jobState.init('jobState');
         jobClient.init('jobClient');
+        jobWorker.init('jobWorker');
+        jobDetailsIPFSHash.init('jobDetailsIPFSHash');
+
         jobSkillsArea.init('jobSkillsArea');
         jobSkillsCategory.init('jobSkillsCategory');
         jobSkills.init('jobSkills');
-        jobDetailsIPFSHash.init('jobDetailsIPFSHash');
-        jobsCount.init('jobsCount');
+
+        jobStartTime.init('jobStartTime');
+        jobFinishTime.init('jobFinishTime');
+        jobPaused.init('jobPaused');
+        jobPausedAt.init('jobPausedAt');
+        jobPausedFor.init('jobPausedFor');
+
         jobOfferERC20Contract.init('jobOfferERC20Contract');
         jobOfferRate.init('jobOfferRate');
         jobOfferEstimate.init('jobOfferEstimate');
         jobOfferOntop.init('jobOfferOntop');
-        jobWorker.init('jobWorker');
-        jobState.init('jobState');
-        jobStartTime.init('jobStartTime');
-        jobFinishTime.init('jobFinishTime');
-
-        jobPaused.init('jobPaused');
-        jobPausedAt.init('jobPausedAt');
-        jobPausedFor.init('jobPausedFor');
 
         jobFinalizedAt.init('jobFinalizedAt');
     }
@@ -119,32 +127,42 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
 
     function calculateLockAmount(uint _jobId) constant returns(uint) {
         address worker = store.get(jobWorker, _jobId);
-        // Lock additional 10%, and additional working hour.
-        return
-            (
-                (
-                    store.get(jobOfferRate, _jobId, worker) * (60 + store.get(jobOfferEstimate, _jobId, worker)) +
-                    store.get(jobOfferOntop, _jobId, worker)
-                ) * 11
-            ) / 10;
+        // Lock additional working hour + 10% of resulting amount
+        return (
+                   (
+                       store.get(jobOfferRate, _jobId, worker) * (60 + store.get(jobOfferEstimate, _jobId, worker)) +
+                       store.get(jobOfferOntop, _jobId, worker)
+                   ) / 10
+               ) * 11;
     }
 
     function calculatePaycheck(uint _jobId) constant returns(uint) {
         address worker = store.get(jobWorker, _jobId);
         if (store.get(jobState, _jobId) == uint(JobState.FINISHED)) {
-            // Means that participants have agreed on job completion
-            // Full reward should be released
+            // Means that participants have agreed on job completion,
+            // reward should be calculated depending on worker's time spent.
             uint maxEstimatedTime = store.get(jobOfferEstimate, _jobId, worker) + 60;
             uint timeSpent = (store.get(jobFinishTime, _jobId) -
                               store.get(jobStartTime, _jobId) -
                               store.get(jobPausedFor, _jobId)) / 60;
             if (timeSpent > 60 && timeSpent <= maxEstimatedTime) {
+                // Worker was doing the job for more than an hour, but less then
+                // maximum estimated working time. Release money for the time
+                // he has actually worked + "on top" expenses.
                 return timeSpent * store.get(jobOfferRate, _jobId, worker) +
                        store.get(jobOfferOntop, _jobId, worker);
+
             } else if (timeSpent > maxEstimatedTime) {
+                // Means worker has gone over maximum estimated time and hasnt't
+                // requested more time, which is his personal responsibility, since
+                // we're already giving workers additional working hour from start.
+                // So we release money for maximum estimated working time + "on top".
                 return maxEstimatedTime * store.get(jobOfferRate, _jobId, worker) +
                        store.get(jobOfferOntop, _jobId, worker);
+
             } else {
+                // Worker has completed the job within just an hour, so we
+                // release money for the minumum 1 working hour + "on top".
                 return 60 * store.get(jobOfferRate, _jobId, worker) +
                        store.get(jobOfferOntop, _jobId, worker);
             }
@@ -152,16 +170,16 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             store.get(jobState, _jobId) == uint(JobState.STARTED) ||
             store.get(jobState, _jobId) == uint(JobState.PENDING_FINISH)
         ) {
-            // Job has been canceled right after start or right before completion
-            // Minimum of 1 working hour + worker onTop should be released
+            // Job has been canceled right after start or right before completion,
+            // minimum of 1 working hour + "on top" should be released.
             return store.get(jobOfferOntop, _jobId, worker) +
                    store.get(jobOfferRate, _jobId, worker) * 60;
         } else if (
             store.get(jobState, _jobId) == uint(JobState.ACCEPTED) ||
             store.get(jobState, _jobId) == uint(JobState.PENDING_START)
         ) {
-            // Job hasn't even started yet, but been accepted
-            // Release just worker onTop
+            // Job hasn't even started yet, but has been accepted,
+            // release just worker "on top" expenses.
             return store.get(jobOfferOntop, _jobId, worker);
         }
     }
@@ -174,21 +192,22 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     returns(uint) {
         uint jobId = store.get(jobsCount) + 1;
         store.set(jobsCount, jobId);
+        store.set(jobState, jobId, uint(JobState.CREATED));
         store.set(jobClient, jobId, msg.sender);
         store.set(jobSkillsArea, jobId, _area);
         store.set(jobSkillsCategory, jobId, _category);
         store.set(jobSkills, jobId, _skills);
         store.set(jobDetailsIPFSHash, jobId, _detailsIPFSHash);
-        store.set(jobState, jobId, uint(JobState.CREATED));
         _emitJobPosted(jobId, msg.sender, _area, _category, _skills, _detailsIPFSHash);
         return jobId;
     }
+
 
     function postJobOffer(uint _jobId, address _erc20Contract, uint _rate, uint _estimate, uint _ontop)
         onlyJobState(_jobId, JobState.CREATED)
         onlySupportedContract(_erc20Contract)
     returns(bool) {
-        if (_rate == 0 || _estimate == 0) {
+        if (!_validEstimate(_rate, _estimate, _ontop)) {
             return false;
         }
         if (!userLibrary.hasSkills(
@@ -200,12 +219,28 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         ) {
             return false;
         }
+
         store.set(jobOfferERC20Contract, _jobId, msg.sender, _erc20Contract);
         store.set(jobOfferRate, _jobId, msg.sender, _rate);
         store.set(jobOfferEstimate, _jobId, msg.sender, _estimate);
         store.set(jobOfferOntop, _jobId, msg.sender, _ontop);
         _emitJobOfferPosted(_jobId, msg.sender, _rate, _estimate, _ontop);
         return true;
+    }
+
+    function _validEstimate(uint _rate, uint _estimate, uint _ontop) internal constant returns(bool) {
+        if (_rate == 0 || _estimate == 0) {
+            return false;
+        }
+        uint prev = 0;
+        for (uint i = 1; i <= _estimate + 60; i++) {
+            uint curr = prev + _rate;
+            if (curr < prev) {
+                return false;
+            }
+            prev = curr;
+        }
+        return ((prev + _ontop) / 10) * 11 > prev;
     }
 
     function acceptOffer(uint _jobId, address _worker)

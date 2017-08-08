@@ -40,6 +40,7 @@ contract('JobController', function(accounts) {
 
   const client = accounts[1];
   const worker = accounts[2];
+  const stranger = accounts[9];
 
   const assertInternalBalance = (address, coinAddress, expectedValue) => {
     return (actualValue) => {
@@ -110,7 +111,6 @@ contract('JobController', function(accounts) {
       .then(result => assert.equal(result, stages.CREATED))
 
       .then(() => jobController.postJobOffer(jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}))
-      .then(() => paymentProcessor.approve(jobId))
       .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
       .then(() => operation.call(...args))
       .then(result => assert.equal(result, stages.ACCEPTED))
@@ -123,7 +123,7 @@ contract('JobController', function(accounts) {
       .then(() => operation.call(...args))
       .then(result => assert.equal(result, stages.STARTED))
 
-      .then(() => jobController.endWork(1, {from: worker}))
+      .then(() => jobController.endWork(jobId, {from: worker}))
       .then(() => operation.call(...args))
       .then(result => assert.equal(result, stages.PENDING_FINISH))
 
@@ -135,7 +135,6 @@ contract('JobController', function(accounts) {
       .then(() => operation.call(...args))
       .then(result => assert.equal(result, stages.FINALIZED));
   }
-
 
   const onReleasePayment = (timeSpent, jobPaymentEstimate, pauses) => {
     const jobId = 1;
@@ -315,13 +314,6 @@ contract('JobController', function(accounts) {
 
   describe('Job posting', () => {
 
-    it('should allow anyone to post a job', () => {
-      return Promise.each(accounts, account => {
-        return jobController.postJob.call(4, 4, 4, 'Job details', {from: account})
-          .then(jobId => assert.equal(jobId, 1));
-      });
-    });
-
     it('should NOT allow to post a job with even area mask', () => {
       const area = 2;
       const category = 4;
@@ -367,17 +359,80 @@ contract('JobController', function(accounts) {
         .then(asserts.equal(0));
     });
 
+    it('should allow anyone to post a job', () => {
+      return Promise.each(accounts, account => {
+        return jobController.postJob.call(4, 4, 4, 'Job details', {from: account})
+          .then(jobId => assert.equal(jobId, 1));
+      });
+    });
+
   });
 
 
   describe('Post job offer', () => {
 
-    it('should allow anyone to post an offer for a job only when a job has CREATED status', () => {
-      const operation = jobController.postJobOffer;
-      const args = [1, FakeCoin.address, '0x12F2A36ECD555', 180, '0x12F2A36ECD555', {from: worker}];
-      const results = {CREATED: true};
+    it('should NOT a post job offer if unsupported token contract is provided', () => {
       return Promise.resolve()
-        .then(() => operationAllowance(operation, args, results));
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer.call(
+          1, Mock.address, '0xfffffffffffffffffff', 1, 1, {from: worker}
+          )
+        )
+        .then(assert.isFalse);
+    });
+
+    it('should NOT a post job offer with null rate', () => {
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer.call(
+          1, fakeCoin.address, 0, 1, 1, {from: worker}
+          )
+        )
+        .then(assert.isFalse);
+    });
+
+    it('should NOT a post job offer with null estimate', () => {
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer.call(
+          1, fakeCoin.address, '0xfffffffffffffffffff', 0, 1, {from: worker}
+          )
+        )
+        .then(assert.isFalse);
+    });
+
+    it('should NOT post a job offer when rate/estimate/ontop overflow', () => {
+      const jobId = 1;
+      const rate = '0x1D1745D1745D1745D1745D1745D1745D1745D1745D1745D1745D1745D1745D1';
+      const estimate = 68;
+      const ontop = 60;
+      /**
+       * With these values,  ((rate * (estimate + 60) + ontop) / 10) * 11  will equal (uint256 + 3)
+       */
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer.call(
+          jobId, fakeCoin.address, rate, estimate, ontop, {from: worker}
+          )
+        )
+        .then(assert.isFalse);
+    });
+
+    it('should allow to post a job offer when lock amount is almost the maximum uint256 value', () => {
+      const jobId = 1;
+      const rate = '0x1D1745D1745D1745D1745D1745D1745D1745D1745D1745D1745D1745D1745D1';
+      const estimate = 68;
+      const ontop = 59;
+      /**
+       * With these values,  ((rate * (estimate + 60) + ontop) / 10) * 11  will equal near the uint256 value
+       */
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer.call(
+          jobId, fakeCoin.address, rate, estimate, ontop, {from: worker}
+          )
+        )
+        .then(assert.isTrue);
     });
 
     it("should check skills on posting job offer", () => {
@@ -404,6 +459,16 @@ contract('JobController', function(accounts) {
         .then(assert.isFalse);
     });
 
+    it("should allow to post job offer with no ontop payment", () => {
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer.call(
+          1, fakeCoin.address, '0xfffffffffffffffffff', 1, 0, {from: worker}
+          )
+        )
+        .then(assert.isTrue);
+    });
+
     it("should post job offer if worker skills match", () => {
       return Promise.resolve()
         .then(() => jobController.setUserLibrary(userLibrary.address))
@@ -415,22 +480,19 @@ contract('JobController', function(accounts) {
         .then(assert.isTrue);
     });
 
-    it('should NOT post job offer if unsupported token contract is provided', () => {
-      return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
-        .then(() => jobController.postJobOffer.call(
-          1, Mock.address, '0xfffffffffffffffffff', 1, 1, {from: worker}
-          )
-        )
-        .then(assert.isFalse);
-    });
-
   });
 
 
   describe('Accept job offer', () => {
 
-    it('should throw on `acceptOffer` if client has insufficient funds', () => {
+    it('should NOT accept job offer for non-existent job worker', () => {
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.acceptOffer.call(1, worker, {from: client}))
+        .then(assert.isFalse);
+    });
+
+    it('should THROW on `acceptOffer` if client has insufficient funds', () => {
       return Promise.resolve()
         .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
@@ -438,8 +500,39 @@ contract('JobController', function(accounts) {
           )
         )
         .then(() => asserts.throws(
-          jobController.acceptOffer(1, {from: client})
+          jobController.acceptOffer(1, worker, {from: client})
         ));
+    });
+
+    it('should THROW when trying to accept job offer if payment lock was not ' +
+       'allowed in Payment Processor', () => {
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
+          1, fakeCoin.address, '0x12f2a36ecd555', 1, '0x12f2a36ecd555', {from: worker}
+          )
+        )
+        .then(() => paymentProcessor.enableServiceMode())
+        .then(() => paymentProcessor.serviceMode())
+        .then(assert.isTrue)
+        .then(() => asserts.throws(
+          jobController.acceptOffer(1, worker, {from: client})
+        ));
+    });
+
+    it('should allow to accept job offer if payment lock was allowed by Payment Processor', () => {
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
+          1, fakeCoin.address, '0x12f2a36ecd555', 1, '0x12f2a36ecd555', {from: worker}
+          )
+        )
+        .then(() => paymentProcessor.enableServiceMode())
+        .then(() => paymentProcessor.serviceMode())
+        .then(assert.isTrue)
+        .then(() => paymentProcessor.approve(1))
+        .then(() => jobController.acceptOffer.call(1, worker, {from: client}))
+        .then(assert.isTrue);
     });
 
     it('should lock correct amount of tokens on `acceptOffer`', () => {
@@ -452,7 +545,7 @@ contract('JobController', function(accounts) {
       let workerBalanceBefore;
 
       const estimatedLockAmount = Math.floor(
-        ((workerRate * (jobEstimate + 60) + workerOnTop) * 11) / 10
+        ((workerRate * (jobEstimate + 60) + workerOnTop) / 10) * 11
       );
 
       return Promise.resolve()
@@ -479,7 +572,88 @@ contract('JobController', function(accounts) {
   });
 
 
-  describe('Job status restrictions', () => {
+  describe('Job status and caller restrictions', () => {
+
+    it('should NOT allow to call all client-worker workflow methods not by these guys', () => {
+      const jobId = 1;
+      const jobArea = 4;
+      const jobCategory = 4;
+      const jobSkills = 4;
+      const jobDetails = 'Job details';
+      const additionalTime = 60;
+
+      const workerRate = '0x12f2a36ecd555';
+      const workerOnTop = '0x12f2a36ecd555';
+      const jobEstimate = 180;
+
+      return Promise.resolve()
+        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
+
+        .then(() => jobController.postJobOffer(jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}))
+
+        .then(() => jobController.acceptOffer.call(jobId, worker, {from: stranger}))
+        .then(assert.isFalse)
+        .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+        .then(() => jobController.cancelJob.call(jobId, {from: client}))
+        .then(assert.isTrue)
+        .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
+        .then(assert.isFalse)
+
+        .then(() => jobController.startWork.call(jobId, {from: stranger}))
+        .then(assert.isFalse)
+        .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => jobController.cancelJob.call(jobId, {from: client}))
+        .then(assert.isTrue)
+        .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
+        .then(assert.isFalse)
+
+        .then(() => jobController.confirmStartWork.call(jobId, {from: stranger}))
+        .then(assert.isFalse)
+        .then(() => jobController.confirmStartWork(jobId, {from: client}))
+        .then(() => jobController.cancelJob.call(jobId, {from: client}))
+        .then(assert.isTrue)
+        .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
+        .then(assert.isFalse)
+
+        .then(() => jobController.pauseWork.call(jobId, {from: stranger}))
+        .then(assert.isFalse)
+        .then(() => jobController.pauseWork(jobId, {from: worker}))
+        .then(tx => assert.equal(tx.logs[0].event, 'WorkPaused'))
+
+        .then(() => jobController.resumeWork.call(jobId, {from: stranger}))
+        .then(assert.isFalse)
+        .then(() => jobController.resumeWork(jobId, {from: worker}))
+        .then(tx => assert.equal(tx.logs[0].event, 'WorkResumed'))
+
+        .then(() => jobController.addMoreTime.call(jobId, additionalTime, {from: stranger}))
+        .then(assert.isFalse)
+        .then(() => jobController.addMoreTime(jobId, additionalTime, {from: client}))
+        .then(tx => assert.equal(tx.logs[0].event, 'TimeAdded'))
+
+        .then(() => jobController.endWork.call(jobId, {from: stranger}))
+        .then(assert.isFalse)
+        .then(() => jobController.endWork(jobId, {from: worker}))
+        .then(() => jobController.cancelJob.call(jobId, {from: client}))
+        .then(assert.isTrue)
+        .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
+        .then(assert.isFalse)
+
+        .then(() => jobController.confirmEndWork.call(jobId, {from: stranger}))
+        .then(assert.isFalse)
+        .then(() => jobController.confirmEndWork(jobId, {from: client}))
+
+        .then(() => jobController.releasePayment(jobId))
+        .then(() => jobController.getJobState(jobId))
+        .then(asserts.equal(7));
+    });
+
+    it('should allow anyone to post an offer for a job only when a job has CREATED status', () => {
+      const operation = jobController.postJobOffer;
+      const args = [1, FakeCoin.address, '0x12F2A36ECD555', 180, '0x12F2A36ECD555', {from: worker}];
+      const results = {CREATED: true};
+      return Promise.resolve()
+        .then(() => operationAllowance(operation, args, results));
+    });
 
     it('should allow assigned worker to request work start only when a job has ACCEPTED status', () => {
       const operation = jobController.startWork;
@@ -521,6 +695,19 @@ contract('JobController', function(accounts) {
         .then(() => operationAllowance(operation, args, results));
     });
 
+    it('should allow client to cancel job only at ACCEPTED, PENDING_START, STARTED and PENDING_FINISH states', () => {
+      const operation = jobController.cancelJob;
+      const args = [1, {from: client}];
+      const results = {
+        ACCEPTED: true,
+        PENDING_START: true,
+        STARTED: true,
+        PENDING_FINISH: true
+      };
+      return Promise.resolve()
+        .then(() => operationAllowance(operation, args, results));
+    });
+
     it('should NOT allow to cancel job if it was agreed as FINISHED', () => {
       const jobId = 1;
       const jobArea = 4;
@@ -536,7 +723,6 @@ contract('JobController', function(accounts) {
       .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
 
       .then(() => jobController.postJobOffer(jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}))
-      .then(() => paymentProcessor.approve(jobId))
       .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
 
       .then(() => jobController.startWork(jobId, {from: worker}))
@@ -552,7 +738,105 @@ contract('JobController', function(accounts) {
       .then(() => jobController.cancelJob.call(jobId, {from: client}))
       .then(assert.isFalse);
 
-    });  // TODO!
+    });
+
+  });
+
+
+  describe('Time adjustments', () => {
+
+    it("should NOT allow to pause work if it's already paused", () => {
+      const workerRate = '0x12f2a36ecd555';
+      const workerOnTop = '0x12f2a36ecd555';
+      const jobEstimate = 180;
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 7, 'Job details', {from: client}))
+
+        .then(() => jobController.postJobOffer(
+          1, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(1, worker, {from: client}))
+        .then(() => jobController.startWork(1, {from: worker}))
+        .then(() => jobController.confirmStartWork(1, {from: client}))
+        .then(() => jobController.pauseWork(1, {from: worker}))
+        .then(tx => assert.equal(tx.logs[0].event, 'WorkPaused'))
+        .then(() => jobController.pauseWork.call(1, {from: worker}))
+        .then(assert.isFalse);
+    });
+
+    it("should NOT allow to resume work if it isn't paused", () => {
+      const workerRate = '0x12f2a36ecd555';
+      const workerOnTop = '0x12f2a36ecd555';
+      const jobEstimate = 180;
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 7, 'Job details', {from: client}))
+
+        .then(() => jobController.postJobOffer(
+          1, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(1, worker, {from: client}))
+        .then(() => jobController.startWork(1, {from: worker}))
+        .then(() => jobController.confirmStartWork(1, {from: client}))
+        .then(() => jobController.resumeWork.call(1, {from: worker}))
+        .then(assert.isFalse);
+    });
+
+    it("should NOT add null amount of work time", () => {
+      const workerRate = '0x12f2a36ecd555';
+      const workerOnTop = '0x12f2a36ecd555';
+      const jobEstimate = 180;
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 7, 'Job details', {from: client}))
+
+        .then(() => jobController.postJobOffer(
+          1, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(1, worker, {from: client}))
+        .then(() => jobController.startWork(1, {from: worker}))
+        .then(() => jobController.confirmStartWork(1, {from: client}))
+        .then(() => jobController.addMoreTime.call(1, 0, {from: client}))
+        .then(assert.isFalse);
+    });
+
+    it("should THROW when trying to add more time if operation " +
+       "is not allowed by Payment Processor", () => {
+      const workerRate = '0x12f2a36ecd555';
+      const workerOnTop = '0x12f2a36ecd555';
+      const jobEstimate = 180;
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 7, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
+          1, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(1, worker, {from: client}))
+        .then(() => jobController.startWork(1, {from: worker}))
+        .then(() => jobController.confirmStartWork(1, {from: client}))
+        .then(tx => assert.equal(tx.logs[0].event, 'WorkStarted'))
+        .then(() => paymentProcessor.enableServiceMode())
+        .then(() => paymentProcessor.serviceMode())
+        .then(assert.isTrue)
+        .then(() => asserts.throws(
+          jobController.addMoreTime(1, 60, {from: client})
+        ));
+    });
+
+    it("should NOT let client add more work time if he doesn't have enough funds for it", () => {
+      const workerRate = '0xffffffffffffffff';
+      const workerOnTop = '0x12f2a36ecd555';
+      const jobEstimate = 180;
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 7, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
+          1, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(1, worker, {from: client}))
+        .then(() => jobController.startWork(1, {from: worker}))
+        .then(() => jobController.confirmStartWork(1, {from: client}))
+        .then(tx => assert.equal(tx.logs[0].event, 'WorkStarted'))
+        .then(() => asserts.throws(
+          jobController.addMoreTime(1, 65535, {from: client})
+        ));
+    });
 
   });
 
@@ -796,6 +1080,110 @@ contract('JobController', function(accounts) {
 
   describe('Reward release', () => {
 
+    it("should NOT allow to cancel job if operation " +
+       "was not allowed by Payment Processor", () => {
+      const jobId = 1;
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+
+      let clientBalanceBefore;
+      let workerBalanceBefore;
+
+      return Promise.resolve()
+        .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+        .then(result => clientBalanceBefore = result)
+        .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+        .then(result => workerBalanceBefore = result)
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
+          jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+        .then(() => paymentProcessor.enableServiceMode())
+        .then(() => paymentProcessor.serviceMode())
+        .then(assert.isTrue)
+        .then(() => jobController.cancelJob.call(jobId, {from: client}))
+        .then(assert.isFalse);
+    });
+
+    it("should allow to cancel job if operation " +
+       "was allowed by Payment Processor", () => {
+      const jobId = 1;
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+
+      let clientBalanceBefore;
+      let workerBalanceBefore;
+
+      return Promise.resolve()
+        .then(() => paymentGateway.getBalance(client, fakeCoin.address))
+        .then(result => clientBalanceBefore = result)
+        .then(() => paymentGateway.getBalance(worker, fakeCoin.address))
+        .then(result => workerBalanceBefore = result)
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
+          jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+        .then(() => paymentProcessor.enableServiceMode())
+        .then(() => paymentProcessor.serviceMode())
+        .then(assert.isTrue)
+        .then(() => paymentProcessor.approve(jobId))
+        .then(() => jobController.cancelJob.call(jobId, {from: client}))
+        .then(assert.isTrue);
+    });
+
+    it("should NOT allow to release payment when operation was not allowed by Payment Processor", () => {
+      const jobId = 1;
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
+          jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+        .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => jobController.confirmStartWork(jobId, {from: client}))
+        .then(() => jobController.endWork(jobId, {from: worker}))
+        .then(() => jobController.confirmEndWork(jobId, {from: client}))
+
+        .then(() => paymentProcessor.enableServiceMode())
+        .then(() => paymentProcessor.serviceMode())
+        .then(assert.isTrue)
+
+        .then(() => jobController.releasePayment.call(jobId))
+        .then(assert.isFalse)
+    });
+
+    it("should allow to release payment when operation was allowed by Payment Processor", () => {
+      const jobId = 1;
+      const workerRate = 200000000000;
+      const workerOnTop = 1000000000;
+      const jobEstimate = 240;
+      return Promise.resolve()
+        .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
+        .then(() => jobController.postJobOffer(
+          jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
+        ))
+        .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
+        .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => jobController.confirmStartWork(jobId, {from: client}))
+        .then(() => jobController.endWork(jobId, {from: worker}))
+        .then(() => jobController.confirmEndWork(jobId, {from: client}))
+
+        .then(() => paymentProcessor.enableServiceMode())
+        .then(() => paymentProcessor.serviceMode())
+        .then(assert.isTrue)
+        .then(() => paymentProcessor.approve(jobId))
+
+        .then(() => jobController.releasePayment.call(jobId))
+        .then(assert.isTrue)
+    });
+
     it('should release just jobOfferOnTop on `cancelJob` on ACCEPTED job stage', () => {
       const jobId = 1;
       const workerRate = 200000000000;
@@ -929,7 +1317,7 @@ contract('JobController', function(accounts) {
     });
 
     it('should release correct amount of tokens on `releasePayment` when' +
-      'worked for more than an hour but less than estimated time', () => {
+       'worked for more than an hour but less than estimated time', () => {
       const workerRate = 200000000000;
       const workerOnTop = 1000000000;
       const jobEstimate = 240;
@@ -939,7 +1327,7 @@ contract('JobController', function(accounts) {
     });
 
     it('should release correct amount of tokens on `releasePayment` when' +
-      'worked for more than estimated time but less than estimated time and an hour', () => {
+       'worked for more than estimated time but less than estimated time and an hour', () => {
       const workerRate = 200000000000;
       const workerOnTop = 1000000000;
       const jobEstimate = 240;
@@ -949,7 +1337,7 @@ contract('JobController', function(accounts) {
     });
 
     it('should release possible maximum of tokens(estimate + 1 hour)' +
-      'when worked for more than estimate and an hour', () => {
+       'when worked for more than estimate and an hour', () => {
       const workerRate = 200000000000;
       const workerOnTop = 1000000000;
       const jobEstimate = 240;
@@ -969,7 +1357,7 @@ contract('JobController', function(accounts) {
 
 
     it('should release correct amount of tokens on `releasePayment` ' +
-      'when worked for exactly the estimated time, with pauses/resumes', () => {
+       'when worked for exactly the estimated time, with pauses/resumes', () => {
       const workerRate = 200000000000;
       const workerOnTop = 1000000000;
       const jobEstimate = 240;
@@ -979,7 +1367,7 @@ contract('JobController', function(accounts) {
     });
 
     it('should release correct amount of tokens on `releasePayment` when' +
-      'worked for more than an hour but less than estimated time, with pauses/resumes', () => {
+       'worked for more than an hour but less than estimated time, with pauses/resumes', () => {
       const workerRate = 200000000000;
       const workerOnTop = 1000000000;
       const jobEstimate = 240;
@@ -989,7 +1377,7 @@ contract('JobController', function(accounts) {
     });
 
     it('should release correct amount of tokens on `releasePayment` when' +
-      'worked for more than estimated time but less than estimated time and an hour, with pauses/resumes', () => {
+       'worked for more than estimated time but less than estimated time and an hour, with pauses/resumes', () => {
       const workerRate = 200000000000;
       const workerOnTop = 1000000000;
       const jobEstimate = 240;
@@ -999,7 +1387,7 @@ contract('JobController', function(accounts) {
     });
 
     it('should release possible maximum of tokens(estimate + 1 hour)' +
-      'when worked for more than estimate and an hour, with pauses/resumes', () => {
+       'when worked for more than estimate and an hour, with pauses/resumes', () => {
       const workerRate = 200000000000;
       const workerOnTop = 1000000000;
       const jobEstimate = 240;
@@ -1009,7 +1397,7 @@ contract('JobController', function(accounts) {
     });
 
     it('should release minimum an hour of work on `releasePayment`' +
-      'when worked for less than an hour, with pauses/resumes', () => {
+       'when worked for less than an hour, with pauses/resumes', () => {
       const workerRate = 200000000000;
       const workerOnTop = 1000000000;
       const jobEstimate = 240;
