@@ -91,9 +91,11 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         notNull(_value)
         onlySupportedContract(_contract)
     returns(bool) {
+        if (getBalanceOf(msg.sender, _contract) < _value) {
+            _emitError("Not enough balance to deposit");
+            return false;
+        }
         uint balanceBefore = getBalanceOf(getBalanceHolder(), _contract);
-        _safeAdd(balanceBefore, _value);  // Overflow check
-
         if (!getBalanceHolder().deposit(msg.sender, _value, _contract)) {
             _emitError("Deposit failed");
             return false;
@@ -107,17 +109,15 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     function withdraw(uint _value, address _contract)
         notNull(_value)
     returns(bool) {
-        if (store.get(balances, _contract, msg.sender) < _value) {
-            _emitError("Not enough balance");
-            return false;
-        }
         return _withdraw(msg.sender, _value, _contract);
     }
 
     function _withdraw(address _from, uint _value, address _contract) internal returns(bool) {
+        if (getBalance(_from, _contract) < _value) {
+            _emitError("Not enough balance to withdraw");
+            return false;
+        }
         uint balanceBefore = getBalanceOf(getBalanceHolder(), _contract);
-        _safeSub(balanceBefore, _value);  // Underflow check
-
         if (!getBalanceHolder().withdraw(_from, _value, _contract)) {
             _emitError("Withdrawal failed");
             return false;

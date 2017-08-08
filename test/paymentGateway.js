@@ -402,7 +402,7 @@ contract('PaymentGateway', function(accounts) {
       return Promise.resolve()
         .then(() => fakeCoin.mint(sender, balance))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-        .then(tx => error(tx, "Deposit failed"))
+        .then(tx => error(tx, "Not enough balance to deposit"))
         .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, 0))
         .then(assertInternalBalance(sender, fakeCoin.address, 0))
         .then(assertExternalBalance(sender, fakeCoin.address, balance));
@@ -526,7 +526,7 @@ contract('PaymentGateway', function(accounts) {
         .then(() => fakeCoin.mint(sender, value))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
         .then(() => paymentGateway.withdraw(value + 1, fakeCoin.address, {from: sender}))
-        .then(tx => error(tx, "Not enough balance"))
+        .then(tx => error(tx, "Not enough balance to withdraw"))
         .then(assertInternalBalance(sender, fakeCoin.address, value))
         .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, value))
         .then(assertExternalBalance(sender, fakeCoin.address, 0));
@@ -2238,13 +2238,19 @@ contract('PaymentGateway', function(accounts) {
         .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, value));
     });
 
-    it('should THROW on attempt to forward more than is available (underflow)', () => {
+    it('should THROW on forward fee when underflow happens', () => {
       /**
        * Covered in withdrawal
        */
     });
 
     it('should NOT forward if error occurred in ERC20 contract', () => {
+      /**
+       * Covered in withdrawal
+       */
+    });
+
+    it('should NOT forward more fee than available', () => {
       /**
        * Covered in withdrawal
        */
