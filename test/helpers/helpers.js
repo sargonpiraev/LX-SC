@@ -51,4 +51,11 @@ module.exports = {
   eventEquals: (tx, event) => {
     assert.equal(tx.logs[0].event, event);
   },
+  error: (tx, events, contract, text) => {
+    assert.equal(tx.logs.length, 1);
+    assert.equal(tx.logs[0].address, events.address);
+    assert.equal(tx.logs[0].event, "Error");
+    assert.equal(tx.logs[0].args.self, contract.address);
+    assert.isTrue(web3.toAscii(tx.logs[0].args.msg).includes(text));
+  },
 }

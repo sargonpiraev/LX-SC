@@ -27,6 +27,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
 
     modifier notNull(uint _value) {
         if (_value == 0) {
+            _emitError("Value is empty");
             return;
         }
         _;
@@ -84,6 +85,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         _safeAdd(balanceBefore, _value);  // Overflow check
 
         if (!getBalanceHolder().deposit(msg.sender, _value, _contract)) {
+            _emitError("Deposit failed");
             return false;
         }
         uint depositedAmount = _safeSub(getBalanceOf(getBalanceHolder(), _contract), balanceBefore);
@@ -94,6 +96,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
 
     function withdraw(uint _value, address _contract) notNull(_value) returns(bool) {
         if (store.get(balances, _contract, msg.sender) < _value) {
+            _emitError("Not enough balance");
             return false;
         }
         return _withdraw(msg.sender, _value, _contract);
@@ -104,12 +107,10 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         _safeSub(balanceBefore, _value);  // Underflow check
 
         if (!getBalanceHolder().withdraw(_from, _value, _contract)) {
+            _emitError("Withdrawal failed");
             return false;
         }
         uint withdrawnAmount = _safeSub(balanceBefore, getBalanceOf(getBalanceHolder(), _contract));
-        if (withdrawnAmount == 0) {
-            return false;
-        }
         store.set(balances, _contract, _from, _safeSub(getBalance(_from, _contract), withdrawnAmount));
         _emitWithdrawn(_from, _value, _contract);
         return true;
@@ -220,31 +221,6 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         return true;
     }
 
-    function _addBalance(address _to, uint _value, address _contract) internal {
-        store.set(balances, _contract, _to, _safeAdd(getBalance(_to, _contract), _value));
-    }
-
-    function _subBalance(address _from, uint _value, address _contract) internal {
-        store.set(balances, _contract, _from, _safeSub(getBalance(_from, _contract), _value));
-    }
-
-    function _assert(bool _assertion) internal {
-        if (!_assertion) {
-            throw;
-        }
-    }
-
-    function _safeSub(uint _a, uint _b) internal constant returns(uint) {
-        _assert(_b <= _a);
-        return _a - _b;
-    }
-
-    function _safeAdd(uint _a, uint _b) internal constant returns(uint) {
-        uint c = _a + _b;
-        _assert(c >= _a);
-        return c;
-    }
-
     function forwardFee(uint _value, address _contract) returns(bool) {
         if (getFeeAddress() == 0x0) {
             return false;
@@ -272,6 +248,9 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     function getBalanceHolder() constant returns(BalanceHolderInterface) {
         return BalanceHolderInterface(store.get(balanceHolder));
     }
+
+
+    // EVENTS
 
     function _emitFeeSet(uint _feePercent, address _contract) internal {
         PaymentGateway(getEventsHistory()).emitFeeSet(_feePercent, _contract);
@@ -303,5 +282,33 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
 
     function emitTransferred(address _from, address _to, uint _value, address _contract) {
         Transferred(_self(), _contract, _from, _to, _value);
+    }
+
+
+    // HELPERS
+
+    function _assert(bool _assertion) internal {
+        if (!_assertion) {
+            throw;
+        }
+    }
+
+    function _safeSub(uint _a, uint _b) internal constant returns(uint) {
+        _assert(_b <= _a);
+        return _a - _b;
+    }
+
+    function _safeAdd(uint _a, uint _b) internal constant returns(uint) {
+        uint c = _a + _b;
+        _assert(c >= _a);
+        return c;
+    }
+
+    function _addBalance(address _to, uint _value, address _contract) internal {
+        store.set(balances, _contract, _to, _safeAdd(getBalance(_to, _contract), _value));
+    }
+
+    function _subBalance(address _from, uint _value, address _contract) internal {
+        store.set(balances, _contract, _from, _safeSub(getBalance(_from, _contract), _value));
     }
 }

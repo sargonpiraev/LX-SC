@@ -63,6 +63,12 @@ contract('PaymentGateway', function(accounts) {
     };
   };
 
+  const error = (tx, text) => {
+    helpers.error(
+      tx, multiEventsHistory, paymentGateway, text
+    );
+  }
+
   before('setup', () => {
     return Mock.deployed()
     .then(instance => mock = instance)
@@ -291,6 +297,7 @@ contract('PaymentGateway', function(accounts) {
       return Promise.resolve()
         .then(() => fakeCoin.mint(sender, value))
         .then(() => paymentGateway.deposit(0, fakeCoin.address, {from: sender}))
+        .then(tx => error(tx, "Value is empty"))
         .then(() => fakeCoin.balanceOf(balanceHolder.address))
         .then(asserts.equal(0))
         .then(() => fakeCoin.balanceOf(sender))
@@ -302,17 +309,56 @@ contract('PaymentGateway', function(accounts) {
     it('should NOT deposit if sender has not ' +
        'enough tokens at the target contract', () => {
       const sender = accounts[6];
+      const balance = 999;
       const value = 1000;
       return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, balance))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(tx => error(tx, "Deposit failed"))
         .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
         .then(asserts.equal(0))
         .then(() => fakeCoin.balanceOf(balanceHolder.address))
-        .then(asserts.equal(0));
+        .then(asserts.equal(0))
+        .then(() => fakeCoin.balanceOf(sender))
+        .then(asserts.equal(balance));
     });
 
     it('should NOT deposit if sender has not given ' +
-       'allowance to transfer his coins to balanceHolder'); // TODO
+       'allowance to transfer his tokens to balanceHolder', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => fakeCoin.enableApproval())
+        .then(() => fakeCoin.approvalMode())
+        .then(assert.isTrue)
+        .then(() => paymentGateway.deposit(
+          value, fakeCoin.address, {from: sender})
+        )
+        .then(tx => error(tx, "Deposit failed"))
+        .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
+        .then(asserts.equal(0))
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(asserts.equal(0))
+        .then(() => fakeCoin.balanceOf(sender))
+        .then(asserts.equal(value));
+    });
+
+    it('should deposit if sender has given ' +
+       'allowance to transfer his tokens to balanceHolder', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => fakeCoin.enableApproval())
+        .then(() => fakeCoin.approvalMode())
+        .then(assert.isTrue)
+        .then(() => fakeCoin.approve(balanceHolder.address, value, {from: sender}))
+        .then(() => paymentGateway.deposit.call(
+          value, fakeCoin.address, {from: sender})
+        )
+        .then(assert.isTrue);
+    });
 
     it('should deposit', () => {
       const sender = accounts[6];
@@ -390,8 +436,14 @@ contract('PaymentGateway', function(accounts) {
       return Promise.resolve()
         .then(() => fakeCoin.mint(sender, value))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-        .then(() => paymentGateway.withdraw.call(value + 1, fakeCoin.address, {from: sender}))
-        .then(assert.isFalse);
+        .then(() => paymentGateway.withdraw(value + 1, fakeCoin.address, {from: sender}))
+        .then(tx => error(tx, "Not enough balance"))
+        .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
+        .then(asserts.equal(value))
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(asserts.equal(value))
+        .then(() => fakeCoin.balanceOf(sender))
+        .then(asserts.equal(0));
     });
 
     it('should NOT withdraw no tokens', () => {
@@ -400,9 +452,32 @@ contract('PaymentGateway', function(accounts) {
       return Promise.resolve()
         .then(() => fakeCoin.mint(sender, value))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-        .then(() => paymentGateway.withdraw.call(0, fakeCoin.address, {from: sender}))
-        .then(assert.isFalse);
+        .then(() => paymentGateway.withdraw(0, fakeCoin.address, {from: sender}))
+        .then(tx => error(tx, "Value is empty"))
+        .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
+        .then(asserts.equal(value))
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(asserts.equal(value))
+        .then(() => fakeCoin.balanceOf(sender))
+        .then(asserts.equal(0));
     });
+
+    it('should NOT withdraw if withdrawal failed in ERC20 contract', () => {
+      const sender = accounts[6];
+      const value = 1000;
+      return Promise.resolve()
+        .then(() => fakeCoin.mint(sender, value))
+        .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
+        .then(() => fakeCoin.enableMaintenance())
+        .then(() => paymentGateway.withdraw(value, fakeCoin.address, {from: sender}))
+        .then(tx => error(tx, "Withdrawal failed"))
+        .then(() => paymentGateway.getBalance(sender, fakeCoin.address))
+        .then(asserts.equal(value))
+        .then(() => fakeCoin.balanceOf(balanceHolder.address))
+        .then(asserts.equal(value))
+        .then(() => fakeCoin.balanceOf(sender))
+        .then(asserts.equal(0));
+    })
 
     it('should THROW on withdraw if whole charged amount ' +
        '(with fee) is greater than user balance', () => {

@@ -44,15 +44,15 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     StorageInterface.AddressUIntUIntAddressUInt8Mapping categoriesEvaluated;
     StorageInterface.AddressUIntUIntUIntAddressUInt8Mapping skillsEvaluated;
 
-    event UserRatingGiven(address indexed rater, address indexed to, uint rating);
+    event UserRatingGiven(address indexed self, address indexed rater, address indexed to, uint rating);
 
-    event JobRatingGiven(address indexed rater, address indexed to, uint8 rating, uint jobId);
+    event JobRatingGiven(address indexed self, address indexed rater, address indexed to, uint8 rating, uint jobId);
 
-    event SkillRatingGiven(address indexed rater, address indexed to, uint8 rating, uint area, uint category, uint skill, uint jobId);
+    event SkillRatingGiven(address indexed self, address indexed rater, address indexed to, uint8 rating, uint area, uint category, uint skill, uint jobId);
 
-    event AreaEvaluated(address indexed rater, address indexed to, uint8 rating, uint area);
-    event CategoryEvaluated(address indexed rater, address indexed to, uint8 rating, uint area, uint category);
-    event SkillEvaluated(address indexed rater, address indexed to, uint8 rating, uint area, uint category, uint skill);
+    event AreaEvaluated(address indexed self, address indexed rater, address indexed to, uint8 rating, uint area);
+    event CategoryEvaluated(address indexed self, address indexed rater, address indexed to, uint8 rating, uint area, uint category);
+    event SkillEvaluated(address indexed self, address indexed rater, address indexed to, uint8 rating, uint area, uint category, uint skill);
 
 
     modifier canSetRating(uint _jobId) {
@@ -190,7 +190,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
         _assert(_validRating(_rating));
         _assert(_isSingleFlag(_skill));  // Ensure skill is repserented correctly, as a single bit flag
         _assert(_hasFlag(jobController.getJobSkills(_jobId), _skill));  // Ensure the job has given skill
-        
+
         store.set(skillRatingsGiven, _to, _jobId, _area, _category, _skill, msg.sender, _rating);
         store.set(skillRatingSet, _jobId, true);
         _emitSkillRatingGiven(msg.sender, _to, _rating, _area, _category, _skill, _jobId);
@@ -354,27 +354,27 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     function emitUserRatingGiven(address _rater, address _to, uint _rating) {
-        UserRatingGiven(_rater, _to, _rating);
+        UserRatingGiven(_self(), _rater, _to, _rating);
     }
 
     function emitJobRatingGiven(address _rater, address _to, uint _jobId, uint8 _rating) {
-        JobRatingGiven(_rater, _to, _rating, _jobId);
+        JobRatingGiven(_self(), _rater, _to, _rating, _jobId);
     }
 
     function emitSkillRatingGiven(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill, uint _jobId) {
-        SkillRatingGiven(_rater, _to, _rating, _area, _category, _skill, _jobId);
+        SkillRatingGiven(_self(), _rater, _to, _rating, _area, _category, _skill, _jobId);
     }
 
     function emitAreaEvaluated(address _rater, address _to, uint8 _rating, uint _area) {
-        AreaEvaluated(_rater, _to, _rating, _area);
+        AreaEvaluated(_self(), _rater, _to, _rating, _area);
     }
 
     function emitCategoryEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category) {
-        CategoryEvaluated(_rater, _to, _rating, _area, _category);
+        CategoryEvaluated(_self(), _rater, _to, _rating, _area, _category);
     }
 
     function emitSkillEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill) {
-        SkillEvaluated(_rater, _to, _rating, _area, _category, _skill);
+        SkillEvaluated(_self(), _rater, _to, _rating, _area, _category, _skill);
     }
 
 

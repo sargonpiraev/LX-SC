@@ -294,6 +294,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(result => {
           assert.equal(result.logs.length, 1);
           assert.equal(result.logs[0].address, multiEventsHistory.address);
+          assert.equal(result.logs[0].args.self, ratingsLibrary.address);
           assert.equal(result.logs[0].event, 'UserRatingGiven');
           assert.equal(result.logs[0].args.rater, SENDER);
           assert.equal(result.logs[0].args.to, address);
@@ -402,6 +403,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(result => {
           assert.equal(result.logs.length, 1);
           assert.equal(result.logs[0].address, multiEventsHistory.address);
+          assert.equal(result.logs[0].args.self, ratingsLibrary.address);
           assert.equal(result.logs[0].event, 'JobRatingGiven');
           assert.equal(result.logs[0].args.rater, client);
           assert.equal(result.logs[0].args.to, worker);
@@ -1207,6 +1209,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(result => {
           assert.equal(result.logs.length, 1);
           assert.equal(result.logs[0].address, multiEventsHistory.address);
+          assert.equal(result.logs[0].args.self, ratingsLibrary.address);
           assert.equal(result.logs[0].event, 'AreaEvaluated');
           assert.equal(result.logs[0].args.rater, evaluator);
           assert.equal(result.logs[0].args.to, worker);
@@ -1230,6 +1233,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(result => {
         assert.equal(result.logs.length, 1);
         assert.equal(result.logs[0].address, multiEventsHistory.address);
+        assert.equal(result.logs[0].args.self, ratingsLibrary.address);
         assert.equal(result.logs[0].event, 'CategoryEvaluated');
         assert.equal(result.logs[0].args.rater, evaluator);
         assert.equal(result.logs[0].args.to, worker);
@@ -1255,6 +1259,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(result => {
         assert.equal(result.logs.length, 1);
         assert.equal(result.logs[0].address, multiEventsHistory.address);
+        assert.equal(result.logs[0].args.self, ratingsLibrary.address);
         assert.equal(result.logs[0].event, 'SkillEvaluated');
         assert.equal(result.logs[0].args.rater, evaluator);
         assert.equal(result.logs[0].args.to, worker);

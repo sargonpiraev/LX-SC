@@ -10,6 +10,7 @@ contract FakeCoin {
     uint public fee;
     bool public feeFromPayer;
     bool public approvalMode;
+    bool public maintenanceMode;
 
     function mint(address _to, uint _value) {
         balanceOf[_to] += _value;
@@ -23,9 +24,24 @@ contract FakeCoin {
         approvalMode = false;
     }
 
-    function approve(address _spender, uint256 _amount) returns (bool success) {
+    function enableMaintenance() {
+        maintenanceMode = true;
+    }
+
+    function disableMaintenance() {
+        maintenanceMode = false;
+    }
+
+    function approve(address _spender, uint _amount) returns (bool success) {
         allowed[msg.sender][_spender] = _amount;
         return true;
+    }
+
+    modifier maintenance() {
+        if (maintenanceMode) {
+            return;
+        }
+        _;
     }
 
     modifier enoughCoins(address _spender, uint _value) {
@@ -36,6 +52,7 @@ contract FakeCoin {
     }
 
     function transfer(address _to, uint _value)
+        maintenance()
         enoughCoins(msg.sender, _value)
     returns(bool) {
         balanceOf[msg.sender] -= feeFromPayer ? _value + fee : _value;
@@ -44,6 +61,7 @@ contract FakeCoin {
     }
 
     function transferFrom(address _from, address _to, uint _value)
+        maintenance()
         enoughCoins(_from, _value)
     returns(bool) {
         if (!approvalMode) {
