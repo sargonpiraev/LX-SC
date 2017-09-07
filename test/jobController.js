@@ -359,11 +359,58 @@ contract('JobController', function(accounts) {
         .then(asserts.equal(0));
     });
 
+    it.skip('should NOT allow to post a job with negative skills', () => {
+      const area = 1;
+      const category = 4;
+      const skills = -12;
+      return Promise.resolve()
+        .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+        //.then(() => jobController.getJobSkills.call(1))
+        .then(asserts.equal(0));
+    });
+
+    it('should NOT allow to post a job with negative category', () => {
+      const area = 1;
+      const category = -4;
+      const skills = 3;
+      return Promise.resolve()
+        .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+        .then(asserts.equal(0));
+    });
+
+    it('should NOT allow to post a job with negative area', () => {
+      const area = -1;
+      const category = 4;
+      const skills = 3;
+      return Promise.resolve()
+        .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+        .then(asserts.equal(0));
+    });
+
     it('should allow anyone to post a job', () => {
       return Promise.each(accounts, account => {
         return jobController.postJob.call(4, 4, 4, 'Job details', {from: account})
           .then(jobId => assert.equal(jobId, 1));
       });
+    });
+
+    it('should allow to post a job several times by different users', () => {
+      const clients = accounts.slice(1, 4);
+      const area = 1;
+      const category = 4;
+      const skills = 2;
+      const args = [area, category, skills, "Job details"];
+      return Promise.each(clients, c => {
+          return jobController.postJob(...args, {from: c})
+            .then(helpers.assertLogs([{
+              event: "JobPosted",
+              args: {
+                client: c
+              }
+            }]))
+        })
+        .then(() => jobController.getJobsCount())
+        .then(asserts.equal(3));
     });
 
   });
@@ -459,6 +506,23 @@ contract('JobController', function(accounts) {
         .then(assert.isFalse);
     });
 
+    it('should NOT allow to post a job offer to yourself', () => {
+      const jobId = 1;
+      const jobArea = 4;
+      const jobCategory = 4;
+      const jobSkills = 4;
+      const jobDetails = 'Job details';
+      const additionalTime = 60;
+      const workerRate = '0x12f2a36ecd555';
+      const workerOnTop = '0x12f2a36ecd555';
+      const jobEstimate = 180;
+
+      return Promise.resolve()
+        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
+        .then(() => jobController.postJobOffer.call(jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: client}))
+        .then(assert.isFalse);
+    });
+
     it("should allow to post job offer with no ontop payment", () => {
       return Promise.resolve()
         .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
@@ -478,6 +542,37 @@ contract('JobController', function(accounts) {
           1, fakeCoin.address, 1000, 180, 1000, {from: worker})
         )
         .then(assert.isTrue);
+    });
+
+    it('should allow to post multiple job offers to one job', () => {
+      const workers = accounts.slice(1, 4);
+      const jobId = 1;
+      const jobArea = 4;
+      const jobCategory = 4;
+      const jobSkills = 4;
+      const jobDetails = 'Job details';
+      const workerRate = 55;
+      const workerOnTop = 55;
+      const jobEstimate = 180;
+      const args = [jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop];
+      return Promise.resolve()
+        .then(() => jobController.postJob(
+          jobArea, jobCategory, jobSkills, jobDetails, {from: client}
+        ))
+        .then(() => {
+          return Promise.each(workers, w => {
+            return jobController.postJobOffer(...args, {from: w})
+              .then(tx => helpers.assertLogs(tx, [{
+                address: multiEventsHistory.address,
+                event: "JobOfferPosted",
+                args: {
+                  self: jobController.address,
+                  jobId: jobId,
+                  worker: w
+                }
+              }]));
+          })
+        });
     });
 
   });
@@ -581,7 +676,6 @@ contract('JobController', function(accounts) {
       const jobSkills = 4;
       const jobDetails = 'Job details';
       const additionalTime = 60;
-
       const workerRate = '0x12f2a36ecd555';
       const workerOnTop = '0x12f2a36ecd555';
       const jobEstimate = 180;
@@ -1424,5 +1518,6 @@ contract('JobController', function(accounts) {
     });
 
   });
+
 
 });

@@ -11,7 +11,7 @@ const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol')
 const Storage = artifacts.require('./Storage.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
 const UserFactory = artifacts.require('./UserFactory.sol');
-
+const BoardController = artifacts.require('./BoardController.sol');
 
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const ERC20Library = artifacts.require('./ERC20Library.sol');
@@ -33,6 +33,13 @@ contract('RatingsAndReputationLibrary', function(accounts) {
   const client = accounts[1];
   const worker = accounts[2];
 
+  const boardId = 1;
+  const boardName = 'Name';
+  const boardDescription = 'Description';
+  const boardTags = 1;
+  const boardArea = 1;
+  const boardCategory = 1;
+
   const SENDER = accounts[1];
   let fakeCoin;
   let storage;
@@ -44,7 +51,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
   let ratingsLibrary;
   let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
   let userFactory;
-
+  let boardController;
   let balanceHolder;
   let paymentProcessor;
   let erc20Library;
@@ -126,18 +133,22 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(instance => paymentProcessor = instance)
     .then(() => RatingsAndReputationLibrary.deployed())
     .then(instance => ratingsLibrary = instance)
+    .then(() => BoardController.deployed())
+    .then(instance => boardController = instance)
 
     .then(() => multiEventsHistory.authorize(erc20Library.address))
     .then(() => multiEventsHistory.authorize(jobController.address))
     .then(() => multiEventsHistory.authorize(ratingsLibrary.address))
     .then(() => multiEventsHistory.authorize(userFactory.address))
     .then(() => multiEventsHistory.authorize(paymentGateway.address))
+    .then(() => multiEventsHistory.authorize(boardController.address))
 
     .then(() => erc20Library.setupEventsHistory(multiEventsHistory.address))
     .then(() => userFactory.setupEventsHistory(multiEventsHistory.address))
     .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
     .then(() => jobController.setupEventsHistory(multiEventsHistory.address))
     .then(() => ratingsLibrary.setupEventsHistory(multiEventsHistory.address))
+    .then(() => boardController.setupEventsHistory(multiEventsHistory.address))
 
     .then(() => erc20Library.addContract(fakeCoin.address))
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
@@ -149,6 +160,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
 
     .then(() => ratingsLibrary.setJobController(jobController.address))
     .then(() => ratingsLibrary.setUserLibrary(mock.address))
+    .then(() => ratingsLibrary.setBoardController(boardController.address))
 
     .then(() => setupJob(0, 0, 7))
     .then(jobId => finishJob(jobId))  // jobId#1, to test finished jobs
@@ -156,6 +168,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
 
     .then(() => setupJob(0, 0, 7))  // jobId#2, to test canceled jobs
     .then(jobId => NOT_FINALIZED_JOB = jobId.toNumber())
+
+    .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardArea, boardCategory))
+
+    .then(() => boardController.bindUserWithBoard(boardId, SENDER))
+    .then(() => boardController.bindUserWithBoard(boardId, client))
+    .then(() => boardController.bindUserWithBoard(boardId, worker))
+
+    .then(() => boardController.bindJobWithBoard(boardId, FINALIZED_JOB))
+    .then(() => boardController.bindJobWithBoard(boardId, NOT_FINALIZED_JOB))
 
     .then(() => mock.resetCallsCount())
     .then(reverter.snapshot);
@@ -250,6 +271,29 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(asserts.equal(rating1));
     });
 
+    it('should NOT rewrite to invalid user rating after rewriting', () => {
+      const rating1 = 5;
+      const rating2 = 3;
+      const rating3 = 11;
+      const address = '0xffffffffffffffffffffffffffffffffffffffff';
+      return ratingsLibrary.setUserRating(address, rating1, {from: SENDER})
+        .then(() => ratingsLibrary.setUserRating(address, rating2, {from: SENDER}))
+        .then(() => ratingsLibrary.setUserRating(address, rating3, {from: SENDER}))
+        .then(() => ratingsLibrary.getUserRating(SENDER, address))
+        .then(asserts.equal(rating2));
+    });
+
+    it('should rewrite user rating after failed rewriting attempt', () => {
+      const rating1 = 5;
+      const rating2 = 11;
+      const rating3 = 6;
+      const address = '0xffffffffffffffffffffffffffffffffffffffff';
+      return ratingsLibrary.setUserRating(address, rating1, {from: SENDER})
+        .then(() => ratingsLibrary.setUserRating(address, rating2, {from: SENDER}))
+        .then(() => ratingsLibrary.setUserRating(address, rating3, {from: SENDER}))
+        .then(() => ratingsLibrary.getUserRating(SENDER, address))
+        .then(asserts.equal(rating3));
+    });
 
     it('should rewrite user rating', () => {
       const rating1 = 5;
@@ -302,8 +346,136 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
     });
 
+    it('should set user rating from multiple accounts', () => {
+      const raters = accounts.slice(1, 4);
+      const rating = 5;
+      const address = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.each(raters, r => {
+        return ratingsLibrary.setUserRating(address, rating, {from: r})
+          .then(() => ratingsLibrary.getUserRating(r, address))
+          .then(asserts.equal(5));
+      });
+    });
+
   });
 
+  describe('Board rating', () => {
+
+    it('should NOT be able to set invalid board rating', () => {
+      const ratings = [-1, 0, 11, 100500];
+      return Promise.each(ratings, rating => {
+        return ratingsLibrary.setBoardRating(boardId, rating, {from: SENDER})
+          .then(() => ratingsLibrary.getBoardRating(SENDER, boardId))
+          .then(asserts.equal(0));
+      });
+    });
+
+    it('should NOT emit "BoardRatingGiven" event when invalid board rating set', () => {
+      const rating = 55;
+      return ratingsLibrary.setBoardRating(boardId, rating, {from: SENDER})
+        .then(result => assert.equal(result.logs.length, 0));
+    });
+
+    it('should NOT rewrite to invalid board rating', () => {
+      const rating1 = 5;
+      const rating2 = 11;
+      return ratingsLibrary.setBoardRating(boardId, rating1, {from: SENDER})
+        .then(() => ratingsLibrary.setBoardRating(boardId, rating2, {from: SENDER}))
+        .then(() => ratingsLibrary.getBoardRating(SENDER, boardId))
+        .then(asserts.equal(rating1));
+    });
+
+    it('should NOT rewrite to invalid board rating after rewriting', () => {
+      const rating1 = 5;
+      const rating2 = 3;
+      const rating3 = 11;
+      return ratingsLibrary.setBoardRating(boardId, rating1, {from: SENDER})
+        .then(() => ratingsLibrary.setBoardRating(boardId, rating2, {from: SENDER}))
+        .then(() => ratingsLibrary.setBoardRating(boardId, rating3, {from: SENDER}))
+        .then(() => ratingsLibrary.getBoardRating(SENDER, boardId))
+        .then(asserts.equal(rating2));
+    });
+
+    it('should rewrite board rating after failed rewriting attempt', () => {
+      const rating1 = 5;
+      const rating2 = 11;
+      const rating3 = 6;
+      return ratingsLibrary.setBoardRating(boardId, rating1, {from: SENDER})
+        .then(() => ratingsLibrary.setBoardRating(boardId, rating2, {from: SENDER}))
+        .then(() => ratingsLibrary.setBoardRating(boardId, rating3, {from: SENDER}))
+        .then(() => ratingsLibrary.getBoardRating(SENDER, boardId))
+        .then(asserts.equal(rating3));
+    });
+
+    it('should rewrite board rating', () => {
+      const rating1 = 5;
+      const rating2 = 6;
+      return ratingsLibrary.setBoardRating(boardId, rating1, {from: SENDER})
+        .then(() => ratingsLibrary.setBoardRating(boardId, rating2, {from: SENDER}))
+        .then(() => ratingsLibrary.getBoardRating(SENDER, boardId))
+        .then(asserts.equal(rating2));
+    });
+
+    it('should store board rating for different boardIdes', () => {
+      const boardId2 = 2;
+      const rating1 = 5;
+      const rating2 = 6;
+      return boardController.createBoard('Name2', boardDescription, boardTags, boardArea, boardCategory)
+        .then(() => boardController.bindUserWithBoard(boardId2, SENDER))
+        .then(() => ratingsLibrary.setBoardRating(boardId, rating1, {from: SENDER}))
+        .then(() => ratingsLibrary.setBoardRating(boardId2, rating2, {from: SENDER}))
+        .then(() => ratingsLibrary.getBoardRating(SENDER, boardId))
+        .then(asserts.equal(rating1))
+        .then(() => ratingsLibrary.getBoardRating(SENDER, boardId2))
+        .then(asserts.equal(rating2));
+    });
+
+    it('should NOT allow to rate board not by board member', () => {
+      const stranger = accounts[8];
+      const rating = 5;
+      return ratingsLibrary.setBoardRating(boardId, rating, {from: stranger})
+        .then(() => ratingsLibrary.getBoardRating(stranger, boardId))
+        .then(asserts.equal(0))
+    });
+
+    it('should store board rating from different raters', () => {
+      const sender2 = accounts[3];
+      const rating1 = 5;
+      const rating2 = 6;
+      return ratingsLibrary.setBoardRating(boardId, rating1, {from: SENDER})
+        .then(() => boardController.bindUserWithBoard(boardId, sender2))
+        .then(() => ratingsLibrary.setBoardRating(boardId, rating2, {from: sender2}))
+        .then(() => ratingsLibrary.getBoardRating(SENDER, boardId))
+        .then(asserts.equal(rating1))
+        .then(() => ratingsLibrary.getBoardRating(sender2, boardId))
+        .then(asserts.equal(rating2));
+    });
+
+    it('should emit "BoardRatingGiven" event when board rating set', () => {
+      const rating = 5;
+      return ratingsLibrary.setBoardRating(boardId, rating, {from: SENDER})
+        .then(result => {
+          assert.equal(result.logs.length, 1);
+          assert.equal(result.logs[0].boardId, multiEventsHistory.boardId);
+          assert.equal(result.logs[0].event, 'BoardRatingGiven');
+          assert.equal(result.logs[0].args.rater, SENDER);
+          assert.equal(result.logs[0].args.to, boardId);
+          assert.equal(result.logs[0].args.rating, rating);
+        });
+    });
+
+    it('should set board rating from multiple accounts', () => {
+      const raters = accounts.slice(1, 4);
+      const rating = 5;
+      return Promise.each(raters, r => {
+        return boardController.bindUserWithBoard(boardId, r)
+          .then(() => ratingsLibrary.setBoardRating(boardId, rating, {from: r}))
+          .then(() => ratingsLibrary.getBoardRating(r, boardId))
+          .then(asserts.equal(5));
+      });
+    });
+
+  });
 
   describe('Job rating', () => {
 
@@ -345,6 +517,20 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(assert.isFalse)
     });
 
+    it("should allow to rate a job after failed attempt", () => {
+      const jobId = FINALIZED_JOB;
+      const rating = 5;
+      const incorrectRating = -5;
+      return Promise.resolve()
+        .then(() => ratingsLibrary.setJobRating(
+          worker, incorrectRating, jobId, {from: client}
+        ))
+        .then(() => ratingsLibrary.setJobRating.call(
+          worker, rating, jobId, {from: client}
+        ))
+        .then(assert.isTrue)
+    });
+
     it("should NOT rate non-existent job", () => {
       const jobId = 3;
       const rating = 5;
@@ -374,7 +560,6 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         ))
         .then(assert.isFalse)
     });
-
 
     it('should allow to rate a job with worker by client', () => {
       const jobId = FINALIZED_JOB;
@@ -443,10 +628,17 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       return Promise.resolve()
         .then(() => setupJob(1, 1, 1, client1, worker1))
         .then(result => jobId1 = result.toNumber())
+        .then(() => boardController.bindJobWithBoard(boardId, jobId1))
         .then(() => finishJob(jobId1, client1, worker1))
         .then(() => setupJob(2, 2, 2, client2, worker2))
         .then(result => jobId2 = result.toNumber())
+        .then(() => boardController.bindJobWithBoard(boardId, jobId2))
         .then(() => finishJob(jobId2, client2, worker2))
+
+        .then(() => boardController.bindUserWithBoard(boardId, client1))
+        .then(() => boardController.bindUserWithBoard(boardId, client2))
+        .then(() => boardController.bindUserWithBoard(boardId, worker1))
+        .then(() => boardController.bindUserWithBoard(boardId, worker2))
 
         .then(() => ratingsLibrary.setJobRating(worker1, workerRating1, jobId1, {from: client1}))
         .then(() => ratingsLibrary.setJobRating(worker2, workerRating2, jobId2, {from: client2}))
@@ -651,6 +843,31 @@ contract('RatingsAndReputationLibrary', function(accounts) {
           jobId, worker, area, category, skills, ratings, {from: client}
         ))
         .then(assert.isFalse);
+    });
+
+    it('should allow to set skills after failed attempt', () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+      const incorrectSkills = [-3, 0, 99999];
+      return Promise.resolve()
+        .then(() => asserts.throws(ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, incorrectSkills, ratings, {from: client}
+          )))
+        .then(() => ratingsLibrary.rateWorkerSkills(
+            jobId, worker, area, category, skills, ratings, {from: client}
+          ))
+        .then(() => Promise.each(skills, (skill, i) => {
+          return ratingsLibrary.getSkillRating(
+              worker, area, category, skill, jobId
+            )
+            .then(result => {
+              assert.equal(result[0], client);
+              assert.equal(result[1], ratings[i]);
+            });
+        }));
     });
 
     it('should NOT rate worker skills with even flag job area', () => {
@@ -1105,7 +1322,6 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(() => helpers.assertExpectations(mock));
     });
 
-
     it('should not set invalid worker area evaluation', () => {
       const area = helpers.getFlag(4);
       const rating = 823847;
@@ -1150,7 +1366,6 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(result => assert.equal(result.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
     });
-
 
     it('should not set worker area evaluation if worker doesn\'t have that area', () => {
       const area = helpers.getFlag(4);

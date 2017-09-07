@@ -2264,7 +2264,7 @@ contract('PaymentGateway', function(accounts) {
         .then(() => paymentGateway.setFeeAddress(feeAddress))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: feeAddress}))
         .then(() => paymentGateway.forwardFee(value, fakeCoin.address))
-        .then(helpers.assertLogs(1, [{
+        .then(helpers.assertLogs([{
             address: multiEventsHistory.address,
             event: "Withdrawn",
             args: {

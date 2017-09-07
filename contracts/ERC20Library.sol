@@ -1,4 +1,4 @@
-pragma solidity 0.4.8;
+pragma solidity 0.4.11;
 
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './adapters/Roles2LibraryAdapter.sol';
@@ -43,12 +43,18 @@ contract ERC20Library is StorageAdapter, MultiEventsHistoryAdapter, Roles2Librar
     }
 
     function addContract(address _address) auth() returns(bool) {
+        if (includes(_address)) {
+            return false;
+        }
         store.add(contracts, _address);
         _emitContractAdded(_address);
         return true;
     }
 
     function removeContract(address _address) auth() returns(bool) {
+        if (!includes(_address)) {
+            return false;
+        }
         store.remove(contracts, _address);
         _emitContractRemoved(_address);
         return true;

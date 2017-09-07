@@ -44,7 +44,6 @@ contract('PaymentProcessor', function(accounts) {
     .then(() => PaymentProcessor.deployed())
     .then(instance => paymentProcessor = instance)
     .then(() => paymentProcessor.setPaymentGateway(mock.address))
-    //.then(() => paymentProcessor.setJobController(jobControllerAddress))
     .then(reverter.snapshot);
   });
 
@@ -73,8 +72,17 @@ contract('PaymentProcessor', function(accounts) {
     const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     const addressOperationId = '0xffffffffffffffffffffffffffffffffffffff00';
     return Promise.resolve()
-    .then(() => mock.expect(paymentProcessor.address, 0, paymentGateway.transferWithFee.getData(payer, addressOperationId, value, 0, 0, erc20ContractAddress), 1))
-    .then(() => paymentProcessor.lockPayment(operationId, payer, value, erc20ContractAddress, {from: jobControllerAddress}))
+    .then(() => mock.expect(
+      paymentProcessor.address,
+      0,
+      paymentGateway.transferWithFee.getData(
+        payer, addressOperationId, value, 0, 0, erc20ContractAddress
+      ),
+      1
+    ))
+    .then(() => paymentProcessor.lockPayment(
+      operationId, payer, value, erc20ContractAddress, {from: jobControllerAddress}
+    ))
     .then(assertExpectations());
   });
 
@@ -265,7 +273,7 @@ contract('PaymentProcessor', function(accounts) {
     .then(asserts.isTrue);
   });
 
-  it('should not call transferWithFee on lockPayment if serviceMode is enabled', () => {
+  it('should NOT call transferWithFee on lockPayment if serviceMode is enabled', () => {
     const payer = '0xffffffffffffffffffffffffffffffffffffffff';
     const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const erc20ContractAddress = '0xffffffffffffffffffffffffffffffffffffff00';
@@ -339,7 +347,7 @@ contract('PaymentProcessor', function(accounts) {
     .then(assertExpectations());
   });
 
-  it('should not call transferAll on releasePayment if serviceMode is enabled', () => {
+  it('should NOT call transferAll on releasePayment if serviceMode is enabled', () => {
     const receiver = accounts[1];
     const change = accounts[2];
     const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
@@ -504,4 +512,5 @@ contract('PaymentProcessor', function(accounts) {
     .then(() => paymentProcessor.serviceMode())
     .then(asserts.isTrue);
   });
+
 });

@@ -1,4 +1,4 @@
-pragma solidity 0.4.8;
+pragma solidity 0.4.11;
 
 import './adapters/Roles2LibraryAdapter.sol';
 
@@ -57,10 +57,26 @@ contract PaymentProcessor is Roles2LibraryAdapter {
         return paymentGateway.transferWithFee(_from, address(_operationId), _value, 0, 0, _contract);
     }
 
-    function releasePayment(bytes32 _operationId, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee, address _contract)
+    function releasePayment(
+        bytes32 _operationId,
+        address _to,
+        uint _value,
+        address _change,
+        uint _feeFromValue,
+        uint _additionalFee,
+        address _contract
+    )
         auth()  // Only job controller
         onlyApproved(_operationId)
     returns(bool) {
-        return paymentGateway.transferAll(address(_operationId), _to, _value, _change, _feeFromValue, _additionalFee, _contract);
+        return paymentGateway.transferAll(
+            address(_operationId),
+            _to,
+            _value,
+            _change,
+            _feeFromValue,
+            _additionalFee,
+            _contract
+        );
     }
 }

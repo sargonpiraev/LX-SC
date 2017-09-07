@@ -1,10 +1,9 @@
-pragma solidity 0.4.8;
+pragma solidity 0.4.11;
 
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './adapters/Roles2LibraryAdapter.sol';
 import './adapters/StorageAdapter.sol';
 import './base/BitOps.sol';
-
 
 contract UserLibraryInterface {
     function hasArea(address _user, uint _area) returns(bool);
@@ -22,9 +21,15 @@ contract JobControllerInterface {
     function getFinalState(uint _jobId) returns(uint);
 }
 
+contract BoardControllerInterface {
+    function getUserStatus(uint _boardId, address _user) returns(bool);
+    function getJobsBoard(uint _jobId) returns(uint);
+}
+
 contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter, BitOps {
     JobControllerInterface jobController;
     UserLibraryInterface userLibrary;
+    BoardControllerInterface boardController;
 
     // Just a simple user-user rating, can be set by anyone, can be overwritten
     StorageInterface.AddressAddressUInt8Mapping userRatingsGiven;  // from => to => rating
@@ -44,6 +49,8 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     StorageInterface.AddressUIntUIntAddressUInt8Mapping categoriesEvaluated;
     StorageInterface.AddressUIntUIntUIntAddressUInt8Mapping skillsEvaluated;
 
+    StorageInterface.AddressUIntUInt8Mapping boardRating;
+
     event UserRatingGiven(address indexed self, address indexed rater, address indexed to, uint rating);
 
     event JobRatingGiven(address indexed self, address indexed rater, address indexed to, uint8 rating, uint jobId);
@@ -54,6 +61,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     event CategoryEvaluated(address indexed self, address indexed rater, address indexed to, uint8 rating, uint area, uint category);
     event SkillEvaluated(address indexed self, address indexed rater, address indexed to, uint8 rating, uint area, uint category, uint skill);
 
+    event BoardRatingGiven(address indexed self, address indexed rater, uint indexed to, uint8 rating);
 
     modifier canSetRating(uint _jobId) {
         if (
@@ -102,6 +110,13 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
         _;
     }
 
+    modifier onlyBoardMember(uint _boardId, address _user) {
+      if (boardController.getUserStatus(_boardId, _user) != true) {
+        return;
+      }
+      _;
+    }
+
     function RatingsAndReputationLibrary(Storage _store, bytes32 _crate, address _roles2Library)
         StorageAdapter(_store, _crate)
         Roles2LibraryAdapter(_roles2Library)
@@ -110,6 +125,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
         userRatingsGiven.init('userRatingsGiven');
         skillRatingsGiven.init('skillRatingsGiven');
         skillRatingSet.init('skillRatingSet');
+        boardRating.init('boardRating');
     }
 
     function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
@@ -130,6 +146,10 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
         return true;
     }
 
+    function setBoardController(address _boardController) auth() returns(bool) {
+        boardController = BoardControllerInterface(_boardController);
+        return true;
+    }
 
     // USER RATING
 
@@ -155,9 +175,28 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
         canSetRating(_jobId)
         canSetJobRating(_jobId, _to)
     returns(bool) {
+        if (boardController.getUserStatus(boardController.getJobsBoard(_jobId), msg.sender) != true) {
+          return false;
+        } //If use this check in modifier, then will be "stack to deep" error
         store.set(jobRatingsGiven, _to, _jobId, msg.sender, _rating);
         _emitJobRatingGiven(msg.sender, _to, _jobId, _rating);
         return true;
+    }
+
+
+    // BOARD RATING
+
+    function setBoardRating(uint _to, uint8 _rating)
+        validRating(_rating)
+        onlyBoardMember(_to, msg.sender)
+    returns(bool) {
+        store.set(boardRating, msg.sender, _to, _rating);
+        _emitBoardRatingGiven(msg.sender, _to, _rating);
+        return true;
+    }
+
+    function getBoardRating(address _rater, uint _boardId) constant returns(uint) {
+        return store.get(boardRating, _rater, _boardId);
     }
 
 
@@ -332,6 +371,10 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
         RatingsAndReputationLibrary(getEventsHistory()).emitUserRatingGiven(_rater, _to, _rating);
     }
 
+    function _emitBoardRatingGiven(address _rater, uint _to, uint8 _rating) internal {
+        RatingsAndReputationLibrary(getEventsHistory()).emitBoardRatingGiven(_rater, _to, _rating);
+    }
+
     function _emitJobRatingGiven(address _rater, address _to, uint _jobId, uint8 _rating) internal {
         RatingsAndReputationLibrary(getEventsHistory()).emitJobRatingGiven(_rater, _to, _jobId, _rating);
     }
@@ -355,6 +398,10 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
 
     function emitUserRatingGiven(address _rater, address _to, uint _rating) {
         UserRatingGiven(_self(), _rater, _to, _rating);
+    }
+
+    function emitBoardRatingGiven(address _rater, uint _to, uint8 _rating) {
+        BoardRatingGiven(_self(), _rater, _to, _rating);
     }
 
     function emitJobRatingGiven(address _rater, address _to, uint _jobId, uint8 _rating) {

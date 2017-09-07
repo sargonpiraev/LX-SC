@@ -1,4 +1,4 @@
-pragma solidity 0.4.8;
+pragma solidity 0.4.11;
 
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './adapters/StorageAdapter.sol';
@@ -106,6 +106,9 @@ contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
     }
 
     function removeRoleCapability(uint8 _role, address _code, bytes4 _sig) returns(bool) {
+        if (getCapabilityRoles(_code, _sig) == 0) {
+            return false;
+        }
         return setRoleCapability(_role, _code, _sig, false);
     }
 

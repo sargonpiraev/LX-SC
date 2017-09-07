@@ -63,6 +63,14 @@ contract('ERC20Library', function(accounts) {
     .then(asserts.isTrue);
   });
 
+  it('should not call "addContract" for the same contract twice', () => {
+    const contract = '0xffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => erc20Library.addContract(contract))
+    .then(() => erc20Library.addContract.call(contract))
+    .then(asserts.isFalse);
+  });
+
   it('should emit ContractAdded event in MultiEventsHistory', () => {
     const contract = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
@@ -91,9 +99,19 @@ contract('ERC20Library', function(accounts) {
     .then(asserts.isFalse);
   });
 
+  it('should not call "removeContract" for the same contract twice', () => {
+    const contract = '0xffffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => erc20Library.addContract(contract))
+    .then(() => erc20Library.removeContract(contract))
+    .then(() => erc20Library.removeContract.call(contract))
+    .then(asserts.isFalse);
+  });
+
   it('should emit ContractRemoved event in MultiEventsHistory', () => {
     const contract = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
+    .then(() => erc20Library.addContract(contract))
     .then(() => erc20Library.removeContract(contract))
     .then(result => {
       assert.equal(result.logs.length, 1);
@@ -168,6 +186,29 @@ contract('ERC20Library', function(accounts) {
     .then(asserts.isTrue)
     .then(() => erc20Library.includes(contract2))
     .then(asserts.isTrue);
+  });
+
+  it('should correctly add contracts after removing', () => {
+    const contract = '0xffffffffffffffffffffffffffffffffffffffff';
+    const contract2 = '0xffffffffffffffffffffffffffffffffffffff00';
+    const contract3 = '0x00ffffffffffffffffffffffffffffffffffffff';
+    return Promise.resolve()
+    .then(() => erc20Library.addContract(contract))
+    .then(() => erc20Library.addContract(contract2))
+    .then(() => erc20Library.getContracts())
+    .then(contracts => {
+      assert.equal(contracts.length, 2);
+      assert.equal(contracts[0], contract);
+      assert.equal(contracts[1], contract2);
+    })
+    .then(() => erc20Library.removeContract(contract2))
+    .then(() => erc20Library.addContract(contract3))
+    .then(() => erc20Library.getContracts())
+    .then(contracts => {
+      assert.equal(contracts.length, 2);
+      assert.equal(contracts[0], contract);
+      assert.equal(contracts[1], contract3);
+    });
   });
 
   it('should differentiate contracts', () => {

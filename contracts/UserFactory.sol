@@ -1,4 +1,4 @@
-pragma solidity 0.4.8;
+pragma solidity 0.4.11;
 
 import './User.sol';
 import './UserLibrary.sol';
@@ -29,28 +29,6 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
 
     function UserFactory(address _roles2Library) Roles2LibraryAdapter(_roles2Library) {}
 
-
-    function createUserWithProxyAndRecovery(
-        address _owner,
-        address _recoveryContract,
-        uint8[] _roles,
-        uint _areas,
-        uint[] _categories,
-        uint[] _skills
-    )
-        auth()
-    returns(bool) {
-        User user = new User(_owner, _recoveryContract);
-        UserProxy proxy = UserProxy(user.getUserProxy());
-        if(!_setRoles(proxy, _roles)) {
-            throw;
-        }
-        if(!_setSkills(proxy, _areas, _categories, _skills)) {
-            throw;
-        }
-        _emitUserCreated(user, proxy, _recoveryContract, _owner, _roles, _areas, _categories, _skills);
-    }
-
     function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
         if (getEventsHistory() != 0x0) {
             return false;
@@ -66,6 +44,28 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
 
     function getUserLibrary() constant returns(address) {
         return userLibrary;
+    }
+
+
+    function createUserWithProxyAndRecovery(
+        address _owner,
+        address _recoveryContract,
+        uint8[] _roles,
+        uint _areas,
+        uint[] _categories,
+        uint[] _skills
+    )
+        auth()
+    returns(bool) {
+        User user = new User(_owner, _recoveryContract);
+        UserProxy proxy = UserProxy(user.getUserProxy());
+        if (!_setRoles(proxy, _roles)) {
+            throw;
+        }
+        if (!_setSkills(proxy, _areas, _categories, _skills)) {
+            throw;
+        }
+        _emitUserCreated(user, proxy, _recoveryContract, _owner, _roles, _areas, _categories, _skills);
     }
 
     function _setRoles(address _user, uint8[] _roles) internal returns(bool) {

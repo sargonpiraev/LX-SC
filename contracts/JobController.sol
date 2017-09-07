@@ -1,4 +1,4 @@
-pragma solidity 0.4.8;
+pragma solidity 0.4.11;
 
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './adapters/Roles2LibraryAndERC20LibraryAdapter.sol';
@@ -41,12 +41,14 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     StorageInterface.UIntAddressUIntMapping jobOfferEstimate; // In minutes.
     StorageInterface.UIntAddressUIntMapping jobOfferOntop; // Getting to the workplace, etc.
 
+    StorageInterface.UIntBoolMapping bindStatus;
+
     // At which state job has been marked as FINALIZED
     StorageInterface.UIntUIntMapping jobFinalizedAt;
 
     enum JobState { NOT_SET, CREATED, ACCEPTED, PENDING_START, STARTED, PENDING_FINISH, FINISHED, FINALIZED }
 
-    event JobPosted(address indexed self, uint indexed jobId, address client, uint skillsArea, uint skillsCategory, uint skills, bytes32 detailsIPFSHash);
+    event JobPosted(address indexed self, uint indexed jobId, address client, uint skillsArea, uint skillsCategory, uint skills, bytes32 detailsIPFSHash, bool bindStatus);
     event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
     event JobOfferAccepted(address indexed self, uint indexed jobId, address worker);
     event WorkStarted(address indexed self, uint indexed jobId, uint at);
@@ -66,6 +68,13 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
 
     modifier onlyWorker(uint _jobId) {
         if (store.get(jobWorker, _jobId) != msg.sender) {
+            return;
+        }
+        _;
+    }
+
+    modifier onlyNotClient(uint _jobId) {
+        if (store.get(jobClient, _jobId) == msg.sender) {
             return;
         }
         _;
@@ -105,6 +114,8 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         jobOfferOntop.init('jobOfferOntop');
 
         jobFinalizedAt.init('jobFinalizedAt');
+
+        bindStatus.init('bindStatus');
     }
 
     function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
@@ -191,6 +202,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         hasFlags(_skills)
     returns(uint) {
         uint jobId = store.get(jobsCount) + 1;
+        store.set(bindStatus, jobId, false);
         store.set(jobsCount, jobId);
         store.set(jobState, jobId, uint(JobState.CREATED));
         store.set(jobClient, jobId, msg.sender);
@@ -198,28 +210,21 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         store.set(jobSkillsCategory, jobId, _category);
         store.set(jobSkills, jobId, _skills);
         store.set(jobDetailsIPFSHash, jobId, _detailsIPFSHash);
-        _emitJobPosted(jobId, msg.sender, _area, _category, _skills, _detailsIPFSHash);
+        _emitJobPosted(jobId, msg.sender, _area, _category, _skills, _detailsIPFSHash, false);
         return jobId;
     }
 
-
     function postJobOffer(uint _jobId, address _erc20Contract, uint _rate, uint _estimate, uint _ontop)
+        onlyNotClient(_jobId)
         onlyJobState(_jobId, JobState.CREATED)
         onlySupportedContract(_erc20Contract)
     returns(bool) {
         if (!_validEstimate(_rate, _estimate, _ontop)) {
             return false;
         }
-        if (!userLibrary.hasSkills(
-                msg.sender,
-                store.get(jobSkillsArea, _jobId),
-                store.get(jobSkillsCategory, _jobId),
-                store.get(jobSkills, _jobId)
-            )
-        ) {
+        if (!_hasSkillsCheck(_jobId)) {
             return false;
         }
-
         store.set(jobOfferERC20Contract, _jobId, msg.sender, _erc20Contract);
         store.set(jobOfferRate, _jobId, msg.sender, _rate);
         store.set(jobOfferEstimate, _jobId, msg.sender, _estimate);
@@ -241,6 +246,15 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             prev = curr;
         }
         return ((prev + _ontop) / 10) * 11 > prev;
+    }
+
+    function _hasSkillsCheck (uint _jobId) internal returns(bool) {
+        return userLibrary.hasSkills(
+            msg.sender,
+            store.get(jobSkillsArea, _jobId),
+            store.get(jobSkillsCategory, _jobId),
+            store.get(jobSkills, _jobId)
+        );
     }
 
     function acceptOffer(uint _jobId, address _worker)
@@ -419,6 +433,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return true;
     }
 
+    function getJobsCount() constant returns(uint) {
+        return store.get(jobsCount);
+    }
+
     function getJobClient(uint _jobId) constant returns(address) {
         return store.get(jobClient, _jobId);
     }
@@ -457,7 +475,8 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         uint _skillsArea,
         uint _skillsCategory,
         uint _skills,
-        bytes32 _detailsIPFSHash
+        bytes32 _detailsIPFSHash,
+        bool _bindStatus
     ) internal {
         JobController(getEventsHistory()).emitJobPosted(
             _jobId,
@@ -465,7 +484,8 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             _skillsArea,
             _skillsCategory,
             _skills,
-            _detailsIPFSHash
+            _detailsIPFSHash,
+            _bindStatus
         );
     }
 
@@ -523,9 +543,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         uint _skillsArea,
         uint _skillsCategory,
         uint _skills,
-        bytes32 _detailsIPFSHash
+        bytes32 _detailsIPFSHash,
+        bool _bindStatus
     ) {
-        JobPosted(_self(), _jobId, _client, _skillsArea, _skillsCategory, _skills, _detailsIPFSHash);
+        JobPosted(_self(), _jobId, _client, _skillsArea, _skillsCategory, _skills, _detailsIPFSHash, _bindStatus);
     }
 
     function emitJobOfferPosted(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) {
