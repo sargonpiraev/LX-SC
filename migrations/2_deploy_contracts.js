@@ -29,7 +29,6 @@ const BoardController = artifacts.require('./BoardController.sol');
 
 const owner = web3.eth.accounts[0];
 
-
 module.exports = deployer => {
   deployer.deploy(ManagerMock)
   .then(() => deployer.deploy(Mock))
