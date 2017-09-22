@@ -44,7 +44,7 @@ contract Mock {
 
     function assertExpectations() constant {
         if (expectationsLeft() != 0 || callsCount != expectationsCount) {
-            throw;
+            revert();
         }
     }
 

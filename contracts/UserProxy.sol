@@ -31,9 +31,8 @@ contract UserProxy is Owned {
             success := call(div(mul(gas, 63), 64), _destination, _value, add(_data, 32), mload(_data), 0, 32)
             result := mload(0)
         }
-        if (!success && _throwOnFailedCall) {
-            throw;
-        }
+        require(success || !_throwOnFailedCall);
+        
         Forwarded(_destination, _value, _data);
     }
 }

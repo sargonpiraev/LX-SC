@@ -64,9 +64,8 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     event BoardRatingGiven(address indexed self, address indexed rater, uint indexed to, uint8 rating);
 
     modifier canSetRating(uint _jobId) {
-        if (
-            jobController.getJobState(_jobId) != 7  // Ensure job is FINALIZED
-        ) {
+         // Ensure job is FINALIZED
+        if (jobController.getJobState(_jobId) != 7) {
             return;
         }
         _;
@@ -226,9 +225,9 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     function _checkSetSkill(uint _jobId, address _to, uint8 _rating, uint _area, uint _category, uint _skill)
         internal
     {
-        _assert(_validRating(_rating));
-        _assert(_isSingleFlag(_skill));  // Ensure skill is repserented correctly, as a single bit flag
-        _assert(_hasFlag(jobController.getJobSkills(_jobId), _skill));  // Ensure the job has given skill
+        assert(_validRating(_rating));
+        assert(_isSingleFlag(_skill));  // Ensure skill is repserented correctly, as a single bit flag
+        assert(_hasFlag(jobController.getJobSkills(_jobId), _skill));  // Ensure the job has given skill
 
         store.set(skillRatingsGiven, _to, _jobId, _area, _category, _skill, msg.sender, _rating);
         store.set(skillRatingSet, _jobId, true);
@@ -248,16 +247,14 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
         return store.get(areasEvaluated, _to, _area, _rater);
     }
 
-    function evaluateArea(address _to, uint8 _rating, uint _area)
-        auth()
-    returns(bool) {
+    function evaluateArea(address _to, uint8 _rating, uint _area) auth() returns(bool) {
         return _evaluateArea(_to, _rating, _area, false);
     }
 
     function _evaluateArea(address _to, uint8 _rating, uint _area, bool _throws) internal returns(bool) {
         if (!_validRating(_rating) || !userLibrary.hasArea(_to, _area)) {
             if (_throws) {
-                throw;
+                revert();
             }
             return false;
         }
@@ -281,7 +278,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     returns(bool) {
         if (!_validRating(_rating) || !userLibrary.hasCategory(_to, _area, _category)) {
             if (_throws) {
-                throw;
+                revert();
             }
             return false;
         }
@@ -305,7 +302,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     function _evaluateSkill(address _to, uint8 _rating, uint _area, uint _category, uint _skill, bool _throws) internal returns(bool) {
         if (!_validRating(_rating) || !userLibrary.hasSkill(_to, _area, _category, _skill)) {
             if (_throws) {
-                throw;
+                revert();
             }
             return false;
         }
@@ -336,11 +333,11 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
             }
             //check that category has correct format
             if (!_ifEvenThenOddTooFlags(_categories[categoriesCounter])) {
-                throw;
+                revert();
             }
             //check that category is not empty
             if (_categories[categoriesCounter] == 0) {
-                throw;
+                revert();
             }
             //iterating through category to setup skills
             for (uint category = 1; category != 0; category = category << 2) {
@@ -355,7 +352,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
                 }
                 //check that skill is not empty
                 if (_skills[skillsCounter] == 0) {
-                    throw;
+                    revert();
                 }
                 _evaluateSkill(_to, _rating[ratingCounter++], area, category, _skills[skillsCounter++], true);
                 // Move to next skill
@@ -424,16 +421,9 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
         SkillEvaluated(_self(), _rater, _to, _rating, _area, _category, _skill);
     }
 
-
     // HELPERS
-
+    
     function _validRating(uint8 _rating) internal constant returns(bool) {
         return _rating > 0 && _rating <= 10;
-    }
-
-    function _assert(bool _assertion) internal {
-        if (!_assertion) {
-            throw;
-        }
     }
 }

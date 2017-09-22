@@ -273,7 +273,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
                 store.get(jobOfferERC20Contract, _jobId, _worker)
             )
         ) {
-            throw;
+            revert();
         }
         store.set(jobState, _jobId, uint(JobState.ACCEPTED));
         _emitJobOfferAccepted(_jobId, _worker);
@@ -339,7 +339,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         }
 
         if (!_setNewEstimate(_jobId, _additionalTime)) {
-            throw;
+            revert();
         }
         _emitTimeAdded(_jobId, _additionalTime);
         return true;

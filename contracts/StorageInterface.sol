@@ -170,7 +170,7 @@ library StorageInterface {
     // Can't use modifier due to a Solidity bug.
     function sanityCheck(bytes32 _currentId, bytes32 _newId) internal {
         if (_currentId != 0 || _newId == 0) {
-            throw;
+            revert();
         }
     }
 

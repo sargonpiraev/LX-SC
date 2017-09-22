@@ -13,8 +13,9 @@ contract MultiEventsHistoryAdapter {
         return eventsHistory;
     }
 
-    function _setEventsHistory(address _eventsHistory) internal {
+    function _setEventsHistory(address _eventsHistory) internal returns (bool) {
         eventsHistory = _eventsHistory;
+        return true;
     }
 
     // It is address of MultiEventsHistory caller assuming we are inside of delegate call.
