@@ -1,4 +1,4 @@
-pragma solidity 0.4.11;
+pragma solidity ^0.4.11;
 
 contract Roles2LibraryInterface {
     function addUserRole(address _user, uint8 _role) returns(bool);

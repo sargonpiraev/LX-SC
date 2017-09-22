@@ -1,4 +1,4 @@
-pragma solidity 0.4.11;
+pragma solidity ^0.4.11;
 
 contract UserProxyTester {
     function functionReturningValue(bytes32 _someInputValue) returns(bytes32) {

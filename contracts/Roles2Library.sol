@@ -1,4 +1,4 @@
-pragma solidity 0.4.11;
+pragma solidity ^0.4.11;
 
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './adapters/StorageAdapter.sol';
