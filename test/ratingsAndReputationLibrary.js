@@ -2,11 +2,11 @@
 
 const FakeCoin = artifacts.require('./FakeCoin.sol');
 const JobController = artifacts.require('./JobController.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
 const RatingsAndReputationLibrary = artifacts.require('./RatingsAndReputationLibrary.sol');
+const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Storage = artifacts.require('./Storage.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
@@ -21,7 +21,7 @@ const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
 const Asserts = require('./helpers/asserts');
 const Promise = require('bluebird');
 const Reverter = require('./helpers/reverter');
-
+const eventsHelper = require('./helpers/eventsHelper');
 const helpers = require('./helpers/helpers');
 
 contract('RatingsAndReputationLibrary', function(accounts) {
@@ -41,6 +41,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
   const boardCategory = 1;
 
   const SENDER = accounts[1];
+  const RolesLibraryEvaluatorRole = 22;
   let fakeCoin;
   let storage;
   let mock;
@@ -55,6 +56,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
   let balanceHolder;
   let paymentProcessor;
   let erc20Library;
+  const evaluator = accounts[6];
 
   let FINALIZED_JOB;
   let NOT_FINALIZED_JOB;
@@ -102,7 +104,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => jobController.endWork(jobId, {from: _worker}))
       .then(() => jobController.confirmEndWork(jobId, {from: _client}))
       .then(() => jobController.releasePayment(jobId))
-      .then(tx => helpers.eventEquals(tx, 'PaymentReleased'))
+      .then(tx => eventsHelper.extractEvents(tx, "PaymentReleased"))
+      .then(events => assert.equal(events.length, 1))
       .then(() => jobId);
   }
 
@@ -110,13 +113,10 @@ contract('RatingsAndReputationLibrary', function(accounts) {
   before('setup', () => {
     return Mock.deployed()
     .then(instance => mock = instance)
-    .then(() => helpers.ignoreAuth(mock))
     .then(() => FakeCoin.deployed())
     .then(instance => fakeCoin = instance)
     .then(() => Storage.deployed())
     .then(instance => storage = instance)
-    .then(() => ManagerMock.deployed())
-    .then(instance => storage.setManager(instance.address))
     .then(() => ERC20Library.deployed())
     .then(instance => erc20Library = instance)
     .then(() => MultiEventsHistory.deployed())
@@ -135,20 +135,6 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(instance => ratingsLibrary = instance)
     .then(() => BoardController.deployed())
     .then(instance => boardController = instance)
-
-    .then(() => multiEventsHistory.authorize(erc20Library.address))
-    .then(() => multiEventsHistory.authorize(jobController.address))
-    .then(() => multiEventsHistory.authorize(ratingsLibrary.address))
-    .then(() => multiEventsHistory.authorize(userFactory.address))
-    .then(() => multiEventsHistory.authorize(paymentGateway.address))
-    .then(() => multiEventsHistory.authorize(boardController.address))
-
-    .then(() => erc20Library.setupEventsHistory(multiEventsHistory.address))
-    .then(() => userFactory.setupEventsHistory(multiEventsHistory.address))
-    .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
-    .then(() => jobController.setupEventsHistory(multiEventsHistory.address))
-    .then(() => ratingsLibrary.setupEventsHistory(multiEventsHistory.address))
-    .then(() => boardController.setupEventsHistory(multiEventsHistory.address))
 
     .then(() => erc20Library.addContract(fakeCoin.address))
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
@@ -177,7 +163,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
 
     .then(() => boardController.bindJobWithBoard(boardId, FINALIZED_JOB))
     .then(() => boardController.bindJobWithBoard(boardId, NOT_FINALIZED_JOB))
-
+    .then(() => Roles2Library.deployed())
+    .then(rolesLibrary => rolesLibrary.addUserRole(evaluator, RolesLibraryEvaluatorRole))
     .then(() => mock.resetCallsCount())
     .then(reverter.snapshot);
   });
@@ -189,14 +176,14 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const caller = accounts[1];
       const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
       return Promise.resolve()
-        .then(() => helpers.ignoreAuth(mock, false))
+        .then(() => ratingsLibrary.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           ratingsLibrary.address,
           0,
           roles2LibraryInterface.canCall.getData(
             caller,
             ratingsLibrary.address,
-            ratingsLibrary.contract.setupEventsHistory.getData().slice(0, 10)
+            ratingsLibrary.contract.setupEventsHistory.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => ratingsLibrary.setupEventsHistory(newAddress, {from: caller}))
@@ -207,14 +194,14 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const caller = accounts[1];
       const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
       return Promise.resolve()
-        .then(() => helpers.ignoreAuth(mock, false))
+        .then(() => ratingsLibrary.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           ratingsLibrary.address,
           0,
           roles2LibraryInterface.canCall.getData(
             caller,
             ratingsLibrary.address,
-            ratingsLibrary.contract.setUserLibrary.getData().slice(0, 10)
+            ratingsLibrary.contract.setUserLibrary.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => ratingsLibrary.setUserLibrary(newAddress, {from: caller}))
@@ -225,14 +212,14 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const caller = accounts[1];
       const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
       return Promise.resolve()
-        .then(() => helpers.ignoreAuth(mock, false))
+        .then(() => ratingsLibrary.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           ratingsLibrary.address,
           0,
           roles2LibraryInterface.canCall.getData(
             caller,
             ratingsLibrary.address,
-            ratingsLibrary.contract.setJobController.getData().slice(0, 10)
+            ratingsLibrary.contract.setJobController.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => ratingsLibrary.setJobController(newAddress, {from: caller}))
@@ -335,14 +322,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const rating = 5;
       const address = '0xffffffffffffffffffffffffffffffffffffffff';
       return ratingsLibrary.setUserRating(address, rating, {from: SENDER})
-        .then(result => {
-          assert.equal(result.logs.length, 1);
-          assert.equal(result.logs[0].address, multiEventsHistory.address);
-          assert.equal(result.logs[0].args.self, ratingsLibrary.address);
-          assert.equal(result.logs[0].event, 'UserRatingGiven');
-          assert.equal(result.logs[0].args.rater, SENDER);
-          assert.equal(result.logs[0].args.to, address);
-          assert.equal(result.logs[0].args.rating, rating);
+      .then(tx => eventsHelper.extractEvents(tx, "UserRatingGiven"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].args.self, ratingsLibrary.address);
+          assert.equal(events[0].event, 'UserRatingGiven');
+          assert.equal(events[0].args.rater, SENDER);
+          assert.equal(events[0].args.to, address);
+          assert.equal(events[0].args.rating, rating);
         });
     });
 
@@ -454,13 +442,14 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     it('should emit "BoardRatingGiven" event when board rating set', () => {
       const rating = 5;
       return ratingsLibrary.setBoardRating(boardId, rating, {from: SENDER})
-        .then(result => {
-          assert.equal(result.logs.length, 1);
-          assert.equal(result.logs[0].boardId, multiEventsHistory.boardId);
-          assert.equal(result.logs[0].event, 'BoardRatingGiven');
-          assert.equal(result.logs[0].args.rater, SENDER);
-          assert.equal(result.logs[0].args.to, boardId);
-          assert.equal(result.logs[0].args.rating, rating);
+        .then(tx => eventsHelper.extractEvents(tx, "BoardRatingGiven"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].boardId, multiEventsHistory.boardId);
+          assert.equal(events[0].event, 'BoardRatingGiven');
+          assert.equal(events[0].args.rater, SENDER);
+          assert.equal(events[0].args.to, boardId);
+          assert.equal(events[0].args.rating, rating);
         });
     });
 
@@ -585,15 +574,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const rating = 2;
       const jobId = 1;
       return ratingsLibrary.setJobRating(worker, rating, jobId, {from: client})
-        .then(result => {
-          assert.equal(result.logs.length, 1);
-          assert.equal(result.logs[0].address, multiEventsHistory.address);
-          assert.equal(result.logs[0].args.self, ratingsLibrary.address);
-          assert.equal(result.logs[0].event, 'JobRatingGiven');
-          assert.equal(result.logs[0].args.rater, client);
-          assert.equal(result.logs[0].args.to, worker);
-          assert.equal(result.logs[0].args.rating, rating);
-          assert.equal(result.logs[0].args.jobId, jobId);
+        .then(tx => eventsHelper.extractEvents(tx, "JobRatingGiven"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].args.self, ratingsLibrary.address);
+          assert.equal(events[0].event, 'JobRatingGiven');
+          assert.equal(events[0].args.rater, client);
+          assert.equal(events[0].args.to, worker);
+          assert.equal(events[0].args.rating, rating);
+          assert.equal(events[0].args.jobId, jobId);
         })
         .then(() => ratingsLibrary.getJobRating(worker, jobId))
         .then(result => {
@@ -1169,17 +1159,18 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(() => ratingsLibrary.rateWorkerSkills(
             jobId, worker, area, category, skills, ratings, {from: client}
           ))
-        .then(tx => {
-          assert.equal(tx.logs.length, 3);
+        .then(tx => eventsHelper.extractEvents(tx, "SkillRatingGiven"))
+        .then(events => {
+          assert.equal(events.length, 3);
           return Promise.each(skills, (skill, i) => {
-            assert.equal(tx.logs[i].event, "SkillRatingGiven");
-            assert.equal(tx.logs[i].args.jobId, jobId);
-            assert.equal(tx.logs[i].args.rater, client);
-            assert.equal(tx.logs[i].args.to, worker);
-            assert.equal(tx.logs[i].args.area.toString(), area.toString());
-            assert.equal(tx.logs[i].args.category.toString(), category.toString());
-            assert.equal(tx.logs[i].args.skill.toString(), skills[i].toString());
-            assert.equal(tx.logs[i].args.rating, ratings[i]);
+            assert.equal(events[i].event, "SkillRatingGiven");
+            assert.equal(events[i].args.jobId, jobId);
+            assert.equal(events[i].args.rater, client);
+            assert.equal(events[i].args.to, worker);
+            assert.equal(events[i].args.area.toString(), area.toString());
+            assert.equal(events[i].args.category.toString(), category.toString());
+            assert.equal(events[i].args.skill.toString(), skills[i].toString());
+            assert.equal(events[i].args.rating, ratings[i]);
           });
         });
     });
@@ -1233,17 +1224,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     it('should check auth on area evaluation', () => {
       const area = helpers.getFlag(4);
       const rating = 7;
-      const evaluator = accounts[6];
       const user = accounts[7];
       return Promise.resolve()
-        .then(() => helpers.ignoreAuth(mock))
+        .then(() => ratingsLibrary.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           ratingsLibrary.address,
           0,
           roles2LibraryInterface.canCall.getData(
             evaluator,
             ratingsLibrary.address,
-            ratingsLibrary.contract.evaluateArea.getData().slice(0, 10)
+            ratingsLibrary.contract.evaluateArea.getData(user, rating, area).slice(0, 10)
           ),
           0
         ))
@@ -1255,17 +1245,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(4);
       const rating = 7;
-      const evaluator = accounts[6];
       const user = accounts[7];
       return Promise.resolve()
-        .then(() => helpers.ignoreAuth(mock))
+        .then(() => ratingsLibrary.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           ratingsLibrary.address,
           0,
           roles2LibraryInterface.canCall.getData(
             evaluator,
             ratingsLibrary.address,
-            ratingsLibrary.contract.evaluateCategory.getData().slice(0, 10)
+            ratingsLibrary.contract.evaluateCategory.getData(user, rating, area, category).slice(0, 10)
           ),
           0
         ))
@@ -1278,21 +1267,20 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const category = helpers.getFlag(4);
       const skill = 4;
       const rating = 7;
-      const evaluator = accounts[6];
       const user = accounts[7];
       return Promise.resolve()
-        .then(() => helpers.ignoreAuth(mock))
+        .then(() => ratingsLibrary.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           ratingsLibrary.address,
           0,
           roles2LibraryInterface.canCall.getData(
             evaluator,
             ratingsLibrary.address,
-            ratingsLibrary.contract.evaluateCategory.getData().slice(0, 10)
+            ratingsLibrary.contract.evaluateCategory.getData(user, rating, area, category).slice(0, 10)
           ),
           0
         ))
-        .then(() => ratingsLibrary.evaluateCategory(user, rating, area, category, skill, {from: evaluator}))
+        .then(() => ratingsLibrary.evaluateCategory(user, rating, area, category, {from: evaluator}))
         .then(() => helpers.assertExpectations(mock));
     });
 
@@ -1301,13 +1289,12 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const categories = [helpers.getFlag(4)];
       const skills = [4, 8, 16];
       const ratings = [7, 1, 4];
-      const evaluator = accounts[6];
       const user = accounts[7];
       const expectedSig = helpers.getSig(
         "evaluateMany(address,uint256,uint256[],uint256[],uint8[])"
       );
       return Promise.resolve()
-        .then(() => helpers.ignoreAuth(mock))
+        .then(() => ratingsLibrary.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           ratingsLibrary.address,
           0,
@@ -1325,12 +1312,13 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     it('should not set invalid worker area evaluation', () => {
       const area = helpers.getFlag(4);
       const rating = 823847;
-      const evaluator = accounts[2];
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
+      .then(() => ratingsLibrary.setRoles2Library(Mock.address))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  true))
       .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))
-      .then(result => assert.equal(result.logs.length, 0))
+      .then(tx => eventsHelper.extractEvents(tx, "AreaEvaluated"))
+      .then(events => assert.equal(events.length, 0))
       .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
       .then(result => assert.equal(result.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
@@ -1340,12 +1328,13 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(7);
       const rating = 823847;
-      const evaluator = accounts[2];
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
+      .then(() => ratingsLibrary.setRoles2Library(Mock.address))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
-      .then(result => assert.equal(result.logs.length, 0))
+      .then(tx => eventsHelper.extractEvents(tx, "CategoryEvaluated"))
+      .then(events => assert.equal(events.length, 0))
       .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
       .then(result => assert.equal(result.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
@@ -1356,12 +1345,13 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const category = helpers.getFlag(7);
       const skill = helpers.getFlag(9);
       const rating = 823847;
-      const evaluator = accounts[2];
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
+      .then(() => ratingsLibrary.setRoles2Library(Mock.address))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
       .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
-      .then(result => assert.equal(result.logs.length, 0))
+      .then(tx => eventsHelper.extractEvents(tx, "SkillEvaluated"))
+      .then(events => assert.equal(events.length, 0))
       .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
       .then(result => assert.equal(result.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
@@ -1370,12 +1360,13 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     it('should not set worker area evaluation if worker doesn\'t have that area', () => {
       const area = helpers.getFlag(4);
       const rating = 3;
-      const evaluator = accounts[2];
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
+      .then(() => ratingsLibrary.setRoles2Library(Mock.address))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  false))
       .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))
-      .then(result => assert.equal(result.logs.length, 0))
+      .then(tx => eventsHelper.extractEvents(tx, "AreaEvaluated"))
+      .then(events => assert.equal(events.length, 0))
       .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
       .then(result => assert.equal(result.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
@@ -1385,12 +1376,13 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(7);
       const rating = 4;
-      const evaluator = accounts[2];
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
+      .then(() => ratingsLibrary.setRoles2Library(Mock.address))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  false))
       .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
-      .then(result => assert.equal(result.logs.length, 0))
+      .then(tx => eventsHelper.extractEvents(tx, "CategoryEvaluated"))
+      .then(events => assert.equal(events.length, 0))
       .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
       .then(result => assert.equal(result.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
@@ -1401,12 +1393,13 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     const category = helpers.getFlag(7);
     const skill = helpers.getFlag(9);
     const rating = 8;
-    const evaluator = accounts[2];
     const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
     return Promise.resolve()
+    .then(() => ratingsLibrary.setRoles2Library(Mock.address))
     .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  false))
     .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
-    .then(result => assert.equal(result.logs.length, 0))
+    .then(tx => eventsHelper.extractEvents(tx, "SkillEvaluated"))
+    .then(events => assert.equal(events.length, 0))
     .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
     .then(result => assert.equal(result.valueOf(), 0))
     .then(() => helpers.assertExpectations(mock));
@@ -1416,20 +1409,21 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     it('should set valid worker area evaluation ', () => {
       const area = helpers.getFlag(3);
       const rating = 8;
-      const evaluator = accounts[2];
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
+        .then(() => ratingsLibrary.setRoles2Library(Mock.address))
         .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area), true))
         .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))
-        .then(result => {
-          assert.equal(result.logs.length, 1);
-          assert.equal(result.logs[0].address, multiEventsHistory.address);
-          assert.equal(result.logs[0].args.self, ratingsLibrary.address);
-          assert.equal(result.logs[0].event, 'AreaEvaluated');
-          assert.equal(result.logs[0].args.rater, evaluator);
-          assert.equal(result.logs[0].args.to, worker);
-          assert.equal(result.logs[0].args.rating, rating);
-          equal(result.logs[0].args.area, area);
+        .then(tx => eventsHelper.extractEvents(tx, "AreaEvaluated"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].args.self, ratingsLibrary.address);
+          assert.equal(events[0].event, 'AreaEvaluated');
+          assert.equal(events[0].args.rater, evaluator);
+          assert.equal(events[0].args.to, worker);
+          assert.equal(events[0].args.rating, rating);
+          equal(events[0].args.area, area);
         })
         .then(() => ratingsLibrary.getAreaEvaluation(worker, area, evaluator))
         .then(result => assert.equal(result.valueOf(), rating))
@@ -1440,21 +1434,22 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(7);
       const rating = 8;
-      const evaluator = accounts[2];
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
+      .then(() => ratingsLibrary.setRoles2Library(Mock.address))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
-      .then(result => {
-        assert.equal(result.logs.length, 1);
-        assert.equal(result.logs[0].address, multiEventsHistory.address);
-        assert.equal(result.logs[0].args.self, ratingsLibrary.address);
-        assert.equal(result.logs[0].event, 'CategoryEvaluated');
-        assert.equal(result.logs[0].args.rater, evaluator);
-        assert.equal(result.logs[0].args.to, worker);
-        assert.equal(result.logs[0].args.rating, rating);
-        equal(result.logs[0].args.area, area);
-        equal(result.logs[0].args.category, category);
+      .then(tx => eventsHelper.extractEvents(tx, "CategoryEvaluated"))
+      .then(events => {
+        assert.equal(events.length, 1);
+        assert.equal(events[0].address, multiEventsHistory.address);
+        assert.equal(events[0].args.self, ratingsLibrary.address);
+        assert.equal(events[0].event, 'CategoryEvaluated');
+        assert.equal(events[0].args.rater, evaluator);
+        assert.equal(events[0].args.to, worker);
+        assert.equal(events[0].args.rating, rating);
+        equal(events[0].args.area, area);
+        equal(events[0].args.category, category);
       })
       .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
       .then(result => assert.equal(result.valueOf(), rating))
@@ -1466,22 +1461,23 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const category = helpers.getFlag(7);
       const skill = helpers.getFlag(9);
       const rating = 8;
-      const evaluator = accounts[2];
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
+      .then(() => ratingsLibrary.setRoles2Library(Mock.address))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
       .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
-      .then(result => {
-        assert.equal(result.logs.length, 1);
-        assert.equal(result.logs[0].address, multiEventsHistory.address);
-        assert.equal(result.logs[0].args.self, ratingsLibrary.address);
-        assert.equal(result.logs[0].event, 'SkillEvaluated');
-        assert.equal(result.logs[0].args.rater, evaluator);
-        assert.equal(result.logs[0].args.to, worker);
-        assert.equal(result.logs[0].args.rating, rating);
-        equal(result.logs[0].args.area, area);
-        equal(result.logs[0].args.category, category);
-        equal(result.logs[0].args.skill, skill);
+      .then(tx => eventsHelper.extractEvents(tx, "SkillEvaluated"))
+      .then(events => {
+        assert.equal(events.length, 1);
+        assert.equal(events[0].address, multiEventsHistory.address);
+        assert.equal(events[0].args.self, ratingsLibrary.address);
+        assert.equal(events[0].event, 'SkillEvaluated');
+        assert.equal(events[0].args.rater, evaluator);
+        assert.equal(events[0].args.to, worker);
+        assert.equal(events[0].args.rating, rating);
+        equal(events[0].args.area, area);
+        equal(events[0].args.category, category);
+        equal(events[0].args.skill, skill);
       })
       .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
       .then(result => assert.equal(result.valueOf(), rating))
@@ -1499,6 +1495,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker1 = '0xeeeeeeee11eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
+      .then(() => ratingsLibrary.setRoles2Library(Mock.address))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker1, area1),  true))
       .then(() => ratingsLibrary.evaluateArea(worker1, rating1, area1, {from: evaluator1}))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker2, area2),  true))
@@ -1522,6 +1519,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker1 = '0xeeeeeeee11eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
+      .then(() => ratingsLibrary.setRoles2Library(Mock.address))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker1, area1, category1),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker1, rating1, area1, category1, {from: evaluator1}))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker2, area2, category2),  true))
@@ -1547,6 +1545,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     const worker1 = '0xeeeeeeee11eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
     const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
     return Promise.resolve()
+    .then(() => ratingsLibrary.setRoles2Library(Mock.address))
     .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker1, area1, category1, skill1),  true))
     .then(() => ratingsLibrary.evaluateSkill(worker1, rating1, area1, category1, skill1, {from: evaluator1}))
     .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker2, area2, category2, skill2),  true))
@@ -1563,9 +1562,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(7);
       const rating = 8;
-      const evaluator = accounts[2];
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
+      .then(() => ratingsLibrary.setRoles2Library(Mock.address))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
       .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
@@ -1580,9 +1579,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const category = helpers.getFlag(7);
       const skill = helpers.getFlag(9);
       const rating = 8;
-      const evaluator = accounts[2];
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
+      .then(() => ratingsLibrary.setRoles2Library(Mock.address))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
       .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
       .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
@@ -1601,6 +1600,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const skills = [helpers.getFlag(9), helpers.getFlag(12), helpers.getFlag(13).add(helpers.getEvenFlag(23))];
       const ratings = [9, 8, 7, 6, 5];
       return Promise.resolve()
+        .then(() => ratingsLibrary.setRoles2Library(Mock.address))
         .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(7), helpers.getFlag(9)),  true))
         .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, helpers.getFlag(4), helpers.getFlag(9)),  true))
         .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(10), helpers.getFlag(12)),  true))
@@ -1626,6 +1626,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const skills = [helpers.getFlag(9), helpers.getFlag(12), helpers.getFlag(13).add(helpers.getEvenFlag(23))];
       const ratings = [9, 8, 7, 6, 5];
       return Promise.resolve()
+        .then(() => ratingsLibrary.setRoles2Library(Mock.address))
         .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(7), helpers.getFlag(9)),  true))
         .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, helpers.getFlag(4), helpers.getFlag(9)),  true))
         .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(10), helpers.getFlag(12)),  true))

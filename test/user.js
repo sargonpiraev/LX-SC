@@ -1,6 +1,5 @@
 "use strict";
 
-const Mock = artifacts.require('./Mock.sol');
 const User = artifacts.require('./User.sol');
 const UserProxyTester = artifacts.require('./UserProxyTester.sol');
 
@@ -13,15 +12,10 @@ contract('User', function(accounts) {
 
   let user;
   let tester;
-  let mock;
 
   before('setup', () => {
-    return Mock.deployed()
-    .then(instance => mock = instance)
-    .then(() => User.deployed())
+    return User.new(accounts[0], 0x0)
     .then(instance => user = instance)
-    .then(() => user.contractOwner())
-    .then(result => console.log(result))
     .then(() => UserProxyTester.deployed())
     .then(instance => tester = instance)
     .then(() => user.setRecoveryContract(accounts[1]))
@@ -43,7 +37,7 @@ contract('User', function(accounts) {
   });
 
   it('should forward and return value', () => {
-    const data = tester.contract.forward.getData();;
+    const data = tester.contract.forward.getData(0x0, 0x0, 0, false);
     return user.setUserProxy(tester.address)
     .then(() => user.forward.call(tester.address, data, 0, false))
     .then(result => assert.equal(result, '0x3432000000000000000000000000000000000000000000000000000000000000'));
@@ -51,7 +45,7 @@ contract('User', function(accounts) {
   });
 
   it('should not forward when called by not-owner', () => {
-    const data = tester.contract.functionReturningValue.getData();
+    const data = tester.contract.functionReturningValue.getData(0x0);
     return user.setUserProxy(tester.address)
     .then(() => user.forward.call(tester.address, data, 0, false, {from: accounts[1]}))
     .then(result => assert.equal(result, '0x0000000000000000000000000000000000000000000000000000000000000000'));

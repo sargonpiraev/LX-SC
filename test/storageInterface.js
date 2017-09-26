@@ -1,7 +1,6 @@
 "use strict";
 
 const ManagerMock = artifacts.require('./ManagerMock.sol');
-const Mock = artifacts.require('./Mock.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Storage = artifacts.require('./Storage.sol');
 const StorageTester = artifacts.require('./StorageTester.sol');
@@ -18,17 +17,10 @@ contract('StorageInterface', function(accounts) {
   let storage;
   let storageTester;
   let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
-  let mock;
 
-  const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
-  };
 
   before('setup', () => {
-    return Mock.deployed()
-    .then(instance => mock = instance)
-    .then(() => ignoreAuth())
-    .then(() => Storage.deployed())
+    return Storage.deployed()
     .then(instance => storage = instance)
     .then(() => ManagerMock.deployed())
     .then(instance => storage.setManager(instance.address))

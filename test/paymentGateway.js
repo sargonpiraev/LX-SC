@@ -3,16 +3,17 @@
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const FakeCoin = artifacts.require('./FakeCoin.sol');
 const ERC20Library = artifacts.require('./ERC20Library.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
+const SkillsLibrary = artifacts.require('./SkillsLibrary.sol');
+const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Storage = artifacts.require('./Storage.sol');
 
 const Asserts = require('./helpers/asserts');
 const Reverter = require('./helpers/reverter');
-
+const eventsHelper = require('./helpers/eventsHelper');
 const helpers = require('./helpers/helpers');
 
 
@@ -21,6 +22,7 @@ contract('PaymentGateway', function(accounts) {
   afterEach('revert', reverter.revert);
 
   const asserts = Asserts(assert);
+  const PaymentProcessorRole = 34;
   let storage;
   let multiEventsHistory;
   let erc20Library;
@@ -30,6 +32,7 @@ contract('PaymentGateway', function(accounts) {
   let paymentProcessor = accounts[5];
   let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
   let mock;
+
 
   const assertExpectations = (expected = 0, callsCount = null) => {
     let expectationsCount;
@@ -41,10 +44,6 @@ contract('PaymentGateway', function(accounts) {
       .then(() => mock.callsCount())
       .then(result => asserts.equal(callsCount === null ? expectationsCount : callsCount)(result));
     };
-  };
-
-  const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
   };
 
   const assertInternalBalance = (address, coinAddress, expectedValue, hex=false) => {
@@ -167,11 +166,8 @@ contract('PaymentGateway', function(accounts) {
   before('setup', () => {
     return Mock.deployed()
     .then(instance => mock = instance)
-    .then(() => ignoreAuth())
     .then(() => Storage.deployed())
     .then(instance => storage = instance)
-    .then(() => ManagerMock.deployed())
-    .then(instance => storage.setManager(instance.address))
     .then(() => BalanceHolder.deployed())
     .then(instance => balanceHolder = instance)
     .then(() => FakeCoin.deployed())
@@ -182,13 +178,10 @@ contract('PaymentGateway', function(accounts) {
     .then(instance => paymentGateway = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
-    .then(() => erc20Library.setupEventsHistory(multiEventsHistory.address))
     .then(() => erc20Library.addContract(fakeCoin.address))
-
-    .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
-
-    .then(() => multiEventsHistory.authorize(paymentGateway.address))
+    .then(() => Roles2Library.deployed())
+    .then(rolesLibrary => rolesLibrary.addUserRole(paymentProcessor, PaymentProcessorRole))
     .then(reverter.snapshot);
   });
 
@@ -199,14 +192,14 @@ contract('PaymentGateway', function(accounts) {
       const caller = accounts[1];
       const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
       return Promise.resolve()
-        .then(() => ignoreAuth(false))
+        .then(() => paymentGateway.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           paymentGateway.address,
           0,
           roles2LibraryInterface.canCall.getData(
             caller,
             paymentGateway.address,
-            paymentGateway.contract.setupEventsHistory.getData().slice(0, 10)
+            paymentGateway.contract.setupEventsHistory.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => paymentGateway.setupEventsHistory(newAddress, {from: caller}))
@@ -217,14 +210,14 @@ contract('PaymentGateway', function(accounts) {
       const caller = accounts[1];
       const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
       return Promise.resolve()
-        .then(() => ignoreAuth(false))
+        .then(() => paymentGateway.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           paymentGateway.address,
           0,
           roles2LibraryInterface.canCall.getData(
             caller,
             paymentGateway.address,
-            paymentGateway.contract.setERC20Library.getData().slice(0, 10)
+            paymentGateway.contract.setERC20Library.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => paymentGateway.setERC20Library(newAddress, {from: caller}))
@@ -235,14 +228,14 @@ contract('PaymentGateway', function(accounts) {
       const caller = accounts[1];
       const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
       return Promise.resolve()
-        .then(() => ignoreAuth(false))
+        .then(() => paymentGateway.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           paymentGateway.address,
           0,
           roles2LibraryInterface.canCall.getData(
             caller,
             paymentGateway.address,
-            paymentGateway.contract.setBalanceHolder.getData().slice(0, 10)
+            paymentGateway.contract.setBalanceHolder.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => paymentGateway.setBalanceHolder(newAddress, {from: caller}))
@@ -253,14 +246,14 @@ contract('PaymentGateway', function(accounts) {
       const caller = accounts[1];
       const feeAddress = '0xffffffffffffffffffffffffffffffffffffffff';
       return Promise.resolve()
-        .then(() => ignoreAuth(false))
+        .then(() => paymentGateway.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           paymentGateway.address,
           0,
           roles2LibraryInterface.canCall.getData(
             caller,
             paymentGateway.address,
-            paymentGateway.contract.setFeeAddress.getData().slice(0, 10)
+            paymentGateway.contract.setFeeAddress.getData(feeAddress).slice(0, 10)
           ), 0)
         )
         .then(() => paymentGateway.setFeeAddress(feeAddress, {from: caller}))
@@ -281,14 +274,14 @@ contract('PaymentGateway', function(accounts) {
       const caller = accounts[1];
       const feePercent = 1333;
       return Promise.resolve()
-      .then(() => ignoreAuth(false))
+      .then(() => paymentGateway.setRoles2Library(Mock.address))
       .then(() => mock.expect(
         paymentGateway.address,
         0,
         roles2LibraryInterface.canCall.getData(
           caller,
           paymentGateway.address,
-          paymentGateway.contract.setFeePercent.getData().slice(0, 10)
+          paymentGateway.contract.setFeePercent.getData(feePercent, fakeCoin.address).slice(0, 10)
         ), 0)
       )
       .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address, {from: caller}))
@@ -332,12 +325,13 @@ contract('PaymentGateway', function(accounts) {
       const feePercent = 1333;
       return Promise.resolve()
       .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
-      .then(result => {
-        assert.equal(result.logs.length, 1);
-        assert.equal(result.logs[0].address, multiEventsHistory.address);
-        assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
-        assert.equal(result.logs[0].args.feePercent, 1333);
-        assert.equal(result.logs[0].args.self, paymentGateway.address);
+      .then(tx => eventsHelper.extractEvents(tx, "FeeSet"))
+      .then(events => {
+        assert.equal(events.length, 1);
+        assert.equal(events[0].address, multiEventsHistory.address);
+        assert.equal(events[0].args.contractAddress, fakeCoin.address);
+        assert.equal(events[0].args.feePercent, 1333);
+        assert.equal(events[0].args.self, paymentGateway.address);
       });
     });
 
@@ -459,13 +453,14 @@ contract('PaymentGateway', function(accounts) {
       return Promise.resolve()
         .then(() => fakeCoin.mint(sender, value))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-        .then(result => {
-          assert.equal(result.logs.length, 1);
-          assert.equal(result.logs[0].address, multiEventsHistory.address);
-          assert.equal(result.logs[0].event, 'Deposited');
-          assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
-          assert.equal(result.logs[0].args.by, sender);
-          assert.equal(result.logs[0].args.value.valueOf(), value);
+        .then(tx => eventsHelper.extractEvents(tx, "Deposited"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'Deposited');
+          assert.equal(events[0].args.contractAddress, fakeCoin.address);
+          assert.equal(events[0].args.by, sender);
+          assert.equal(events[0].args.value.valueOf(), value);
         });
     });
 
@@ -601,13 +596,14 @@ contract('PaymentGateway', function(accounts) {
         .then(() => fakeCoin.mint(sender, value))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
         .then(() => paymentGateway.withdraw(withdraw, fakeCoin.address, {from: sender}))
-        .then(result => {
-          assert.equal(result.logs.length, 1);
-          assert.equal(result.logs[0].address, multiEventsHistory.address);
-          assert.equal(result.logs[0].event, 'Withdrawn');
-          assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
-          assert.equal(result.logs[0].args.by, sender);
-          assert.equal(result.logs[0].args.value.valueOf(), withdraw);
+        .then(tx => eventsHelper.extractEvents(tx, "Withdrawn"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'Withdrawn');
+          assert.equal(events[0].args.contractAddress, fakeCoin.address);
+          assert.equal(events[0].args.by, sender);
+          assert.equal(events[0].args.value.valueOf(), withdraw);
         });
     });
 
@@ -658,14 +654,14 @@ contract('PaymentGateway', function(accounts) {
       return Promise.resolve()
         .then(() => fakeCoin.mint(sender, value))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-        .then(() => ignoreAuth(false))
+        .then(() => paymentGateway.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           paymentGateway.address,
           0,
           roles2LibraryInterface.canCall.getData(
             sender,
             paymentGateway.address,
-            paymentGateway.contract.transfer.getData().slice(0, 10)
+            paymentGateway.contract.transfer.getData(sender, receiver, value, fakeCoin.address,).slice(0, 10)
           ), 0)
         )
         .then(() => paymentGateway.transfer(sender, receiver, value, fakeCoin.address, {from: sender}))
@@ -933,20 +929,21 @@ contract('PaymentGateway', function(accounts) {
         .then(() => fakeCoin.mint(sender, value))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
         .then(() => paymentGateway.transfer(sender, receiver, transfer, fakeCoin.address, {from: paymentProcessor}))
-        .then(result => {
-          assert.equal(result.logs.length, 2);
-          assert.equal(result.logs[0].address, multiEventsHistory.address);
-          assert.equal(result.logs[0].event, 'Transferred');
-          assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
-          assert.equal(result.logs[0].args.from, sender);
-          assert.equal(result.logs[0].args.to, receiver);
-          assert.equal(result.logs[0].args.value.valueOf(), transfer);
-          assert.equal(result.logs[1].address, multiEventsHistory.address);
-          assert.equal(result.logs[1].event, 'Transferred');
-          assert.equal(result.logs[1].args.contractAddress, fakeCoin.address);
-          assert.equal(result.logs[1].args.from, sender);
-          assert.equal(result.logs[1].args.to, feeAddress);
-          assert.equal(result.logs[1].args.value.valueOf(), fee);
+        .then(tx => eventsHelper.extractEvents(tx, "Transferred"))
+        .then(events => {
+          assert.equal(events.length, 2);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'Transferred');
+          assert.equal(events[0].args.contractAddress, fakeCoin.address);
+          assert.equal(events[0].args.from, sender);
+          assert.equal(events[0].args.to, receiver);
+          assert.equal(events[0].args.value.valueOf(), transfer);
+          assert.equal(events[1].address, multiEventsHistory.address);
+          assert.equal(events[1].event, 'Transferred');
+          assert.equal(events[1].args.contractAddress, fakeCoin.address);
+          assert.equal(events[1].args.from, sender);
+          assert.equal(events[1].args.to, feeAddress);
+          assert.equal(events[1].args.value.valueOf(), fee);
         });
     });
 
@@ -964,14 +961,14 @@ contract('PaymentGateway', function(accounts) {
       return Promise.resolve()
         .then(() => fakeCoin.mint(sender, value))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-        .then(() => ignoreAuth(false))
+        .then(() => paymentGateway.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           paymentGateway.address,
           0,
           roles2LibraryInterface.canCall.getData(
             sender,
             paymentGateway.address,
-            paymentGateway.contract.transferWithFee.getData().slice(0, 10)
+            paymentGateway.contract.transferWithFee.getData(sender, receiver, value, value, 0, fakeCoin.address,).slice(0, 10)
           ), 0)
         )
         .then(() => paymentGateway.transferWithFee(
@@ -1128,20 +1125,21 @@ contract('PaymentGateway', function(accounts) {
             sender, receiver, transfer, transfer, 0, fakeCoin.address, {from: paymentProcessor}
           )
         )
-        .then(result => {
-          assert.equal(result.logs.length, 2);
-          assert.equal(result.logs[0].address, multiEventsHistory.address);
-          assert.equal(result.logs[0].event, 'Transferred');
-          assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
-          assert.equal(result.logs[0].args.from, sender);
-          assert.equal(result.logs[0].args.to, receiver);
-          assert.equal(result.logs[0].args.value.valueOf(), transfer);
-          assert.equal(result.logs[1].address, multiEventsHistory.address);
-          assert.equal(result.logs[1].event, 'Transferred');
-          assert.equal(result.logs[1].args.contractAddress, fakeCoin.address);
-          assert.equal(result.logs[1].args.from, sender);
-          assert.equal(result.logs[1].args.to, feeAddress);
-          assert.equal(result.logs[1].args.value.valueOf(), fee);
+        .then(tx => eventsHelper.extractEvents(tx, "Transferred"))
+        .then(events => {
+          assert.equal(events.length, 2);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'Transferred');
+          assert.equal(events[0].args.contractAddress, fakeCoin.address);
+          assert.equal(events[0].args.from, sender);
+          assert.equal(events[0].args.to, receiver);
+          assert.equal(events[0].args.value.valueOf(), transfer);
+          assert.equal(events[1].address, multiEventsHistory.address);
+          assert.equal(events[1].event, 'Transferred');
+          assert.equal(events[1].args.contractAddress, fakeCoin.address);
+          assert.equal(events[1].args.from, sender);
+          assert.equal(events[1].args.to, feeAddress);
+          assert.equal(events[1].args.value.valueOf(), fee);
         })
         .then(assertInternalBalance(sender, fakeCoin.address, result))
         .then(assertInternalBalance(receiver, fakeCoin.address, transfer))
@@ -1173,7 +1171,7 @@ contract('PaymentGateway', function(accounts) {
       return Promise.resolve()
       .then(() => fakeCoin.mint(sender, value))
       .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-      .then(() => ignoreAuth(false))
+      .then(() => paymentGateway.setRoles2Library(Mock.address))
       .then(() => {
         const expectedSig = helpers.getSig("transferToMany(address,address[],uint256[],uint256,uint256,address)");
         return mock.expect(
@@ -1542,28 +1540,29 @@ contract('PaymentGateway', function(accounts) {
         sender, [receiver1, receiver2], [receiver1Value, receiver2Value],
         value, additionalFee, fakeCoin.address, {from: paymentProcessor}
       ))
-      .then(result => {
-        assert.equal(result.logs.length, 3);
-        assert.equal(result.logs[0].address, multiEventsHistory.address);
-        assert.equal(result.logs[0].event, 'Transferred');
-        assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
-        assert.equal(result.logs[0].args.from, sender);
-        assert.equal(result.logs[0].args.to, receiver1);
-        assert.equal(result.logs[0].args.value.valueOf(), receiver1Result);
+      .then(tx => eventsHelper.extractEvents(tx, "Transferred"))
+      .then(events => {
+        assert.equal(events.length, 3);
+        assert.equal(events[0].address, multiEventsHistory.address);
+        assert.equal(events[0].event, 'Transferred');
+        assert.equal(events[0].args.contractAddress, fakeCoin.address);
+        assert.equal(events[0].args.from, sender);
+        assert.equal(events[0].args.to, receiver1);
+        assert.equal(events[0].args.value.valueOf(), receiver1Result);
 
-        assert.equal(result.logs[1].address, multiEventsHistory.address);
-        assert.equal(result.logs[1].event, 'Transferred');
-        assert.equal(result.logs[1].args.contractAddress, fakeCoin.address);
-        assert.equal(result.logs[1].args.from, sender);
-        assert.equal(result.logs[1].args.to, receiver2);
-        assert.equal(result.logs[1].args.value.valueOf(), receiver2Result);
+        assert.equal(events[1].address, multiEventsHistory.address);
+        assert.equal(events[1].event, 'Transferred');
+        assert.equal(events[1].args.contractAddress, fakeCoin.address);
+        assert.equal(events[1].args.from, sender);
+        assert.equal(events[1].args.to, receiver2);
+        assert.equal(events[1].args.value.valueOf(), receiver2Result);
 
-        assert.equal(result.logs[2].address, multiEventsHistory.address);
-        assert.equal(result.logs[2].event, 'Transferred');
-        assert.equal(result.logs[2].args.contractAddress, fakeCoin.address);
-        assert.equal(result.logs[2].args.from, sender);
-        assert.equal(result.logs[2].args.to, feeAddress);
-        assert.equal(result.logs[2].args.value.valueOf(), fee);
+        assert.equal(events[2].address, multiEventsHistory.address);
+        assert.equal(events[2].event, 'Transferred');
+        assert.equal(events[2].args.contractAddress, fakeCoin.address);
+        assert.equal(events[2].args.from, sender);
+        assert.equal(events[2].args.to, feeAddress);
+        assert.equal(events[2].args.value.valueOf(), fee);
       })
       .then(assertInternalBalance(sender, fakeCoin.address, result));
     });
@@ -1652,7 +1651,7 @@ contract('PaymentGateway', function(accounts) {
             ), 0)
           }
         )
-        .then(() => ignoreAuth(false))
+        .then(() => paymentGateway.setRoles2Library(Mock.address))
         .then(() => paymentGateway.transferAll(
           sender, receiver, value, changeAddress, value, 0, fakeCoin.address, {from: sender}
         ))
@@ -1992,7 +1991,7 @@ contract('PaymentGateway', function(accounts) {
       .then(() => fakeCoin.mint(sender2, value2))
       .then(() => paymentGateway.deposit(value1, fakeCoin.address, {from: sender1}))
       .then(() => paymentGateway.deposit(value2, fakeCoin.address, {from: sender2}))
-      .then(() => ignoreAuth(false))
+      .then(() => paymentGateway.setRoles2Library(Mock.address))
       .then(() => {
         const expectedSig = helpers.getSig("transferFromMany(address[],address,uint256[],address)");
         return mock.expect(
@@ -2186,21 +2185,22 @@ contract('PaymentGateway', function(accounts) {
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
         .then(() => paymentGateway.deposit(value2, fakeCoin.address, {from: sender2}))
         .then(() => paymentGateway.transferFromMany([sender, sender2], receiver, [senderValue, sender2Value], fakeCoin.address, {from: paymentProcessor}))
-        .then(result => {
-          assert.equal(result.logs.length, 2);
-          assert.equal(result.logs[0].address, multiEventsHistory.address);
-          assert.equal(result.logs[0].event, 'Transferred');
-          assert.equal(result.logs[0].args.contractAddress, fakeCoin.address);
-          assert.equal(result.logs[0].args.from, sender);
-          assert.equal(result.logs[0].args.to, receiver);
-          assert.equal(result.logs[0].args.value.valueOf(), senderValue);
+        .then(tx => eventsHelper.extractEvents(tx, "Transferred"))
+        .then(events => {
+          assert.equal(events.length, 2);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'Transferred');
+          assert.equal(events[0].args.contractAddress, fakeCoin.address);
+          assert.equal(events[0].args.from, sender);
+          assert.equal(events[0].args.to, receiver);
+          assert.equal(events[0].args.value.valueOf(), senderValue);
 
-          assert.equal(result.logs[1].address, multiEventsHistory.address);
-          assert.equal(result.logs[1].event, 'Transferred');
-          assert.equal(result.logs[1].args.contractAddress, fakeCoin.address);
-          assert.equal(result.logs[1].args.from, sender2);
-          assert.equal(result.logs[1].args.to, receiver);
-          assert.equal(result.logs[1].args.value.valueOf(), sender2Value);
+          assert.equal(events[1].address, multiEventsHistory.address);
+          assert.equal(events[1].event, 'Transferred');
+          assert.equal(events[1].args.contractAddress, fakeCoin.address);
+          assert.equal(events[1].args.from, sender2);
+          assert.equal(events[1].args.to, receiver);
+          assert.equal(events[1].args.value.valueOf(), sender2Value);
         });
     });
 
@@ -2264,17 +2264,16 @@ contract('PaymentGateway', function(accounts) {
         .then(() => paymentGateway.setFeeAddress(feeAddress))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: feeAddress}))
         .then(() => paymentGateway.forwardFee(value, fakeCoin.address))
-        .then(helpers.assertLogs([{
-            address: multiEventsHistory.address,
-            event: "Withdrawn",
-            args: {
-              self: paymentGateway.address,
-              contractAddress: fakeCoin.address,
-              by: feeAddress,
-              value: value
-            }
-          }]
-        ))
+        .then(tx => eventsHelper.extractEvents(tx, "Withdrawn"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'Withdrawn');
+          assert.equal(events[0].args.contractAddress, fakeCoin.address);
+          assert.equal(events[0].args.self, paymentGateway.address);
+          assert.equal(events[0].args.by, feeAddress);
+          assert.equal(events[0].args.value.valueOf(), value);
+        })
         .then(assertInternalBalance(feeAddress, fakeCoin.address, 0))
         .then(assertExternalBalance(feeAddress, fakeCoin.address, value))
         .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, 0));

@@ -1,11 +1,9 @@
 const Reverter = require('./helpers/reverter');
 const Asserts = require('./helpers/asserts');
 const Storage = artifacts.require('./Storage.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
-const Mock = artifacts.require('./Mock.sol');
 const helpers = require('./helpers/helpers');
 
 contract('Roles2Library', function(accounts) {
@@ -17,26 +15,14 @@ contract('Roles2Library', function(accounts) {
   let multiEventsHistory;
   let rolesLibrary;
   let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
-  let mock;
-
-  const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
-  };
 
   before('setup', () => {
-    return Mock.deployed()
-    .then(instance => mock = instance)
-    .then(() => ignoreAuth())
-    .then(() => Storage.deployed())
+    return Storage.deployed()
     .then(instance => storage = instance)
-    .then(() => ManagerMock.deployed())
-    .then(instance => storage.setManager(instance.address))
     .then(() => Roles2Library.deployed())
     .then(instance => rolesLibrary = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
-    .then(() => rolesLibrary.setupEventsHistory(multiEventsHistory.address))
-    .then(() => multiEventsHistory.authorize(rolesLibrary.address))
     .then(reverter.snapshot);
   });
 
@@ -280,7 +266,7 @@ contract('Roles2Library', function(accounts) {
       .then(() => true);
     });
   });
-  
+
 describe('Capabilities', function() {
   it('should add capability', () => {
     const role = 255;

@@ -3,6 +3,7 @@
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const ERC20Interface = artifacts.require('./ERC20Interface.sol');
 const Mock = artifacts.require('./Mock.sol');
+const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 
 const Asserts = require('./helpers/asserts');
@@ -14,6 +15,7 @@ contract('BalanceHolder', function(accounts) {
   afterEach('revert', reverter.revert);
 
   const asserts = Asserts(assert);
+  const PaymentGatewayRole = 33;
   let erc20Interface = web3.eth.contract(ERC20Interface.abi).at('0x0');
   let paymentGatewayAddress = accounts[5];
   let balanceHolder;
@@ -32,16 +34,13 @@ contract('BalanceHolder', function(accounts) {
     };
   };
 
-  const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
-  };
-
   before('setup', () => {
     return Mock.deployed()
     .then(instance => mock = instance)
     .then(() => BalanceHolder.deployed())
     .then(instance => balanceHolder = instance)
-    .then(() => ignoreAuth())
+    .then(() => Roles2Library.deployed())
+    .then(roles2Library => roles2Library.addUserRole(paymentGatewayAddress, PaymentGatewayRole))
     .then(reverter.snapshot);
   });
 
@@ -52,14 +51,14 @@ contract('BalanceHolder', function(accounts) {
       const sender = '0xffffffffffffffffffffffffffffffffffffffff';
       const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
       return Promise.resolve()
-      .then(() => ignoreAuth(false))
+      .then(() => balanceHolder.setRoles2Library(Mock.address))
       .then(() => mock.expect(
         balanceHolder.address,
         0,
         roles2LibraryInterface.canCall.getData(
           caller,
           balanceHolder.address,
-          balanceHolder.contract.deposit.getData().slice(0, 10)
+          balanceHolder.contract.deposit.getData(sender, value, mock.address).slice(0, 10)
         ), 0)
       )
       .then(() => balanceHolder.deposit(sender, value, mock.address, {from: caller}))
@@ -81,12 +80,10 @@ contract('BalanceHolder', function(accounts) {
       const result = '0x0000000000000000000000000000000000000000000000000000000000000000';
       return Promise.resolve()
       .then(() => mock.expect(
-        balanceHolder.address,
-        0,
-        erc20Interface.transferFrom.getData(
-          sender, balanceHolder.address, value
-        ),
-        result
+          balanceHolder.address,
+          0,
+          erc20Interface.transferFrom.getData(sender, balanceHolder.address, value),
+          result
       ))
       .then(() => balanceHolder.deposit.call(
         sender, value, mock.address, {from: paymentGatewayAddress})
@@ -113,14 +110,14 @@ contract('BalanceHolder', function(accounts) {
       const sender = '0xffffffffffffffffffffffffffffffffffffffff';
       const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
       return Promise.resolve()
-        .then(() => ignoreAuth(false))
+        .then(() => balanceHolder.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           balanceHolder.address,
           0,
           roles2LibraryInterface.canCall.getData(
             caller,
             balanceHolder.address,
-            balanceHolder.contract.withdraw.getData().slice(0, 10)
+            balanceHolder.contract.withdraw.getData(sender, value, mock.address).slice(0, 10)
           ), 0)
         )
         .then(() => balanceHolder.withdraw(sender, value, mock.address, {from: caller}))
