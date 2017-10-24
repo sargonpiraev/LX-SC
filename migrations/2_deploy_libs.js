@@ -1,3 +1,5 @@
-module.exports = function(deployer) {
+const SafeMath = artifacts.require("./SafeMath.sol");
 
+module.exports = function(deployer) {
+    deployer.deploy(SafeMath)
 };
