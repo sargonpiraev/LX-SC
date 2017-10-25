@@ -18,4 +18,4 @@ $ npm run test
 
 ![Contract Interactions][contract_interactions]
 
-[contract_interactions]: https://raw.githubusercontent.com/ChronoBank/LX-SC/roles2/contract_interactions.png
+[contract_interactions]: ./docs/contract_interactions.png

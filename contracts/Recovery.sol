@@ -1,4 +1,4 @@
-pragma solidity 0.4.11;
+pragma solidity ^0.4.11;
 
 import './User.sol';
 import './adapters/Roles2LibraryAdapter.sol';
@@ -13,7 +13,7 @@ contract Recovery is Roles2LibraryAdapter {
     function recoverUser(User _userContract, address _newAddress) auth() returns(bool) {
         address prev = _userContract.contractOwner();
         if (!_userContract.recoverUser(_newAddress)){
-            throw;
+            revert();
         }
         UserRecovered(prev, _newAddress, _userContract);
         return true;

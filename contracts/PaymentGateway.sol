@@ -1,4 +1,4 @@
-pragma solidity 0.4.11;
+pragma solidity ^0.4.11;
 
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './adapters/Roles2LibraryAndERC20LibraryAdapter.sol';
@@ -35,7 +35,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     function _notNull(uint _value, bool _throws) internal returns(bool) {
         if (_value == 0) {
             if (_throws) {
-                throw;
+                revert();
             }
             _emitError("Value is empty");
             return false;
@@ -272,7 +272,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
 
     function _assert(bool _assertion) internal {
         if (!_assertion) {
-            throw;
+            revert();
         }
     }
 

@@ -1,12 +1,7 @@
-pragma solidity 0.4.11;
+pragma solidity ^0.4.11;
 
 import './adapters/Roles2LibraryAdapter.sol';
-
-
-contract ERC20Interface {
-    function transfer(address _to, uint _value) returns(bool);
-    function transferFrom(address _from, address _to, uint _value) returns(bool);
-}
+import './base/ERC20Interface.sol';
 
 contract BalanceHolder is Roles2LibraryAdapter {
     function BalanceHolder(address _roles2Library) Roles2LibraryAdapter(_roles2Library) {}

@@ -4,11 +4,11 @@ const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const ERC20Library = artifacts.require('./ERC20Library.sol');
 const FakeCoin = artifacts.require('./FakeCoin.sol');
 const JobController = artifacts.require('./JobController.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
 const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
+const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Storage = artifacts.require('./Storage.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
@@ -16,6 +16,7 @@ const UserLibrary = artifacts.require('./UserLibrary.sol');
 const Asserts = require('./helpers/asserts');
 const Promise = require('bluebird');
 const Reverter = require('./helpers/reverter');
+const eventsHelper = require('./helpers/eventsHelper');
 
 const helpers = require('./helpers/helpers');
 
@@ -69,11 +70,15 @@ contract('JobController', function(accounts) {
   };
 
   const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
+      if (enabled) {
+          return JobController.deployed().then(jobController => jobController.setRoles2Library(Roles2Library.address));
+      } else {
+          return JobController.deployed().then(jobController => jobController.setRoles2Library(mock.address));
+      }
   };
 
   const ignoreSkillsCheck = (enabled = true) => {
-    return mock.ignore(userLibraryInterface.hasSkills.getData().slice(0, 10), enabled);
+    return mock.ignore(userLibraryInterface.hasSkills.getData(0,0,0,0).slice(0, 10), enabled);
   }
 
   const operationAllowance = (operation, args, results) => {
@@ -195,8 +200,6 @@ contract('JobController', function(accounts) {
     .then(instance => multiEventsHistory = instance)
     .then(() => Storage.deployed())
     .then(instance => storage = instance)
-    .then(() => ManagerMock.deployed())
-    .then(instance => storage.setManager(instance.address))
     .then(() => BalanceHolder.deployed())
     .then(instance => balanceHolder = instance)
     .then(() => ERC20Library.deployed())
@@ -209,26 +212,12 @@ contract('JobController', function(accounts) {
     .then(instance => paymentProcessor = instance)
     .then(() => JobController.deployed())
     .then(instance => jobController = instance)
-
-    .then(() => multiEventsHistory.authorize(erc20Library.address))
-    .then(() => multiEventsHistory.authorize(userLibrary.address))
-    .then(() => multiEventsHistory.authorize(paymentGateway.address))
-    .then(() => multiEventsHistory.authorize(jobController.address))
-
-    .then(() => erc20Library.setupEventsHistory(multiEventsHistory.address))
     .then(() => erc20Library.addContract(fakeCoin.address))
-
-    .then(() => userLibrary.setupEventsHistory(multiEventsHistory.address))
-
     .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
-
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
-
-    .then(() => jobController.setupEventsHistory(multiEventsHistory.address))
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
     .then(() => jobController.setUserLibrary(mock.address))
-
     .then(() => fakeCoin.mint(client, '0xfffffffffffffffffff'))
     .then(() => paymentGateway.deposit('0xfffffffffffffffffff', fakeCoin.address, {from: client}))
     .then(reverter.snapshot);
@@ -248,7 +237,7 @@ contract('JobController', function(accounts) {
           roles2LibraryInterface.canCall.getData(
             caller,
             jobController.address,
-            jobController.contract.setupEventsHistory.getData().slice(0, 10)
+            jobController.contract.setupEventsHistory.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => jobController.setupEventsHistory(newAddress, {from: caller}))
@@ -266,7 +255,7 @@ contract('JobController', function(accounts) {
           roles2LibraryInterface.canCall.getData(
             caller,
             jobController.address,
-            jobController.contract.setPaymentProcessor.getData().slice(0, 10)
+            jobController.contract.setPaymentProcessor.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => jobController.setPaymentProcessor(newAddress, {from: caller}))
@@ -284,7 +273,7 @@ contract('JobController', function(accounts) {
           roles2LibraryInterface.canCall.getData(
             caller,
             jobController.address,
-            jobController.contract.setUserLibrary.getData().slice(0, 10)
+            jobController.contract.setUserLibrary.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => jobController.setUserLibrary(newAddress, {from: caller}))
@@ -302,7 +291,7 @@ contract('JobController', function(accounts) {
           roles2LibraryInterface.canCall.getData(
             caller,
             jobController.address,
-            jobController.contract.setERC20Library.getData().slice(0, 10)
+            jobController.contract.setERC20Library.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => jobController.setERC20Library(newAddress, {from: caller}))
@@ -682,9 +671,7 @@ contract('JobController', function(accounts) {
 
       return Promise.resolve()
         .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
-
         .then(() => jobController.postJobOffer(jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}))
-
         .then(() => jobController.acceptOffer.call(jobId, worker, {from: stranger}))
         .then(assert.isFalse)
         .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
@@ -692,7 +679,6 @@ contract('JobController', function(accounts) {
         .then(assert.isTrue)
         .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
         .then(assert.isFalse)
-
         .then(() => jobController.startWork.call(jobId, {from: stranger}))
         .then(assert.isFalse)
         .then(() => jobController.startWork(jobId, {from: worker}))
@@ -712,17 +698,20 @@ contract('JobController', function(accounts) {
         .then(() => jobController.pauseWork.call(jobId, {from: stranger}))
         .then(assert.isFalse)
         .then(() => jobController.pauseWork(jobId, {from: worker}))
-        .then(tx => assert.equal(tx.logs[0].event, 'WorkPaused'))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkPaused"))
+        .then(events => assert.equal(events.length, 1))
 
         .then(() => jobController.resumeWork.call(jobId, {from: stranger}))
         .then(assert.isFalse)
         .then(() => jobController.resumeWork(jobId, {from: worker}))
-        .then(tx => assert.equal(tx.logs[0].event, 'WorkResumed'))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkResumed"))
+        .then(events => assert.equal(events.length, 1))
 
         .then(() => jobController.addMoreTime.call(jobId, additionalTime, {from: stranger}))
         .then(assert.isFalse)
         .then(() => jobController.addMoreTime(jobId, additionalTime, {from: client}))
-        .then(tx => assert.equal(tx.logs[0].event, 'TimeAdded'))
+        .then(tx => eventsHelper.extractEvents(tx, "TimeAdded"))
+        .then(events => assert.equal(events.length, 1))
 
         .then(() => jobController.endWork.call(jobId, {from: stranger}))
         .then(assert.isFalse)
@@ -853,7 +842,8 @@ contract('JobController', function(accounts) {
         .then(() => jobController.startWork(1, {from: worker}))
         .then(() => jobController.confirmStartWork(1, {from: client}))
         .then(() => jobController.pauseWork(1, {from: worker}))
-        .then(tx => assert.equal(tx.logs[0].event, 'WorkPaused'))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkPaused"))
+        .then(events => assert.equal(events.length, 1))
         .then(() => jobController.pauseWork.call(1, {from: worker}))
         .then(assert.isFalse);
     });
@@ -905,7 +895,8 @@ contract('JobController', function(accounts) {
         .then(() => jobController.acceptOffer(1, worker, {from: client}))
         .then(() => jobController.startWork(1, {from: worker}))
         .then(() => jobController.confirmStartWork(1, {from: client}))
-        .then(tx => assert.equal(tx.logs[0].event, 'WorkStarted'))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
+        .then(events => assert.equal(events.length, 1))
         .then(() => paymentProcessor.enableServiceMode())
         .then(() => paymentProcessor.serviceMode())
         .then(assert.isTrue)
@@ -926,7 +917,8 @@ contract('JobController', function(accounts) {
         .then(() => jobController.acceptOffer(1, worker, {from: client}))
         .then(() => jobController.startWork(1, {from: worker}))
         .then(() => jobController.confirmStartWork(1, {from: client}))
-        .then(tx => assert.equal(tx.logs[0].event, 'WorkStarted'))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
+        .then(events => assert.equal(events.length, 1))
         .then(() => asserts.throws(
           jobController.addMoreTime(1, 65535, {from: client})
         ));
@@ -950,11 +942,12 @@ contract('JobController', function(accounts) {
       return Promise.resolve()
       // Post job
         .then(() => jobController.postJob(skillsArea, skillsCategory, skills, jobDetails, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobPosted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobPosted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobPosted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.client, client);
@@ -968,11 +961,12 @@ contract('JobController', function(accounts) {
           1, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
           )
         )
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobOfferPosted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobOfferPosted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobOfferPosted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.worker, worker);
@@ -982,25 +976,28 @@ contract('JobController', function(accounts) {
         })
         // Accept job offer
         .then(() => jobController.acceptOffer(1, worker, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobOfferAccepted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobOfferAccepted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobOfferAccepted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.worker, worker);
         })
         // Request start of work
         .then(() => jobController.startWork(1, {from: worker}))
-        .then(tx => assert.equal(tx.logs.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
+        .then(events => assert.equal(events.length, 0))
         // Confirm start of work
         .then(() => jobController.confirmStartWork(1, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkStarted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkStarted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           const now = new Date() / 1000;
@@ -1008,11 +1005,12 @@ contract('JobController', function(accounts) {
         })
         // Pause work
         .then(() => jobController.pauseWork(1, {from: worker}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkPaused');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkPaused"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkPaused');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           const now = new Date() / 1000;
@@ -1020,11 +1018,12 @@ contract('JobController', function(accounts) {
         })
         // Resume work
         .then(() => jobController.resumeWork(1, {from: worker}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkResumed');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkResumed"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkResumed');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           const now = new Date() / 1000;
@@ -1032,36 +1031,40 @@ contract('JobController', function(accounts) {
         })
         // Add more time
         .then(() => jobController.addMoreTime(1, 60, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'TimeAdded');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "TimeAdded"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'TimeAdded');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.time.toString(), '60');
         })
         // Request end of work
         .then(() => jobController.endWork(1, {from: worker}))
-        .then(tx => assert.equal(tx.logs.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkFinished"))
+        .then(events => assert.equal(events.length, 0))
         // Confirm end of work
         .then(() => jobController.confirmEndWork(1, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkFinished');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkFinished"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkFinished');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           const now = new Date() / 1000;
           assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         .then(() => jobController.releasePayment(1))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'PaymentReleased');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "PaymentReleased"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'PaymentReleased');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
         });
@@ -1080,11 +1083,12 @@ contract('JobController', function(accounts) {
       return Promise.resolve()
       // Post job
         .then(() => jobController.postJob(skillsArea, skillsCategory, skills, jobDetails, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobPosted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobPosted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobPosted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.client, client);
@@ -1098,11 +1102,12 @@ contract('JobController', function(accounts) {
           1, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
           )
         )
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobOfferPosted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobOfferPosted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobOfferPosted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.worker, worker);
@@ -1112,25 +1117,28 @@ contract('JobController', function(accounts) {
         })
         // Accept job offer
         .then(() => jobController.acceptOffer(1, worker, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobOfferAccepted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobOfferAccepted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobOfferAccepted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.worker, worker);
         })
         // Request start of work
         .then(() => jobController.startWork(1, {from: worker}))
-        .then(tx => assert.equal(tx.logs.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
+        .then(events => assert.equal(events.length, 0))
         // Confirm start of work
         .then(() => jobController.confirmStartWork(1, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkStarted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkStarted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           const now = new Date() / 1000;
@@ -1138,11 +1146,12 @@ contract('JobController', function(accounts) {
         })
         // Pause work
         .then(() => jobController.pauseWork(1, {from: worker}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkPaused');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkPaused"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkPaused');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           const now = new Date() / 1000;
@@ -1150,11 +1159,12 @@ contract('JobController', function(accounts) {
         })
         // Resume work
         .then(() => jobController.resumeWork(1, {from: worker}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkResumed');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkResumed"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkResumed');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           const now = new Date() / 1000;
@@ -1162,25 +1172,28 @@ contract('JobController', function(accounts) {
         })
         // Add more time
         .then(() => jobController.addMoreTime(1, 60, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'TimeAdded');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "TimeAdded"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'TimeAdded');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.time.toString(), '60');
         })
         // Request end of work
         .then(() => jobController.endWork(1, {from: worker}))
-        .then(tx => assert.equal(tx.logs.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "JobCanceled"))
+        .then(events => assert.equal(events.length, 0))
         // Cancel job
         .then(() => jobController.cancelJob(1, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobCanceled');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobCanceled"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobCanceled');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
         });

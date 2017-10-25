@@ -4,6 +4,7 @@ const Mock = artifacts.require('./Mock.sol');
 const PaymentGatewayInterface = artifacts.require('./PaymentGatewayInterface.sol');
 const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const Roles2Library = artifacts.require('./Roles2Library.sol');
 
 const Asserts = require('./helpers/asserts');
 const Promise = require('bluebird');
@@ -15,6 +16,7 @@ contract('PaymentProcessor', function(accounts) {
   afterEach('revert', reverter.revert);
 
   const asserts = Asserts(assert);
+  const JobControllerRole = 35;
   let paymentGateway = web3.eth.contract(PaymentGatewayInterface.abi).at('0x0');
   let mock;
   let paymentProcessor;
@@ -33,17 +35,14 @@ contract('PaymentProcessor', function(accounts) {
     };
   };
 
-  const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
-  };
-
   before('setup', () => {
     return Mock.deployed()
     .then(instance => mock = instance)
-    .then(() => ignoreAuth())
     .then(() => PaymentProcessor.deployed())
     .then(instance => paymentProcessor = instance)
     .then(() => paymentProcessor.setPaymentGateway(mock.address))
+    .then(() => Roles2Library.deployed())
+    .then(rolesLibrary => rolesLibrary.addUserRole(jobControllerAddress, JobControllerRole))
     .then(reverter.snapshot);
   });
 
@@ -51,14 +50,14 @@ contract('PaymentProcessor', function(accounts) {
     const caller = accounts[1];
     const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => ignoreAuth(false))
+    .then(() => paymentProcessor.setRoles2Library(mock.address))
     .then(() => mock.expect(
       paymentProcessor.address,
       0,
       roles2LibraryInterface.canCall.getData(
         caller,
         paymentProcessor.address,
-        paymentProcessor.contract.setPaymentGateway.getData().slice(0, 10)
+        paymentProcessor.contract.setPaymentGateway.getData(newAddress).slice(0, 10)
       ), 0)
     )
     .then(() => paymentProcessor.setPaymentGateway(newAddress, {from: caller}))
@@ -93,14 +92,14 @@ contract('PaymentProcessor', function(accounts) {
     const erc20ContractAddress = '0xffffffffffffffffffffffffffffffffffffff00';
     const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     return Promise.resolve()
-    .then(() => ignoreAuth(false))
+    .then(() => paymentProcessor.setRoles2Library(mock.address))
     .then(() => mock.expect(
       paymentProcessor.address,
       0,
       roles2LibraryInterface.canCall.getData(
         caller,
         paymentProcessor.address,
-        paymentProcessor.contract.lockPayment.getData().slice(0, 10)
+        paymentProcessor.contract.lockPayment.getData(operationId, payer, value, erc20ContractAddress).slice(0, 10)
       ), 0)
     )
     .then(() => paymentProcessor.lockPayment(operationId, payer, value, erc20ContractAddress, {from: caller}))
@@ -116,6 +115,7 @@ contract('PaymentProcessor', function(accounts) {
     const erc20ContractAddress = '0xffffffffffffffffffffffffffffffffffffff00';
     const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     return Promise.resolve()
+    .then(() => paymentProcessor.setRoles2Library(mock.address))
     .then(() => mock.expect(paymentProcessor.address, 0, paymentGateway.transferToMany.getData(payer, receivers, values, feeFromValue, additionalFee, erc20ContractAddress), 1))
     .then(() => paymentProcessor.releasePayment(operationId, receivers, values, feeFromValue, additionalFee, erc20ContractAddress, {from: jobControllerAddress}))
     .then(assertExpectations());
@@ -145,6 +145,7 @@ contract('PaymentProcessor', function(accounts) {
     const erc20ContractAddress = '0xffffffffffffffffffffffffffffffffffffff00';
     const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     return Promise.resolve()
+    .then(() => paymentProcessor.setRoles2Library(mock.address))
     .then(() => paymentProcessor.releasePayment(operationId, receivers, values, feeFromValue, additionalFee, erc20ContractAddress, {from: accounts[0]}))
     .then(assertExpectations());
   });
@@ -160,14 +161,14 @@ contract('PaymentProcessor', function(accounts) {
     const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     const addressOperationId = '0xffffffffffffffffffffffffffffffffffffff00';
     return Promise.resolve()
-    .then(() => ignoreAuth(false))
+    .then(() => paymentProcessor.setRoles2Library(mock.address))
     .then(() => mock.expect(
       paymentProcessor.address,
       0,
       roles2LibraryInterface.canCall.getData(
         caller,
         paymentProcessor.address,
-        paymentProcessor.contract.releasePayment.getData().slice(0, 10)
+        paymentProcessor.contract.releasePayment.getData(0,0,0,0,0,0,0).slice(0, 10)
       ), 0)
     )
     .then(() => paymentProcessor.releasePayment(operationId, receiver, value, change, feeFromValue, additionalFee, erc20ContractAddress, {from: caller}))
@@ -303,14 +304,14 @@ contract('PaymentProcessor', function(accounts) {
     const caller = accounts[5];
     const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     return Promise.resolve()
-    .then(() => ignoreAuth(false))
+    .then(() => paymentProcessor.setRoles2Library(mock.address))
     .then(() => mock.expect(
       paymentProcessor.address,
       0,
       roles2LibraryInterface.canCall.getData(
         caller,
         paymentProcessor.address,
-        paymentProcessor.contract.approve.getData().slice(0, 10)
+        paymentProcessor.contract.approve.getData(operationId).slice(0, 10)
       ), 0)
     )
     .then(() => paymentProcessor.approve(operationId, {from: caller}))
@@ -477,7 +478,7 @@ contract('PaymentProcessor', function(accounts) {
   it('should not allow to enable service mode if called not by owner', () => {
     const notOwner = accounts[1];
     return Promise.resolve()
-    .then(() => ignoreAuth(false))
+    .then(() => paymentProcessor.setRoles2Library(mock.address))
     .then(() => mock.expect(
       paymentProcessor.address,
       0,
@@ -497,7 +498,7 @@ contract('PaymentProcessor', function(accounts) {
     const notOwner = accounts[1];
     return Promise.resolve()
     .then(() => paymentProcessor.enableServiceMode())
-    .then(() => ignoreAuth(false))
+    .then(() => paymentProcessor.setRoles2Library(mock.address))
     .then(() => mock.expect(
       paymentProcessor.address,
       0,

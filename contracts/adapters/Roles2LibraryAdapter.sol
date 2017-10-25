@@ -1,4 +1,4 @@
-pragma solidity 0.4.11;
+pragma solidity ^0.4.11;
 
 contract Roles2LibraryInterface {
     function addUserRole(address _user, uint8 _role) returns(bool);
@@ -8,8 +8,11 @@ contract Roles2LibraryInterface {
 contract Roles2LibraryAdapter {
     Roles2LibraryInterface roles2Library;
 
+    event AuthFailedError(address code, address sender, bytes4 sig);
+
     modifier auth() {
         if (!_isAuthorized(msg.sender, msg.sig)) {
+            AuthFailedError(this, msg.sender, msg.sig);
             return;
         }
         _;

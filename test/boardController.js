@@ -4,7 +4,6 @@ const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const ERC20Library = artifacts.require('./ERC20Library.sol');
 const FakeCoin = artifacts.require('./FakeCoin.sol');
 const JobController = artifacts.require('./JobController.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
@@ -18,6 +17,7 @@ const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Asserts = require('./helpers/asserts');
 const Promise = require('bluebird');
 const Reverter = require('./helpers/reverter');
+const eventsHelper = require('./helpers/eventsHelper');
 
 const helpers = require('./helpers/helpers');
 
@@ -44,26 +44,6 @@ contract('BoardController', function(accounts) {
     };
   };
 
-  const assertExpectations = (expected = 0, callsCount = null) => {
-    let expectationsCount;
-    return () => {
-      return mock.expectationsLeft()
-      .then(asserts.equal(expected))
-      .then(() => mock.expectationsCount())
-      .then(result => expectationsCount = result)
-      .then(() => mock.callsCount())
-      .then(result => asserts.equal(callsCount === null ? expectationsCount : callsCount)(result));
-    };
-  };
-
-  const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
-  };
-
-  const ignoreSkillsCheck = (enabled = true) => {
-    return mock.ignore(userLibraryInterface.hasSkills.getData().slice(0, 10), enabled);
-  }
-
   let fakeCoin;
   let storage;
   let boardController;
@@ -76,15 +56,15 @@ contract('BoardController', function(accounts) {
   let balanceHolder;
   let roles2Library;
   let mock;
+  let createBoard;
+  let closeBoard;
 
   const root = accounts[5];
   const moderator = accounts[6];
   const moderator2 = accounts[7];
   const stranger = accounts[9];
   const client = accounts[1];
-  const role = 255;
-  const createBoard = helpers.getSig("createBoard(address,uint8)");
-  const closeBoard = helpers.getSig("closeBoard(address,uint8)");
+  const role = 44;
   const boardId = 1;
   const boardName = 'Name';
   const boardDescription = 'Description';
@@ -100,16 +80,12 @@ contract('BoardController', function(accounts) {
   before('setup', () => {
     return Mock.deployed()
     .then(instance => mock = instance)
-    .then(() => ignoreAuth())
-    .then(() => ignoreSkillsCheck())
     .then(() => FakeCoin.deployed())
     .then(instance => fakeCoin = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
     .then(() => Storage.deployed())
     .then(instance => storage = instance)
-    .then(() => ManagerMock.deployed())
-    .then(instance => storage.setManager(instance.address))
     .then(() => BalanceHolder.deployed())
     .then(instance => balanceHolder = instance)
     .then(() => ERC20Library.deployed())
@@ -127,44 +103,25 @@ contract('BoardController', function(accounts) {
     .then(() => BoardController.deployed())
     .then(instance => boardController = instance)
 
-    .then(() => multiEventsHistory.authorize(boardController.address))
-    .then(() => multiEventsHistory.authorize(erc20Library.address))
-    .then(() => multiEventsHistory.authorize(userLibrary.address))
-    .then(() => multiEventsHistory.authorize(paymentGateway.address))
-    .then(() => multiEventsHistory.authorize(jobController.address))
-    .then(() => multiEventsHistory.authorize(roles2Library.address))
-
-    .then(() => roles2Library.setupEventsHistory(multiEventsHistory.address))
-
-    .then(() => erc20Library.setupEventsHistory(multiEventsHistory.address))
     .then(() => erc20Library.addContract(fakeCoin.address))
-
-    .then(() => userLibrary.setupEventsHistory(multiEventsHistory.address))
-
-    .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
-
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
-
-    .then(() => jobController.setupEventsHistory(multiEventsHistory.address))
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
     .then(() => jobController.setUserLibrary(mock.address))
 
-    .then(() => boardController.setupEventsHistory(multiEventsHistory.address))
-
     .then(() => fakeCoin.mint(client, '0xfffffffffffffffffff'))
     .then(() => paymentGateway.deposit('0xfffffffffffffffffff', fakeCoin.address, {from: client}))
-
+    .then(() => createBoard = boardController.contract.createBoard.getData(0,0,0,0,0).slice(0,10))
+    .then(() => closeBoard = boardController.contract.closeBoard.getData(0).slice(0,10))
     .then(() => roles2Library.setRootUser(root, true))
-    .then(() => roles2Library.addRoleCapability(role, roles2Library.address, createBoard, {from: root}))
+    .then(() => roles2Library.addRoleCapability(role, boardController.address, createBoard))
+    .then(() => roles2Library.addRoleCapability(role, boardController.address, closeBoard))
     .then(() => roles2Library.addUserRole(moderator, role, {from: root}))
-
     .then(reverter.snapshot);
   });
 
 
   describe('Board creating', () => {
-
     it('should allow to create a board by moderator', () => {
       return Promise.resolve()
         .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, {from: moderator}))
@@ -246,16 +203,20 @@ contract('BoardController', function(accounts) {
     it('should emit "BoardCreated" event', () => {
       return Promise.resolve()
         .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, {from: moderator}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'BoardCreated');
-          const log = tx.logs[0].args;
-          assert.equal(log.self, boardController.address);
-          assert.equal(log.boardId.toString(), '1');
-          assert.equal(log.boardTags.toString(), boardTags);
-          assert.equal(log.boardTagsArea.toString(), boardTagsArea);
-          assert.equal(log.boardTagsCategory.toString(), boardTagsCategory);
+        .then(tx => eventsHelper.extractEvents(tx, "BoardCreated"))
+        .then(events => {
+            assert.equal(events.length, 1);
+            let boardCreatedEvent = events[0];
+
+            assert.equal(boardCreatedEvent.address, multiEventsHistory.address);
+            assert.equal(boardCreatedEvent.event, 'BoardCreated');
+            const log = boardCreatedEvent.args;
+
+            assert.equal(log.self, boardController.address);
+            assert.equal(log.boardId.toString(), '1');
+            assert.equal(log.boardTags.toString(), boardTags);
+            assert.equal(log.boardTagsArea.toString(), boardTagsArea);
+            assert.equal(log.boardTagsCategory.toString(), boardTagsCategory);
         })
     });
 
@@ -411,14 +372,17 @@ contract('BoardController', function(accounts) {
         .then(() => roles2Library.setRootUser(root, true))
         .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, {from: moderator}))
         .then(() => boardController.closeBoard(boardId, {from: root}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'BoardClosed');
-          const log = tx.logs[0].args;
-          assert.equal(log.self, boardController.address);
-          assert.equal(log.boardId.toString(), '1');
-          assert.equal(log.status, false);
+        .then(tx => eventsHelper.extractEvents(tx, "BoardClosed"))
+        .then(events => {
+            assert.equal(events.length, 1);
+            let boardClosedEvent = events[0];
+
+            assert.equal(boardClosedEvent.address, multiEventsHistory.address);
+            assert.equal(boardClosedEvent.event, 'BoardClosed');
+            const log = boardClosedEvent.args;
+            assert.equal(log.self, boardController.address);
+            assert.equal(log.boardId.toString(), '1');
+            assert.equal(log.status, false);
         })
     });
 

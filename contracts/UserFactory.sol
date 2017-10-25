@@ -1,4 +1,4 @@
-pragma solidity 0.4.11;
+pragma solidity ^0.4.11;
 
 import './User.sol';
 import './UserLibrary.sol';
@@ -59,12 +59,15 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
     returns(bool) {
         User user = new User(_owner, _recoveryContract);
         UserProxy proxy = UserProxy(user.getUserProxy());
-        if (!_setRoles(proxy, _roles)) {
-            throw;
+
+        if(!_setRoles(proxy, _roles)) {
+            revert();
         }
-        if (!_setSkills(proxy, _areas, _categories, _skills)) {
-            throw;
+
+        if(!_setSkills(proxy, _areas, _categories, _skills)) {
+            revert();
         }
+
         _emitUserCreated(user, proxy, _recoveryContract, _owner, _roles, _areas, _categories, _skills);
     }
 

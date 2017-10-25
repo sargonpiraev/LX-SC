@@ -1,4 +1,4 @@
-pragma solidity 0.4.11;
+pragma solidity ^0.4.11;
 
 import './adapters/Roles2LibraryAdapter.sol';
 
@@ -48,7 +48,7 @@ contract MultiEventsHistory is Roles2LibraryAdapter {
         // Internal Out Of Gas/Throw: revert this transaction too;
         // Recursive Call: safe, all changes already made.
         if (!msg.sender.delegatecall(msg.data)) {
-            throw;
+            revert();
         }
     }
 }

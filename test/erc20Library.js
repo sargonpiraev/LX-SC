@@ -1,15 +1,15 @@
 "use strict";
 
 const ERC20Library = artifacts.require('./ERC20Library.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Storage = artifacts.require('./Storage.sol');
 
 const Asserts = require('./helpers/asserts');
 const Reverter = require('./helpers/reverter');
-
+const eventsHelper = require('./helpers/eventsHelper');
 
 contract('ERC20Library', function(accounts) {
   const reverter = new Reverter(web3);
@@ -34,24 +34,15 @@ contract('ERC20Library', function(accounts) {
     };
   };
 
-  const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
-  };
-
   before('setup', () => {
     return Mock.deployed()
     .then(instance => mock = instance)
-    .then(() => ignoreAuth())
     .then(() => Storage.deployed())
     .then(instance => storage = instance)
-    .then(() => ManagerMock.deployed())
-    .then(instance => storage.setManager(instance.address))
     .then(() => ERC20Library.deployed())
     .then(instance => erc20Library = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
-    .then(() => erc20Library.setupEventsHistory(multiEventsHistory.address))
-    .then(() => multiEventsHistory.authorize(erc20Library.address))
     .then(reverter.snapshot);
   });
 
@@ -75,11 +66,12 @@ contract('ERC20Library', function(accounts) {
     const contract = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
     .then(() => erc20Library.addContract(contract))
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, multiEventsHistory.address);
-      assert.equal(result.logs[0].event, 'ContractAdded');
-      assert.equal(result.logs[0].args.contractAddress, contract);
+    .then(tx => eventsHelper.extractEvents(tx, "ContractAdded"))
+    .then(events => {
+      assert.equal(events.length, 1);
+      assert.equal(events[0].address, multiEventsHistory.address);
+      assert.equal(events[0].event, 'ContractAdded');
+      assert.equal(events[0].args.contractAddress, contract);
     });
   });
 
@@ -113,11 +105,12 @@ contract('ERC20Library', function(accounts) {
     return Promise.resolve()
     .then(() => erc20Library.addContract(contract))
     .then(() => erc20Library.removeContract(contract))
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, multiEventsHistory.address);
-      assert.equal(result.logs[0].event, 'ContractRemoved');
-      assert.equal(result.logs[0].args.contractAddress, contract);
+    .then(tx => eventsHelper.extractEvents(tx, "ContractRemoved"))
+    .then(events => {
+      assert.equal(events.length, 1);
+      assert.equal(events[0].address, multiEventsHistory.address);
+      assert.equal(events[0].event, 'ContractRemoved');
+      assert.equal(events[0].args.contractAddress, contract);
     });
   });
 
@@ -134,18 +127,19 @@ contract('ERC20Library', function(accounts) {
     const nonOwner = accounts[2];
     const contract = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => ignoreAuth(false))
+    .then(() => erc20Library.setRoles2Library(Mock.address))
     .then(() => mock.expect(
       erc20Library.address,
       0,
       roles2LibraryInterface.canCall.getData(
         nonOwner,
         erc20Library.address,
-        erc20Library.contract.addContract.getData().slice(0, 10)
+        erc20Library.contract.addContract.getData(contract).slice(0, 10)
       ), 0)
     )
     .then(() => erc20Library.addContract(contract, {from: nonOwner}))
-    .then(assertExpectations());
+    .then(assertExpectations())
+    .then(() => erc20Library.setRoles2Library(Roles2Library.address))
   });
 
   it.skip('should not remove contract if not allowed', () => {
@@ -162,18 +156,19 @@ contract('ERC20Library', function(accounts) {
     const nonOwner = accounts[2];
     const contract = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => ignoreAuth(false))
+    .then(() => erc20Library.setRoles2Library(Mock.address))
     .then(() => mock.expect(
       erc20Library.address,
       0,
       roles2LibraryInterface.canCall.getData(
         nonOwner,
         erc20Library.address,
-        erc20Library.contract.removeContract.getData().slice(0, 10)
+        erc20Library.contract.removeContract.getData(contract).slice(0, 10)
       ), 0)
     )
     .then(() => erc20Library.removeContract(contract, {from: nonOwner}))
-    .then(assertExpectations());
+    .then(assertExpectations())
+    .then(() => erc20Library.setRoles2Library(Roles2Library.address))
   });
 
   it('should add several contracts', () => {

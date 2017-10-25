@@ -1,4 +1,4 @@
-pragma solidity 0.4.11;
+pragma solidity ^0.4.11;
 
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './adapters/Roles2LibraryAdapter.sol';
@@ -208,12 +208,10 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
                 // Nothing should be put inside full or empty area.
                 continue;
             }
-            if (!_ifEvenThenOddTooFlags(_categories[categoriesCounter])) {
-                throw;
-            }
-            if (_categories[categoriesCounter] == 0) {
-                throw;
-            }
+
+            require(_ifEvenThenOddTooFlags(_categories[categoriesCounter]));
+            require(_categories[categoriesCounter] != 0);
+
             // Set categories for current partial area.
             _setCategories(_user, area, _overwrite ? _categories[categoriesCounter] : (store.get(skillCategories, _user, area) | _categories[categoriesCounter]));
             for (uint category = 1; category != 0; category = category << 2) {
@@ -221,9 +219,7 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
                     // Nothing should be put inside full or empty category.
                     continue;
                 }
-                if (_skills[skillsCounter] == 0) {
-                    throw;
-                }
+                require(_skills[skillsCounter] != 0);
                 // Set skills for current partial category.
                 _setSkills(_user, area, category, _skills[skillsCounter]);
                 // Move to next skills.

@@ -20,10 +20,15 @@ contract('StorageManager', function(accounts) {
     .then(instance => storageManager = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
-    .then(() => storageManager.setupEventsHistory(multiEventsHistory.address))
-    .then(() => multiEventsHistory.authorize(storageManager.address))
     .then(reverter.snapshot);
   });
+
+  it('should have valid events history', () => {
+      return storageManager.getEventsHistory.call()
+        .then(_eventsHistory => assert.equal(_eventsHistory, multiEventsHistory.address))
+        .then(() => multiEventsHistory.isAuthorized.call(storageManager.address))
+        .then(_isAuthorized => assert.isTrue(_isAuthorized))
+  })
 
   it('should NOT allow to setup events history by non-owner');  // TODO
 

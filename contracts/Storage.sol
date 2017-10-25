@@ -1,4 +1,4 @@
-pragma solidity 0.4.11;
+pragma solidity ^0.4.11;
 
 import './base/Owned.sol';
 
@@ -28,7 +28,7 @@ contract Storage is Owned {
 
     modifier onlyAllowed(bytes32 _role) {
         if (!manager.isAllowed(msg.sender, _role)) {
-            throw;
+            revert();
         }
         _;
     }

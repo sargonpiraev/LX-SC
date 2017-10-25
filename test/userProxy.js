@@ -14,7 +14,7 @@ contract('UserProxy', function(accounts) {
   let tester;
 
   before('setup', () => {
-    return UserProxy.deployed()
+    return UserProxy.new()
     .then(instance => userProxy = instance)
     .then(() => UserProxyTester.deployed())
     .then(instance => tester = instance)

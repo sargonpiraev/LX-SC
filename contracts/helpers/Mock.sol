@@ -1,4 +1,4 @@
-pragma solidity 0.4.11;
+pragma solidity ^0.4.11;
 
 contract Mock {
     event UnexpectedCall(uint index, address from, uint value, bytes input, bytes32 callHash);
@@ -44,7 +44,7 @@ contract Mock {
 
     function assertExpectations() constant {
         if (expectationsLeft() != 0 || callsCount != expectationsCount) {
-            throw;
+            revert();
         }
     }
 
