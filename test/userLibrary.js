@@ -87,13 +87,13 @@ contract('UserLibrary', function(accounts) {
       return a.valueOf() === b.valueOf();
     };
 
-    const parseBigNumbers = bigs => bigs.map(big => big.toString());
+    const parseBigNumbers = bigs => bigs.map(big => big.toString()).filter(e => e !== '0');
 
     const assertUserSkills = (user, expectedSkills) => {
       let actualSkills;
       let expSkills;
       return () =>
-        userLibrary.getUserSkills.call(user)
+        userLibrary.getUserSkills(user)
         .then(([areas, categories, skills]) => {
           actualSkills = [areas.toString(), parseBigNumbers(categories), parseBigNumbers(skills)];
           expSkills = [expectedSkills[0].toString(), parseBigNumbers(expectedSkills[1]), parseBigNumbers(expectedSkills[2])];

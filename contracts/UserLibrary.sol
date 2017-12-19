@@ -117,27 +117,29 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
         return _hasFlags(userSkills, _skills);
     }
 
-    uint[] tempCategories;
-    uint[] tempSkills;
     // If some area of category is full, then we are not looking into it cause observer can safely
     // assume that everything inside is filled.
-    function getUserSkills(address _user) public returns(uint, uint[], uint[]) {
-        tempCategories.length = 0;
-        tempSkills.length = 0;
-        uint areas = store.get(skillAreas, _user);
+    function getUserSkills(address _user) public view returns(uint areas, uint[] _categories, uint[] _skills) {
+        _categories = new uint[](2**7);
+        _skills = new uint[](2*15);
+        uint categoriesPointer = 0;
+        uint skillsPointer = 0;
+
+        areas = store.get(skillAreas, _user);
         for (uint area = 1; area != 0; area = area << 2) {
             if (_isFullOrNull(areas, area)) {
                 continue;
             }
-            tempCategories.push(store.get(skillCategories, _user, area));
+
+            uint _categoriesPointer = categoriesPointer;
+            _categories[categoriesPointer++] = store.get(skillCategories, _user, area);
             for (uint category = 1; category != 0; category = category << 2) {
-                if (_isFullOrNull(tempCategories[tempCategories.length - 1], category)) {
+                if (_isFullOrNull(_categories[_categoriesPointer], category)) {
                     continue;
                 }
-                tempSkills.push(store.get(skills, _user, area, category));
+                _skills[skillsPointer++] = store.get(skills, _user, area, category);
             }
         }
-        return (areas, tempCategories, tempSkills);
     }
 
     function setAreas(address _user, uint _areas)
