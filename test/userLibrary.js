@@ -87,7 +87,7 @@ contract('UserLibrary', function(accounts) {
       return a.valueOf() === b.valueOf();
     };
 
-    const parseBigNumbers = bigs => bigs.map(big => big.toString());
+    const parseBigNumbers = bigs => bigs.map(big => big.toString()).filter(e => e !== '0');
 
     const assertUserSkills = (user, expectedSkills) => {
       let actualSkills;
