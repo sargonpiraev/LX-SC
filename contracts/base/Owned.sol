@@ -1,6 +1,8 @@
 pragma solidity ^0.4.11;
 
+
 import './ERC20Interface.sol';
+
 
 /**
  * @title Owned contract with safe ownership pass.
@@ -16,7 +18,7 @@ contract Owned {
         contractOwner = msg.sender;
     }
 
-    modifier onlyContractOwner() {
+    modifier onlyContractOwner {
         if (contractOwner == msg.sender) {
             _;
         }
@@ -31,7 +33,10 @@ contract Owned {
      *
      * @return success.
      */
-    function changeContractOwnership(address _to) public onlyContractOwner() returns(bool) {
+    function changeContractOwnership(address _to) public onlyContractOwner returns (bool) {
+        if (_to == 0x0) {
+            return false;
+        }
         pendingContractOwner = _to;
         return true;
     }
@@ -43,10 +48,11 @@ contract Owned {
      *
      * @return success.
      */
-    function claimContractOwnership() public returns(bool) {
+    function claimContractOwnership() public returns (bool) {
         if (pendingContractOwner != msg.sender) {
             return false;
         }
+
         contractOwner = pendingContractOwner;
         delete pendingContractOwner;
         return true;
