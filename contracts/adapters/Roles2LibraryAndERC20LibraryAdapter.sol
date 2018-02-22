@@ -1,12 +1,16 @@
 pragma solidity ^0.4.11;
 
+
 import './Roles2LibraryAdapter.sol';
+
 
 contract ERC20LibraryInterface {
     function includes(address _contract) public view returns(bool);
 }
 
+
 contract Roles2LibraryAndERC20LibraryAdapter is Roles2LibraryAdapter {
+
     ERC20LibraryInterface erc20Library;
 
     modifier onlySupportedContract(address _contract) {
@@ -22,9 +26,9 @@ contract Roles2LibraryAndERC20LibraryAdapter is Roles2LibraryAdapter {
         erc20Library = ERC20LibraryInterface(_erc20Library);
     }
 
-    function setERC20Library(ERC20LibraryInterface _erc20Library) public auth() returns(bool) {
+    function setERC20Library(ERC20LibraryInterface _erc20Library) public auth returns (uint) {
         erc20Library = _erc20Library;
-        return true;
+        return OK;
     }
 
 }

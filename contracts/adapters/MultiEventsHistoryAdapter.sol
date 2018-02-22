@@ -9,7 +9,7 @@ contract MultiEventsHistoryAdapter {
 
     event Error(address indexed self, bytes32 msg);
 
-    function getEventsHistory() public view returns(address) {
+    function getEventsHistory() public view returns (address) {
         return eventsHistory;
     }
 
@@ -19,7 +19,7 @@ contract MultiEventsHistoryAdapter {
     }
 
     // It is address of MultiEventsHistory caller assuming we are inside of delegate call.
-    function _self() view internal returns(address) {
+    function _self() view internal returns (address) {
         return msg.sender;
     }
 
