@@ -10,6 +10,7 @@ const Storage = artifacts.require('./Storage.sol');
 const Asserts = require('./helpers/asserts');
 const Reverter = require('./helpers/reverter');
 const eventsHelper = require('./helpers/eventsHelper');
+const ErrorsNamespace = require('../common/errors')
 
 contract('ERC20Library', function(accounts) {
   const reverter = new Reverter(web3);
@@ -59,7 +60,7 @@ contract('ERC20Library', function(accounts) {
     return Promise.resolve()
     .then(() => erc20Library.addContract(contract))
     .then(() => erc20Library.addContract.call(contract))
-    .then(asserts.isFalse);
+    .then((code) => assert.equal(code, ErrorsNamespace.ERC20_LIBRARY_CONTRACT_EXISTS));
   });
 
   it('should emit ContractAdded event in MultiEventsHistory', () => {
@@ -97,7 +98,7 @@ contract('ERC20Library', function(accounts) {
     .then(() => erc20Library.addContract(contract))
     .then(() => erc20Library.removeContract(contract))
     .then(() => erc20Library.removeContract.call(contract))
-    .then(asserts.isFalse);
+    .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.ERC20_LIBRARY_CONTRACT_DOES_NOT_EXIST));
   });
 
   it('should emit ContractRemoved event in MultiEventsHistory', () => {
