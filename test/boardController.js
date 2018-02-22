@@ -20,6 +20,7 @@ const Reverter = require('./helpers/reverter');
 const eventsHelper = require('./helpers/eventsHelper');
 
 const helpers = require('./helpers/helpers');
+const ErrorsNamespace = require('../common/errors')
 
 
 contract('BoardController', function(accounts) {
@@ -239,7 +240,7 @@ contract('BoardController', function(accounts) {
         .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
         .then(() => boardController.closeBoard(boardId, {from: moderator}))
         .then(() => boardController.bindJobWithBoard.call(boardId, jobId))
-        .then(assert.isFalse);
+        .then((code) => assert.equal(code, ErrorsNamespace.BOARD_CONTROLLER_BOARD_IS_CLOSED));
     });
 
     it('should NOT allow to bind binded job on other board', () => {
@@ -248,18 +249,18 @@ contract('BoardController', function(accounts) {
         .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, {from: moderator}))
         .then(() => boardController.createBoard('Name2', boardDescription, boardTags, boardTagsArea, boardTagsCategory, {from: moderator}))
         .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
-        .then(() => boardController.bindJobWithBoard(jobId, boardId))
-        .then(() => boardController.bindJobWithBoard.call(jobId, boardId2))
-        .then(assert.isFalse);
+        .then(() => boardController.bindJobWithBoard(boardId, jobId))
+        .then(() => boardController.bindJobWithBoard.call(boardId2, jobId))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.BOARD_CONTROLLER_JOB_IS_ALREADY_BINDED));
     });
 
     it('should NOT allow to bind binded job on same board twice', () => {
       return Promise.resolve()
         .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, {from: moderator}))
         .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
-        .then(() => boardController.bindJobWithBoard(jobId, boardId))
-        .then(() => boardController.bindJobWithBoard.call(jobId, boardId))
-        .then(assert.isFalse);
+        .then(() => boardController.bindJobWithBoard(boardId, jobId))
+        .then(() => boardController.bindJobWithBoard.call(boardId, jobId))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.BOARD_CONTROLLER_JOB_IS_ALREADY_BINDED));
     });
 
     it('should emit "Job Binded" event', () => {
@@ -309,7 +310,7 @@ contract('BoardController', function(accounts) {
         .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, {from: moderator}))
         .then(() => boardController.closeBoard(boardId, {from: moderator}))
         .then(() => boardController.bindUserWithBoard.call(boardId, client))
-        .then(assert.isFalse);
+        .then((code) => assert.equal(code, ErrorsNamespace.BOARD_CONTROLLER_BOARD_IS_CLOSED))
     });
 
     it('should NOT allow to bind binded user on same board twice', () => {
@@ -317,7 +318,7 @@ contract('BoardController', function(accounts) {
         .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, {from: moderator}))
         .then(() => boardController.bindUserWithBoard(boardId, client))
         .then(() => boardController.bindUserWithBoard.call(boardId, client))
-        .then(assert.isFalse);
+        .then((code) => assert.equal(code, ErrorsNamespace.BOARD_CONTROLLER_USER_IS_ALREADY_BINDED))
     });
 
     it('should emit "User Binded" event', () => {
@@ -364,7 +365,7 @@ contract('BoardController', function(accounts) {
         .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, {from: moderator}))
         .then(() => boardController.closeBoard(boardId, {from: root}))
         .then(() => boardController.closeBoard.call(boardId, {from: root}))
-        .then(assert.isFalse);
+        .then((code) => assert.equal(code, ErrorsNamespace.BOARD_CONTROLLER_BOARD_IS_CLOSED))
     });
 
     it('should emit "Boaed Closed" event', () => {

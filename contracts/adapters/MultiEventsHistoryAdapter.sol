@@ -8,6 +8,7 @@ contract MultiEventsHistoryAdapter {
     address eventsHistory;
 
     event Error(address indexed self, bytes32 msg);
+    event ErrorCode(address indexed self, uint errorCode);
 
     function getEventsHistory() public view returns (address) {
         return eventsHistory;
@@ -27,7 +28,16 @@ contract MultiEventsHistoryAdapter {
         MultiEventsHistoryAdapter(getEventsHistory()).emitError(_msg);
     }
 
+    function _emitErrorCode(uint _errorCode) internal returns (uint) {
+        MultiEventsHistoryAdapter(getEventsHistory()).emitErrorCode(_errorCode);
+        return _errorCode;
+    }
+
     function emitError(bytes32 _msg) public {
         Error(_self(), _msg);
+    }
+
+    function emitErrorCode(uint _errorCode) public {
+        ErrorCode(_self(), _errorCode);
     }
 }
