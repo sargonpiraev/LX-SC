@@ -3,6 +3,8 @@ pragma solidity ^0.4.11;
 
 contract BitOps {
 
+    // TODO: add error code for modifiers
+
     modifier singleFlag(uint _flag) {
         if (!_isSingleFlag(_flag)) {
             return;
