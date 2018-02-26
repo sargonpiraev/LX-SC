@@ -14,14 +14,17 @@ contract Roles2LibraryAndERC20LibraryAdapter is Roles2LibraryAdapter {
     ERC20LibraryInterface erc20Library;
 
     modifier onlySupportedContract(address _contract) {
-        if (!erc20Library.includes(_contract)) {
-            return;
+        if (erc20Library.includes(_contract)) {
+            _;
         }
-        _;
     }
 
-    function Roles2LibraryAndERC20LibraryAdapter(address _roles2Library, address _erc20Library) public
-        Roles2LibraryAdapter(_roles2Library)
+    function Roles2LibraryAndERC20LibraryAdapter(
+        address _roles2Library,
+        address _erc20Library
+    )
+    Roles2LibraryAdapter(_roles2Library)
+    public
     {
         erc20Library = ERC20LibraryInterface(_erc20Library);
     }
