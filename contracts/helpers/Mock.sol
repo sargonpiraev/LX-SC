@@ -43,6 +43,10 @@ contract Mock {
         expectations[++expectationsCount] = Expect(keccak256(_from, _value, _input), _return);
     }
 
+    function convertToBytes32(uint _value) public pure returns (bytes32) {
+        return bytes32(_value);
+    }
+
     function assertExpectations() public view {
         if (expectationsLeft() != 0 || callsCount != expectationsCount) {
             revert();
