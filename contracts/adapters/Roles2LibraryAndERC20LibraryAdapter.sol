@@ -13,10 +13,17 @@ contract Roles2LibraryAndERC20LibraryAdapter is Roles2LibraryAdapter {
 
     ERC20LibraryInterface erc20Library;
 
+    uint constant ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_SCOPE = 14000;
+    uint constant ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_UNSUPPORTED_CONTRACT = ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_SCOPE + 1;
+
     modifier onlySupportedContract(address _contract) {
-        if (erc20Library.includes(_contract)) {
-            _;
+        if (!erc20Library.includes(_contract)) {
+            assembly {
+                mstore(0, 14001) // ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_UNSUPPORTED_CONTRACT
+                return(0, 32)
+            }
         }
+        _;
     }
 
     function Roles2LibraryAndERC20LibraryAdapter(
