@@ -13,8 +13,8 @@ contract UserLibraryInterface {
 
 
 contract PaymentProcessorInterface {
-    function lockPayment(bytes32 _operationId, address _from, uint _value, address _contract) public returns (bool);
-    function releasePayment(bytes32 _operationId, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee, address _contract) public returns (bool);
+    function lockPayment(bytes32 _operationId, address _from, uint _value, address _contract) public returns (uint);
+    function releasePayment(bytes32 _operationId, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee, address _contract) public returns (uint);
 }
 
 
@@ -304,7 +304,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     onlyClient(_jobId)
     onlyJobState(_jobId, JobState.CREATED)
     external
-    returns (uint)
+    returns (uint _resultCode)
     {
         if (store.get(jobOfferRate, _jobId, _worker) == 0) {
             return _emitErrorCode(JOB_CONTROLLER_WORKER_RATE_NOT_SET);
@@ -313,13 +313,13 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         // Maybe incentivize by locking some money from worker?
         store.set(jobWorker, _jobId, _worker);
 
-        if (!paymentProcessor.lockPayment(
-                bytes32(_jobId),
-                msg.sender,
-                calculateLockAmount(_jobId),
-                store.get(jobOfferERC20Contract, _jobId, _worker)
-            )
-        ) {
+        _resultCode = paymentProcessor.lockPayment(
+            bytes32(_jobId),
+            msg.sender,
+            calculateLockAmount(_jobId),
+            store.get(jobOfferERC20Contract, _jobId, _worker)
+        );
+        if (_resultCode != OK) {
             revert();
         }
 
@@ -426,7 +426,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             store.get(jobWorker, _jobId),
             store.get(jobOfferEstimate, _jobId, store.get(jobWorker, _jobId)) + _additionalTime
         );
-        return paymentProcessor.lockPayment(
+        return OK == paymentProcessor.lockPayment(
             bytes32(_jobId),
             msg.sender,
             calculateLockAmount(_jobId) - jobPaymentLocked,
@@ -467,7 +467,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     )
     onlyClient(_jobId)
     external
-    returns (uint)
+    returns (uint _resultCode)
     {
         uint _jobState = getJobState(_jobId);
         if (
@@ -482,7 +482,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         uint payCheck = calculatePaycheck(_jobId);
         address worker = store.get(jobWorker, _jobId);
 
-        if (!paymentProcessor.releasePayment(
+        _resultCode = paymentProcessor.releasePayment(
             bytes32(_jobId),
             worker,
             payCheck,
@@ -490,9 +490,9 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             payCheck,
             0,
             store.get(jobOfferERC20Contract, _jobId, worker)
-            )
-        ) {
-            revert();
+        );
+        if (_resultCode != OK) {
+            return _emitErrorCode(_resultCode);
         }
 
         store.set(jobFinalizedAt, _jobId, getJobState(_jobId));
@@ -507,12 +507,12 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     )
     onlyJobState(_jobId, JobState.FINISHED)
     public
-    returns (uint)
+    returns (uint _resultCode)
     {
         uint payCheck = calculatePaycheck(_jobId);
         address worker = store.get(jobWorker, _jobId);
 
-        if (!paymentProcessor.releasePayment(
+        _resultCode = paymentProcessor.releasePayment(
             bytes32(_jobId),
             worker,
             payCheck,
@@ -520,9 +520,9 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             payCheck,
             0,
             store.get(jobOfferERC20Contract, _jobId, worker)
-            )
-        ) {
-            revert();
+        );
+        if (_resultCode != OK) {
+            return _emitErrorCode(_resultCode);
         }
 
         store.set(jobFinalizedAt, _jobId, getJobState(_jobId));

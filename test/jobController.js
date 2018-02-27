@@ -899,7 +899,7 @@ contract('JobController', function(accounts) {
         ))
     });
 
-    it("should THROW when trying to add more time if operation " +
+    it("should NOT success when trying to add more time if operation " +
        "is not allowed by Payment Processor", () => {
       const workerRate = '0x12f2a36ecd555';
       const workerOnTop = '0x12f2a36ecd555';
@@ -918,8 +918,9 @@ contract('JobController', function(accounts) {
         .then(() => paymentProcessor.serviceMode())
         .then(assert.isTrue)
         .then(() => asserts.throws(
-          jobController.addMoreTime(1, 60, {from: client})
-        ));
+            jobController.addMoreTime.call(1, 60, {from: client})
+        ))
+        // .then(code => assert.equal(code.toNumber(), ErrorsNamespace.PAYMENT_PROCESSOR_OPERATION_IS_NOT_APPROVED))
     });
 
     it("should NOT let client add more work time if he doesn't have enough funds for it", () => {
@@ -1076,7 +1077,7 @@ contract('JobController', function(accounts) {
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-        });
+        })
     });
 
     it('should emit all events on a workflow with canceled job', () => {
@@ -1230,9 +1231,8 @@ contract('JobController', function(accounts) {
         .then(() => paymentProcessor.enableServiceMode())
         .then(() => paymentProcessor.serviceMode())
         .then(assert.isTrue)
-        .then(() => asserts.throws(
-            jobController.cancelJob.call(jobId, {from: client})
-        ))
+        .then(() => jobController.cancelJob.call(jobId, {from: client}))
+        .then(code => assert.equal(code.toNumber(), ErrorsNamespace.PAYMENT_PROCESSOR_OPERATION_IS_NOT_APPROVED))
     });
 
     it("should allow to cancel job if operation " +
@@ -1283,9 +1283,8 @@ contract('JobController', function(accounts) {
         .then(() => paymentProcessor.serviceMode())
         .then(assert.isTrue)
 
-        .then(() => asserts.throws(
-            jobController.releasePayment.call(jobId)
-        ))
+        .then(() => jobController.releasePayment.call(jobId))
+        .then((code) => assert.equal(code, ErrorsNamespace.PAYMENT_PROCESSOR_OPERATION_IS_NOT_APPROVED))
     });
 
     it("should allow to release payment when operation was allowed by Payment Processor", () => {
