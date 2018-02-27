@@ -15,6 +15,7 @@ const Asserts = require('./helpers/asserts');
 const Reverter = require('./helpers/reverter');
 const eventsHelper = require('./helpers/eventsHelper');
 const helpers = require('./helpers/helpers');
+const ErrorsNamespace = require('../common/errors')
 
 
 contract('PaymentGateway', function(accounts) {
@@ -338,7 +339,9 @@ contract('PaymentGateway', function(accounts) {
     it('should NOT set fee percent higher than or equal to 100%', () => {
       const feePercent = 10000;
       return Promise.resolve()
-      .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
+      .then(() => asserts.throws(
+          paymentGateway.setFeePercent(feePercent, fakeCoin.address)
+      ))
       .then(() => paymentGateway.getFeePercent(fakeCoin.address))
       .then(asserts.equal(0))
       .then(() => paymentGateway.setFeePercent(feePercent - 1, fakeCoin.address))
@@ -376,13 +379,14 @@ contract('PaymentGateway', function(accounts) {
         .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, value, true));
     });
 
-    it('should NOT deposit no tokens', () => {
+    it('should THROW ON deposit no tokens', () => {
       const sender = accounts[6];
       const value = 1000;
       return Promise.resolve()
         .then(() => fakeCoin.mint(sender, value))
-        .then(() => paymentGateway.deposit(0, fakeCoin.address, {from: sender}))
-        .then(tx => error(tx, "Value is empty"))
+        .then(() => asserts.throws(
+          paymentGateway.deposit(0, fakeCoin.address, {from: sender}))
+        )
         .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, 0))
         .then(assertExternalBalance(sender, fakeCoin.address, value))
         .then(assertInternalBalance(sender, fakeCoin.address, 0));
@@ -411,10 +415,13 @@ contract('PaymentGateway', function(accounts) {
         .then(() => fakeCoin.enableApproval())
         .then(() => fakeCoin.approvalMode())
         .then(assert.isTrue)
+        .then(() => paymentGateway.deposit.call(
+          value, fakeCoin.address, {from: sender})
+        )
+        .then(code => assert.equal(code.toNumber(), ErrorsNamespace.PAYMENT_GATEWAY_TRANSFER_FAILED))
         .then(() => paymentGateway.deposit(
           value, fakeCoin.address, {from: sender})
         )
-        .then(tx => error(tx, "Deposit failed"))
         .then(assertInternalBalance(sender, fakeCoin.address, 0))
         .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, 0))
         .then(assertExternalBalance(sender, fakeCoin.address, value));
@@ -433,7 +440,7 @@ contract('PaymentGateway', function(accounts) {
         .then(() => paymentGateway.deposit.call(
           value, fakeCoin.address, {from: sender})
         )
-        .then(assert.isTrue);
+        .then(code => assert.equal(code.toNumber(), ErrorsNamespace.OK))
     });
 
     it('should deposit', () => {
@@ -492,8 +499,9 @@ contract('PaymentGateway', function(accounts) {
       return Promise.resolve()
         .then(() => fakeCoin.mint(sender, value))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-        .then(() => paymentGateway.withdraw(0, fakeCoin.address, {from: sender}))
-        .then(tx => error(tx, "Value is empty"))
+        .then(() => asserts.throws(
+            paymentGateway.withdraw(0, fakeCoin.address, {from: sender})
+        ))
         .then(assertInternalBalance(sender, fakeCoin.address, value))
         .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, value))
         .then(assertExternalBalance(sender, fakeCoin.address, 0));
@@ -671,17 +679,16 @@ contract('PaymentGateway', function(accounts) {
         .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, value));
     });
 
-    it('should NOT perform internal transfer with empty _from address', () => {
+    it('should THROW on performing internal transfer with empty _from address', () => {
       const sender = accounts[6];
       const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
       const value = 1000;
       return Promise.resolve()
         .then(() => fakeCoin.mint(sender, value))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-        .then(() => paymentGateway.transfer(
-          '0x0', receiver, value, fakeCoin.address, {from: paymentProcessor}
+        .then(() => asserts.throws(
+            paymentGateway.transfer('0x0', receiver, value, fakeCoin.address, {from: paymentProcessor})
         ))
-        .then(tx => error(tx, "Value is empty"))
         .then(assertInternalBalance(receiver, fakeCoin.address, 0))
         .then(assertInternalBalance(sender, fakeCoin.address, value))
         .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, value));
@@ -990,10 +997,9 @@ contract('PaymentGateway', function(accounts) {
       return Promise.resolve()
         .then(() => fakeCoin.mint(sender, value))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
-        .then(() => paymentGateway.transferWithFee(
-          '0x0', receiver, value, value, 0, fakeCoin.address, {from: paymentProcessor}
+        .then(() => asserts.throws(
+            paymentGateway.transferWithFee('0x0', receiver, value, value, 0, fakeCoin.address, {from: paymentProcessor})
         ))
-        .then(tx => error(tx, "Value is empty"))
         .then(assertInternalBalance(receiver, fakeCoin.address, 0))
         .then(assertInternalBalance(sender, fakeCoin.address, value))
 
@@ -1199,7 +1205,7 @@ contract('PaymentGateway', function(accounts) {
       .then(assertExternalBalance(sender, fakeCoin.address, 0))
     });
 
-    it('should NOT perform internal transfer to many with null _from address', () => {
+    it('should THROWS on performing internal transfer to many with null _from address', () => {
       const sender = '0x0';
       const receiver1 = accounts[7];
       const receiver2 = accounts[8];
@@ -1212,7 +1218,7 @@ contract('PaymentGateway', function(accounts) {
       return transferToMany(
         sender, [receiver1, receiver2], [receiver1Value, receiver2Value],
         receiver1Result, receiver2Result, senderResult,
-        balanceHolderResult, false, error, ['Value is empty']
+        balanceHolderResult, true
       );
     });
 
@@ -1255,7 +1261,7 @@ contract('PaymentGateway', function(accounts) {
       );
     });
 
-    it('should NOT perform internal transfer to many if input arrays have different length', () => {
+    it('should THROW on performing internal transfer to many if input arrays have different length', () => {
       const sender = accounts[6];
       const receiver1 = accounts[7];
       const receiver2 = accounts[8];
@@ -1268,7 +1274,7 @@ contract('PaymentGateway', function(accounts) {
       return transferToMany(
         sender, [receiver1, receiver2, accounts[9]], [receiver1Value, receiver2Value],
         receiver1Result, receiver2Result, senderResult, balanceHolderResult,
-        false, error, ["Invalid array arguments"]
+        true
       );
     });
 
@@ -1664,7 +1670,7 @@ contract('PaymentGateway', function(accounts) {
         .then(assertExternalBalance(changeAddress, fakeCoin.address, 0))
     });
 
-    it('should NOT perform `transferAll` if _from address is null', () => {
+    it('should THROW on performing `transferAll` if _from address is null', () => {
       const sender = accounts[6];
       const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
       const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
@@ -1675,10 +1681,9 @@ contract('PaymentGateway', function(accounts) {
       return Promise.resolve()
         .then(() => fakeCoin.mint(sender, balance))
         .then(() => paymentGateway.deposit(balance, fakeCoin.address, {from: sender}))
-        .then(() => paymentGateway.transferAll(
-          fakeSender, receiver, value, changeAddress, value, 0, fakeCoin.address
+        .then(() => asserts.throws(
+            paymentGateway.transferAll(fakeSender, receiver, value, changeAddress, value, 0, fakeCoin.address)
         ))
-        .then(tx => error(tx, "Value is empty"))
         .then(assertInternalBalance(sender, fakeCoin.address, balance))
         .then(assertInternalBalance(receiver, fakeCoin.address, 0))
         .then(assertInternalBalance(changeAddress, fakeCoin.address, 0))
@@ -2027,7 +2032,7 @@ contract('PaymentGateway', function(accounts) {
       const result = 0;
       return transferFromMany(
         [sender1, sender2], receiver, [value1, value2], sender1Result,
-        sender2Result, result, value1 + value2, false, error, "Value is empty"
+        sender2Result, result, value1 + value2, true
       );
     });
 
@@ -2069,7 +2074,7 @@ contract('PaymentGateway', function(accounts) {
       const result = 0;
       return transferFromMany(
         [sender1, sender2, accounts[9]], receiver, [value1, value2], sender1Result,
-        sender2Result, result, value1 + value2, false, error, "Invalid array arguments"
+        sender2Result, result, value1 + value2, true
       );
     });
 
@@ -2217,8 +2222,9 @@ contract('PaymentGateway', function(accounts) {
         .then(() => fakeCoin.mint(feeAddress, value))
         .then(() => paymentGateway.setFeeAddress(feeAddress))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: feeAddress}))
-        .then(() => paymentGateway.forwardFee(fakeValue, fakeCoin.address))
-        .then(tx => error(tx, "Value is empty"))
+        .then(() => asserts.throws(
+            paymentGateway.forwardFee(fakeValue, fakeCoin.address)
+        ))
         .then(assertInternalBalance(feeAddress, fakeCoin.address, value))
         .then(assertExternalBalance(feeAddress, fakeCoin.address, 0))
         .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, value));
