@@ -9,6 +9,7 @@ const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Asserts = require('./helpers/asserts');
 const Promise = require('bluebird');
 const Reverter = require('./helpers/reverter');
+const ErrorsNamespace = require('../common/errors')
 
 
 contract('PaymentProcessor', function(accounts) {
@@ -175,41 +176,42 @@ contract('PaymentProcessor', function(accounts) {
     .then(assertExpectations());
   });
 
-  it.skip('should return transferWithFee fail on lockPayment', () => {
+  it.skip('should return transferWithFee fail on lockPayment', async () => {
     const payer = '0xffffffffffffffffffffffffffffffffffffffff';
     const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const erc20ContractAddress = '0xffffffffffffffffffffffffffffffffffffff00';
     const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
-    const result = 0;
+    const result = await mock.convertToBytes32(ErrorsNamespace.UNAUTHORIZED)
     return Promise.resolve()
     .then(() => mock.expect(paymentProcessor.address, 0, paymentGateway.transferWithFee.getData(payer, jobControllerAddress, value, 0, 0, erc20ContractAddress), result))
-    .then(() => paymentProcessor.lockPayment.call(operationId, payer, value, erc20ContractAddress, {from: jobControllerAddress}))
-    .then(asserts.isFalse);
+    .then(() => paymentProcessor.lockPayment.call(jobControllerAddress, payer, value, erc20ContractAddress, {from: jobControllerAddress}))
+    .then(code => assert.equal(code.toNumber(), ErrorsNamespace.UNAUTHORIZED))
   });
 
-  it('should return transferWithFee fail on lockPayment', () => {
+  it('should return transferWithFee fail on lockPayment', async () => {
     const payer = '0xffffffffffffffffffffffffffffffffffffffff';
     const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const erc20ContractAddress = '0xffffffffffffffffffffffffffffffffffffff00';
     const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     const addressOperationId = '0xffffffffffffffffffffffffffffffffffffff00';
-    const result = 0;
+    const result = await mock.convertToBytes32(ErrorsNamespace.UNAUTHORIZED)
     return Promise.resolve()
     .then(() => mock.expect(paymentProcessor.address, 0, paymentGateway.transferWithFee.getData(payer, addressOperationId, value, 0, 0, erc20ContractAddress), result))
     .then(() => paymentProcessor.lockPayment.call(operationId, payer, value, erc20ContractAddress, {from: jobControllerAddress}))
-    .then(asserts.isFalse);
+    .then(code => assert.equal(code.toNumber(), ErrorsNamespace.UNAUTHORIZED))
   });
 
-  it('should return transferWithFee success on lockPayment', () => {
+  it('should return transferWithFee success on lockPayment', async () => {
     const payer = '0xffffffffffffffffffffffffffffffffffffffff';
     const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const erc20ContractAddress = '0xffffffffffffffffffffffffffffffffffffff00';
     const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
-    const result = 1;
+    const addressOperationId = '0xffffffffffffffffffffffffffffffffffffff00';
+    const result = await mock.convertToBytes32(ErrorsNamespace.OK)
     return Promise.resolve()
-    .then(() => mock.expect(paymentProcessor.address, 0, paymentGateway.transferWithFee.getData(payer, jobControllerAddress, value, 0, 0, erc20ContractAddress), result))
+    .then(() => mock.expect(paymentProcessor.address, 0, paymentGateway.transferWithFee.getData(payer, addressOperationId, value, 0, 0, erc20ContractAddress), result))
     .then(() => paymentProcessor.lockPayment.call(operationId, payer, value, erc20ContractAddress, {from: jobControllerAddress}))
-    .then(asserts.isTrue);
+    .then(code => assert.equal(code.toNumber(), ErrorsNamespace.OK))
   });
 
   it.skip('should return transferToMany fail on releasePayment', () => {
@@ -220,14 +222,14 @@ contract('PaymentProcessor', function(accounts) {
     const additionalFee = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000';
     const erc20ContractAddress = '0xffffffffffffffffffffffffffffffffffffff00';
     const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
-    const result = 0;
+    const result = ErrorsNamespace.UNAUTHORIZED;
     return Promise.resolve()
     .then(() => mock.expect(paymentProcessor.address, 0, paymentGateway.transferToMany.getData(payer, receivers, values, feeFromValue, additionalFee, erc20ContractAddress), result))
     .then(() => paymentProcessor.releasePayment.call(operationId, receivers, values, feeFromValue, additionalFee, erc20ContractAddress, {from: jobControllerAddress}))
-    .then(asserts.isFalse);
+    .then(code => assert.equal(code.toNumber(), ErrorsNamespace.UNAUTHORIZED))
   });
 
-  it('should return transferAll fail on releasePayment', () => {
+  it('should return transferAll fail on releasePayment', async () => {
     const receiver = accounts[1];
     const change = accounts[2];
     const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
@@ -236,14 +238,14 @@ contract('PaymentProcessor', function(accounts) {
     const erc20ContractAddress = '0xffffffffffffffffffffffffffffffffffffff00';
     const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     const addressOperationId = '0xffffffffffffffffffffffffffffffffffffff00';
-    const result = 0;
+    const result = await mock.convertToBytes32(ErrorsNamespace.UNAUTHORIZED)
     return Promise.resolve()
     .then(() => mock.expect(paymentProcessor.address, 0, paymentGateway.transferAll.getData(addressOperationId, receiver, value, change, feeFromValue, additionalFee, erc20ContractAddress), result))
     .then(() => paymentProcessor.releasePayment.call(operationId, receiver, value, change, feeFromValue, additionalFee, erc20ContractAddress, {from: jobControllerAddress}))
-    .then(asserts.isFalse);
+    .then(code => assert.equal(code.toNumber(), ErrorsNamespace.UNAUTHORIZED))
   });
 
-  it.skip('should return transferToMany success on releasePayment', () => {
+  it.skip('should return transferToMany success on releasePayment', async () => {
     const payer = jobControllerAddress;
     const receivers = ['0xffffffffffffffffffffffffffffffffffffff00', '0xffffffffffffffffffffffffffffffffffff0000'];
     const values = ['0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00', 1];
@@ -251,14 +253,15 @@ contract('PaymentProcessor', function(accounts) {
     const additionalFee = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000';
     const erc20ContractAddress = '0xffffffffffffffffffffffffffffffffffffff00';
     const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
-    const result = 1;
+    const result = await mock.convertToBytes32(ErrorsNamespace.OK)
     return Promise.resolve()
     .then(() => mock.expect(paymentProcessor.address, 0, paymentGateway.transferToMany.getData(payer, receivers, values, feeFromValue, additionalFee, erc20ContractAddress), result))
     .then(() => paymentProcessor.releasePayment.call(operationId, receivers, values, feeFromValue, additionalFee, erc20ContractAddress, {from: jobControllerAddress}))
-    .then(asserts.isTrue);
+    .then(code => assert.equal(code.toNumber(), ErrorsNamespace.OK))
+    .then(assertExpectations());
   });
 
-  it('should return transferAll success on releasePayment', () => {
+  it('should return transferAll success on releasePayment', async () => {
     const receiver = accounts[1];
     const change = accounts[2];
     const value = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
@@ -267,11 +270,11 @@ contract('PaymentProcessor', function(accounts) {
     const erc20ContractAddress = '0xffffffffffffffffffffffffffffffffffffff00';
     const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
     const addressOperationId = '0xffffffffffffffffffffffffffffffffffffff00';
-    const result = 1;
+    const result = await mock.convertToBytes32(ErrorsNamespace.OK)
     return Promise.resolve()
     .then(() => mock.expect(paymentProcessor.address, 0, paymentGateway.transferAll.getData(addressOperationId, receiver, value, change, feeFromValue, additionalFee, erc20ContractAddress), result))
     .then(() => paymentProcessor.releasePayment.call(operationId, receiver, value, change, feeFromValue, additionalFee, erc20ContractAddress, {from: jobControllerAddress}))
-    .then(asserts.isTrue);
+    .then(code => assert.equal(code.toNumber(), ErrorsNamespace.OK))
   });
 
   it('should NOT call transferWithFee on lockPayment if serviceMode is enabled', () => {
