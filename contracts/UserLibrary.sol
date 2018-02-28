@@ -1,4 +1,4 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.18;
 
 
 import './adapters/MultiEventsHistoryAdapter.sol';
@@ -253,7 +253,7 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
         return _setMany(_user, _areas, _categories, _skills, false);
     }
 
-    function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) auth public  returns (uint) {
+    function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) auth public returns (uint) {
         return _setMany(_user, _areas, _categories, _skills, true);
     }
 

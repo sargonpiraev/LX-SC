@@ -1,4 +1,4 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.18;
 
 
 import './adapters/MultiEventsHistoryAdapter.sol';
@@ -21,7 +21,7 @@ contract IPFSLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     Roles2LibraryAdapter(_roles2Library)
     public
     {
-        ipfsHashes.init('ipfsHashes');
+        ipfsHashes.init("ipfsHashes");
     }
 
     function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
