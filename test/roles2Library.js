@@ -5,6 +5,7 @@ const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const helpers = require('./helpers/helpers');
+const ErrorsNamespace = require('../common/errors')
 
 contract('Roles2Library', function(accounts) {
   const reverter = new Reverter(web3);
@@ -98,7 +99,7 @@ contract('Roles2Library', function(accounts) {
       .then(() => rolesLibrary.addUserRole(user, role))
       .then(() => rolesLibrary.removeUserRole(user, role))
       .then(() => rolesLibrary.removeUserRole.call(user, role))
-      .then(asserts.isFalse);
+      .then(code => assert.equal(code.toNumber(), ErrorsNamespace.ROLES_NOT_FOUND));
     });
 
     it('should emit RoleRemoved event in EventsHistory', () => {
@@ -343,7 +344,7 @@ describe('Capabilities', function() {
     .then(() => rolesLibrary.addRoleCapability(role, code, sig))
     .then(() => rolesLibrary.removeRoleCapability(role, code, sig))
     .then(() => rolesLibrary.removeRoleCapability.call(role, code, sig))
-    .then(asserts.isFalse);
+    .then(code => assert.equal(code.toNumber(), ErrorsNamespace.ROLES_NOT_FOUND));
   });
 
   it('should not allow to call "removeRoleCapability" on start', () => {
@@ -352,7 +353,7 @@ describe('Capabilities', function() {
     const sig = '0xffffffff';
     return Promise.resolve()
     .then(() => rolesLibrary.removeRoleCapability.call(role, code, sig))
-    .then(asserts.isFalse);
+    .then(code => assert.equal(code.toNumber(), ErrorsNamespace.ROLES_NOT_FOUND));
   });
 
   it('should emit CapabilityRemoved event in EventsHistory', () => {

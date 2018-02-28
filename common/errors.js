@@ -6,6 +6,7 @@ const errorScope = {
     paymentgateway: 15000,
     paymentprocessor: 16000,
     ratingsandreputation: 17000,
+    roles: 20000,
 }
 
 const errorCodes = {
@@ -41,6 +42,10 @@ const errorCodes = {
     RATING_AND_REPUTATION_WORKER_IS_NOT_ACTIVE: errorScope.ratingsandreputation + 4,
     RATING_AND_REPUTATION_INVALID_AREA_OR_CATEGORY: errorScope.ratingsandreputation + 5,
     RATING_AND_REPUTATION_INVALID_EVALUATION: errorScope.ratingsandreputation + 6,
+
+    ROLES_ALREADY_EXISTS: errorScope.roles + 1,
+    ROLES_INVALID_INVOCATION: errorScope.roles + 2,
+    ROLES_NOT_FOUND: errorScope.roles + 3,
 }
 
 module.exports = errorCodes
