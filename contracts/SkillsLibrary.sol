@@ -1,5 +1,6 @@
 pragma solidity ^0.4.11;
 
+
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './adapters/Roles2LibraryAdapter.sol';
 import './adapters/StorageAdapter.sol';
@@ -25,14 +26,19 @@ import './adapters/StorageAdapter.sol';
  * Functions always accept a single flag that represents the entity.
  */
 contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter {
-    // Mappings of entity to IPFS hash.
-    StorageInterface.UIntBytes32Mapping areas;
-    StorageInterface.UIntUIntBytes32Mapping categories;
-    StorageInterface.UIntUIntUIntBytes32Mapping skills;
+
+    uint constant SKILLS_LIBRARY = 22000;
+    uint constant SKILLS_LIBRARY_AREA_NOT_SET = SKILLS_LIBRARY + 1;
+    uint constant SKILLS_LIBRARY_CATEGORY_NOT_SET = SKILLS_LIBRARY + 2;
 
     event AreaSet(address indexed self, uint area, bytes32 hash);
     event CategorySet(address indexed self, uint area, uint category, bytes32 hash);
     event SkillSet(address indexed self, uint area, uint category, uint skill, bytes32 hash);
+
+    // Mappings of entity to IPFS hash.
+    StorageInterface.UIntBytes32Mapping areas;
+    StorageInterface.UIntUIntBytes32Mapping categories;
+    StorageInterface.UIntUIntUIntBytes32Mapping skills;
 
     modifier singleFlag(uint _flag) {
         if (!_isSingleFlag(_flag)) {
@@ -42,87 +48,105 @@ contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     }
 
     modifier singleOddFlag(uint _flag) {
-        if (!_isSingleFlag(_flag) || !_isOddFlag(_flag)) {
+        if (!(_isSingleFlag(_flag) && _isOddFlag(_flag))) {
             return;
         }
         _;
     }
 
-    function _isSingleFlag(uint _flag) pure internal returns(bool) {
+    function _isSingleFlag(uint _flag) pure internal returns (bool) {
         return _flag != 0 && (_flag & (_flag - 1) == 0);
     }
 
-    function _isOddFlag(uint _flag) pure internal returns(bool) {
+    function _isOddFlag(uint _flag) pure internal returns (bool) {
         return _flag & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa == 0;
     }
 
-    function SkillsLibrary(Storage _store, bytes32 _crate, address _roles2Library)
-        StorageAdapter(_store, _crate)
-        Roles2LibraryAdapter(_roles2Library)
-        public
+    function SkillsLibrary(
+        Storage _store, 
+        bytes32 _crate, 
+        address _roles2Library
+    )
+    StorageAdapter(_store, _crate)
+    Roles2LibraryAdapter(_roles2Library)
+    public
     {
         areas.init('areas');
         categories.init('categories');
         skills.init('skills');
     }
 
-    function setupEventsHistory(address _eventsHistory) external auth() returns(bool) {
-        if (getEventsHistory() != 0x0) {
-            return false;
-        }
+    function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
+        require(_eventsHistory != 0x0);
+
         _setEventsHistory(_eventsHistory);
-        return true;
+        return OK;
     }
 
-    function getArea(uint _area) public view returns(bytes32) {
+    function getArea(uint _area) public view returns (bytes32) {
         return store.get(areas, _area);
     }
 
-    function getCategory(uint _area, uint _category) public view returns(bytes32) {
+    function getCategory(uint _area, uint _category) public view returns (bytes32) {
         return store.get(categories, _area, _category);
     }
 
-    function getSkill(uint _area, uint _category, uint _skill) public view returns(bytes32) {
+    function getSkill(uint _area, uint _category, uint _skill) public view returns (bytes32) {
         return store.get(skills, _area, _category, _skill);
     }
 
-    function setArea(uint _area, bytes32 _hash)
-        public
-        singleOddFlag(_area)
-        auth()
-    returns(bool) {
+    function setArea(
+        uint _area, 
+        bytes32 _hash
+    )
+    auth
+    singleOddFlag(_area)
+    public
+    returns (uint) {
         store.set(areas, _area, _hash);
+
         _emitAreaSet(_area, _hash);
-        return true;
+        return OK;
     }
 
-    function setCategory(uint _area, uint _category, bytes32 _hash)
-        public
-        singleOddFlag(_category)
-        auth()
-    returns(bool) {
+    function setCategory(
+        uint _area, 
+        uint _category, 
+        bytes32 _hash
+    )
+    auth
+    singleOddFlag(_category)
+    public
+    returns (uint) {
         if (getArea(_area) == 0) {
-            return false;
+            return _emitErrorCode(SKILLS_LIBRARY_AREA_NOT_SET);
         }
         store.set(categories, _area, _category, _hash);
         _emitCategorySet(_area, _category, _hash);
-        return true;
+
+        return OK;
     }
 
-    function setSkill(uint _area, uint _category, uint _skill, bytes32 _hash)
-        public
-        singleFlag(_skill)
-        auth()
-    returns(bool) {
+    function setSkill(
+        uint _area, 
+        uint _category, 
+        uint _skill, 
+        bytes32 _hash
+    )
+    auth
+    singleFlag(_skill)
+    public
+    returns (uint) {
         if (getArea(_area) == 0) {
-            return false;
+            return _emitErrorCode(SKILLS_LIBRARY_AREA_NOT_SET);
         }
         if (getCategory(_area, _category) == 0) {
-            return false;
+            return _emitErrorCode(SKILLS_LIBRARY_CATEGORY_NOT_SET);
         }
         store.set(skills, _area, _category, _skill, _hash);
+
         _emitSkillSet(_area, _category, _skill, _hash);
-        return true;
+        return OK;
     }
 
     function _emitAreaSet(uint _area, bytes32 _hash) internal {
