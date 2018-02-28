@@ -5,6 +5,7 @@ const errorScope = {
     roles2libraryanderc20library: 14000,
     paymentgateway: 15000,
     paymentprocessor: 16000,
+    ratingsandreputation: 17000,
 }
 
 const errorCodes = {
@@ -33,6 +34,13 @@ const errorCodes = {
     PAYMENT_GATEWAY_NO_FEE_ADDRESS_DESTINATION: errorScope.paymentgateway + 3,
 
     PAYMENT_PROCESSOR_OPERATION_IS_NOT_APPROVED: errorScope.paymentprocessor + 1,
+
+    RATING_AND_REPUTATION_CANNOT_SET_RATING: errorScope.ratingsandreputation + 1,
+    RATING_AND_REPUTATION_RATING_IS_ALREADY_SET: errorScope.ratingsandreputation + 2,
+    RATING_AND_REPUTATION_INVALID_RATING: errorScope.ratingsandreputation + 3,
+    RATING_AND_REPUTATION_WORKER_IS_NOT_ACTIVE: errorScope.ratingsandreputation + 4,
+    RATING_AND_REPUTATION_INVALID_AREA_OR_CATEGORY: errorScope.ratingsandreputation + 5,
+    RATING_AND_REPUTATION_INVALID_EVALUATION: errorScope.ratingsandreputation + 6,
 }
 
 module.exports = errorCodes
