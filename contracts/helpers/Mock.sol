@@ -18,8 +18,8 @@ contract Mock {
     function() public payable {
         if (ignores[msg.sig]) {
             assembly {
-            mstore(0, 1)
-            return (0, 32)
+                mstore(0, 1)
+                return (0, 32)
             }
         }
         callsCount++;
@@ -30,8 +30,8 @@ contract Mock {
         }
         bytes32 result = expectations[nextExpectation++].callReturn;
         assembly {
-        mstore(0, result)
-        return (0, 32)
+            mstore(0, result)
+            return (0, 32)
         }
     }
 
@@ -57,7 +57,7 @@ contract Mock {
         return expectationsCount - (nextExpectation - 1);
     }
 
-    function resetCallsCount() public returns (bool) {
+    function resetCallsCount() public {
         callsCount = 0;
     }
 }
