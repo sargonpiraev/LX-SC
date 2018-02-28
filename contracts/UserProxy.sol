@@ -4,6 +4,7 @@ import './base/Owned.sol';
 
 
 contract UserProxy is Owned {
+
     event Forwarded (
         address indexed destination,
         uint value,
@@ -23,9 +24,11 @@ contract UserProxy is Owned {
         bytes _data,
         uint _value,
         bool _throwOnFailedCall
-    )  public
-    onlyContractOwner()
-    returns(bytes32 result) {
+    )  
+    onlyContractOwner
+    public
+    returns (bytes32 result) 
+    {
         bool success;
         assembly {
             success := call(div(mul(gas, 63), 64), _destination, _value, add(_data, 32), mload(_data), 0, 32)

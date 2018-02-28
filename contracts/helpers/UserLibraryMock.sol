@@ -3,6 +3,8 @@ pragma solidity ^0.4.11;
 
 contract UserLibraryMock {
 
+    uint constant OK = 1;
+
     uint addRoleCalls = 0;
     uint setManyCalls = 0;
 
@@ -10,13 +12,13 @@ contract UserLibraryMock {
         return (addRoleCalls, setManyCalls);
     }
 
-    function addRole(address, bytes32) public returns (bool) {
+    function addRole(address, bytes32) public returns (uint) {
         addRoleCalls++;
-        return true;
+        return OK;
     }
 
-    function setMany(address, uint, uint[], uint[]) public returns (bool) {
+    function setMany(address, uint, uint[], uint[]) public returns (uint) {
         setManyCalls++;
-        return true;
+        return OK;
     }
 }

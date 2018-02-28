@@ -95,7 +95,7 @@ contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {
         if (_enabled) {
             store.set(userRoles, _user, lastRoles | shifted);
             _emitRoleAdded(_user, _role);
-            return;
+            return OK;
         }
     
         store.set(userRoles, _user, lastRoles & bitNot(shifted));

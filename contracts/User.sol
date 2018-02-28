@@ -1,10 +1,15 @@
 pragma solidity ^0.4.11;
 
+
 import './User.sol';
 import './UserProxy.sol';
 import './base/Owned.sol';
 
+
 contract User is Owned {
+
+    uint constant OK = 1;
+
     UserProxy userProxy;
     address recoveryContract;
 
@@ -14,24 +19,24 @@ contract User is Owned {
         }
     }
 
-    function User(address _owner, address _recoveryContract) public Owned() {
+    function User(address _owner, address _recoveryContract) public {
         userProxy = new UserProxy();
         recoveryContract = _recoveryContract;
         contractOwner = _owner;
     }
 
-    function setUserProxy(UserProxy _userProxy) public onlyContractOwner() returns(bool) {
+    function setUserProxy(UserProxy _userProxy) onlyContractOwner public returns (uint) {
         userProxy = _userProxy;
-        return true;
+        return OK;
     }
 
     function getUserProxy() public view returns(address) {
         return userProxy;
     }
 
-    function setRecoveryContract(address _recoveryContract) public onlyContractOwner() returns(bool) {
+    function setRecoveryContract(address _recoveryContract) onlyContractOwner public returns (uint) {
         recoveryContract = _recoveryContract;
-        return true;
+        return OK;
     }
 
     function forward(
@@ -40,15 +45,16 @@ contract User is Owned {
         uint _value,
         bool _throwOnFailedCall
     )
-        public
-        onlyContractOwner()
-    returns(bytes32) {
+    onlyContractOwner
+    public
+    returns (bytes32) 
+    {
         return userProxy.forward(_destination, _data, _value, _throwOnFailedCall);
     }
 
-    function recoverUser(address newAddress) onlyRecoveryContract() public returns(bool) {
+    function recoverUser(address newAddress) onlyRecoveryContract public returns (uint) {
         contractOwner = newAddress;
-        return true;
+        return OK;
     }
 
 }

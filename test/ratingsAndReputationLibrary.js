@@ -10,6 +10,7 @@ const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Storage = artifacts.require('./Storage.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
+const UserLibraryMock = artifacts.require('./UserLibraryMock.sol');
 const UserFactory = artifacts.require('./UserFactory.sol');
 const BoardController = artifacts.require('./BoardController.sol');
 
@@ -152,7 +153,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
     
-    .then(() => userFactory.setUserLibrary(mock.address))
+    .then(() => userFactory.setUserLibrary(UserLibraryMock.address))
     .then(() => jobController.setUserLibrary(mock.address))
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
     

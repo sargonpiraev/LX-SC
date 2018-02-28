@@ -1,5 +1,6 @@
 pragma solidity ^0.4.11;
 
+
 import './User.sol';
 import './UserLibrary.sol';
 import './UserProxy.sol';
@@ -8,12 +9,11 @@ import './adapters/Roles2LibraryAdapter.sol';
 
 
 contract UserLibraryInterface {
-    function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) public returns(bool);
+    function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) public returns (uint);
 }
 
 
 contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
-    UserLibraryInterface userLibrary;
 
     event UserCreated(
         address indexed self,
@@ -27,25 +27,25 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         uint[] skills
     );
 
+    UserLibraryInterface userLibrary;
+
     function UserFactory(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {}
 
-    function setupEventsHistory(address _eventsHistory) external auth() returns(bool) {
-        if (getEventsHistory() != 0x0) {
-            return false;
-        }
+    function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
+        require(_eventsHistory != 0x0);
+
         _setEventsHistory(_eventsHistory);
-        return true;
+        return OK;
     }
 
-    function setUserLibrary(UserLibraryInterface _userLibrary) external auth() returns(bool) {
+    function setUserLibrary(UserLibraryInterface _userLibrary) auth external returns (uint) {
         userLibrary = _userLibrary;
-        return true;
+        return OK;
     }
 
-    function getUserLibrary() public view returns(address) {
+    function getUserLibrary() public view returns (address) {
         return userLibrary;
     }
-
 
     function createUserWithProxyAndRecovery(
         address _owner,
@@ -55,42 +55,36 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         uint[] _categories,
         uint[] _skills
     )
-        public
-        auth()
-    returns(bool) {
+    auth
+    public
+    returns (uint) 
+    {
+        require(_owner != 0x0);
         User user = new User(_owner, _recoveryContract);
         UserProxy proxy = UserProxy(user.getUserProxy());
-
-        if(!_setRoles(proxy, _roles)) {
-            revert();
-        }
-
-        if(!_setSkills(proxy, _areas, _categories, _skills)) {
-            revert();
-        }
+        _setRoles(proxy, _roles);
+        _setSkills(proxy, _areas, _categories, _skills);
 
         _emitUserCreated(user, proxy, _recoveryContract, _owner, _roles, _areas, _categories, _skills);
+        return OK;
     }
 
-    function _setRoles(address _user, uint8[] _roles) internal returns(bool) {
+    function _setRoles(address _user, uint8[] _roles) internal {
         for (uint i = 0; i < _roles.length; i++) {
-            if (!roles2Library.addUserRole(_user, _roles[i])) {
-                return false;
+            if (OK != roles2Library.addUserRole(_user, _roles[i])) {
+                revert();
             }
         }
-        return true;
     }
 
-    function _setSkills(address _user, uint _areas, uint[] _categories, uint[] _skills)
-        internal
-    returns(bool) {
+    function _setSkills(address _user, uint _areas, uint[] _categories, uint[] _skills) internal {
         if (_areas == 0) {
-            return true;
+            return;
         }
-        if (!userLibrary.setMany(_user, _areas, _categories, _skills)) {
-            return false;
+ 
+        if (OK != userLibrary.setMany(_user, _areas, _categories, _skills)) {
+            revert();
         }
-        return true;
     }
 
     function _emitUserCreated(
@@ -102,7 +96,9 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         uint _areas,
         uint[] _categories,
         uint[] _skills
-    ) internal {
+    ) 
+    internal 
+    {
         UserFactory(getEventsHistory()).emitUserCreated(
             _user,
             _proxy,
@@ -124,7 +120,9 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         uint _areas,
         uint[] _categories,
         uint[] _skills
-    ) public {
+    ) 
+    public 
+    {
         UserCreated(
             _self(),
             _user,
