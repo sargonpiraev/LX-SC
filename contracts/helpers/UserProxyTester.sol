@@ -1,15 +1,21 @@
-pragma solidity 0.4.8;
+/**
+ * Copyright 2017–2018, LaborX PTY
+ * Licensed under the AGPL Version 3 license.
+ */
+
+pragma solidity ^0.4.18;
 
 contract UserProxyTester {
-    function functionReturningValue(bytes32 _someInputValue) returns(bytes32) {
+
+    function functionReturningValue(bytes32 _someInputValue) public pure returns (bytes32) {
         return _someInputValue;
     }
 
-    function unsuccessfullFunction(bytes32 _someInputValue) returns(bytes32) {
-        throw;
+    function unsuccessfullFunction(bytes32) public pure returns (bytes32) {
+        revert();
     }
 
-    function forward(address _destination, bytes _data, uint _value, bool _throwOnFailedCall) returns(bytes32) {
+    function forward(address, bytes, uint, bool) public pure returns (bytes32) {
         return 0x3432000000000000000000000000000000000000000000000000000000000000;
     }
 }

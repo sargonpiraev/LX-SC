@@ -1,4 +1,9 @@
-pragma solidity 0.4.8;
+/**
+ * Copyright 2017–2018, LaborX PTY
+ * Licensed under the AGPL Version 3 license.
+ */
+
+pragma solidity ^0.4.18;
 
 import './adapters/Roles2LibraryAdapter.sol';
 
@@ -16,7 +21,7 @@ contract MultiEventsHistory is Roles2LibraryAdapter {
     // Authorized calling contracts.
     mapping(address => bool) public isAuthorized;
 
-    function MultiEventsHistory(address _roles2Library) Roles2LibraryAdapter(_roles2Library) {}
+    function MultiEventsHistory(address _roles2Library) public Roles2LibraryAdapter(_roles2Library) {}
 
     /**
      * Authorize new caller contract.
@@ -25,7 +30,7 @@ contract MultiEventsHistory is Roles2LibraryAdapter {
      *
      * @return success.
      */
-    function authorize(address _caller) auth() returns(bool) {
+    function authorize(address _caller) external auth() returns(bool) {
         if (isAuthorized[_caller]) {
             return false;
         }
@@ -41,14 +46,14 @@ contract MultiEventsHistory is Roles2LibraryAdapter {
      *
      * Throws if call failed.
      */
-    function () {
+    function () external {
         if (!isAuthorized[msg.sender]) {
             return;
         }
         // Internal Out Of Gas/Throw: revert this transaction too;
         // Recursive Call: safe, all changes already made.
         if (!msg.sender.delegatecall(msg.data)) {
-            throw;
+            revert();
         }
     }
 }

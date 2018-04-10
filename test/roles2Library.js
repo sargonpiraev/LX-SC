@@ -1,12 +1,11 @@
 const Reverter = require('./helpers/reverter');
 const Asserts = require('./helpers/asserts');
 const Storage = artifacts.require('./Storage.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
-const Mock = artifacts.require('./Mock.sol');
 const helpers = require('./helpers/helpers');
+const ErrorsNamespace = require('../common/errors')
 
 contract('Roles2Library', function(accounts) {
   const reverter = new Reverter(web3);
@@ -17,26 +16,14 @@ contract('Roles2Library', function(accounts) {
   let multiEventsHistory;
   let rolesLibrary;
   let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
-  let mock;
-
-  const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
-  };
 
   before('setup', () => {
-    return Mock.deployed()
-    .then(instance => mock = instance)
-    .then(() => ignoreAuth())
-    .then(() => Storage.deployed())
+    return Storage.deployed()
     .then(instance => storage = instance)
-    .then(() => ManagerMock.deployed())
-    .then(instance => storage.setManager(instance.address))
     .then(() => Roles2Library.deployed())
     .then(instance => rolesLibrary = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
-    .then(() => rolesLibrary.setupEventsHistory(multiEventsHistory.address))
-    .then(() => multiEventsHistory.authorize(rolesLibrary.address))
     .then(reverter.snapshot);
   });
 
@@ -88,6 +75,31 @@ contract('Roles2Library', function(accounts) {
       .then(() => rolesLibrary.hasUserRole(user, role))
       .then(asserts.isFalse)
       .then(() => true);
+    });
+
+    it('should add user role after removing', () => {
+      const user = accounts[1];
+      const role = 255;
+      const role2 = role - 1;
+      const role3 = role2 - 1;
+      return Promise.resolve()
+      .then(() => rolesLibrary.addUserRole(user, role))
+      .then(() => rolesLibrary.addUserRole(user, role2))
+      .then(() => rolesLibrary.removeUserRole(user, role2))
+      .then(() => rolesLibrary.addUserRole(user, role3))
+      .then(() => rolesLibrary.hasUserRole(user, role3))
+      .then(asserts.isTrue)
+      .then(() => true);
+    });
+
+    it('should not allow to call "removeUserRole" for same user role twice', () => {
+      const user = accounts[1];
+      const role = 255;
+      return Promise.resolve()
+      .then(() => rolesLibrary.addUserRole(user, role))
+      .then(() => rolesLibrary.removeUserRole(user, role))
+      .then(() => rolesLibrary.removeUserRole.call(user, role))
+      .then(code => assert.equal(code.toNumber(), ErrorsNamespace.ROLES_NOT_FOUND));
     });
 
     it('should emit RoleRemoved event in EventsHistory', () => {
@@ -256,6 +268,7 @@ contract('Roles2Library', function(accounts) {
     });
   });
 
+describe('Capabilities', function() {
   it('should add capability', () => {
     const role = 255;
     const code = '0xffffffffffffffffffffffffffffffffffffffff';
@@ -310,6 +323,39 @@ contract('Roles2Library', function(accounts) {
     .then(() => true);
   });
 
+  it('should add capability after removing', () => {
+    const role = 255;
+    const code = '0xffffffffffffffffffffffffffffffffffffffff';
+    const sig = '0xffffffff';
+    return Promise.resolve()
+    .then(() => rolesLibrary.addRoleCapability(role, code, sig))
+    .then(() => rolesLibrary.removeRoleCapability(role, code, sig))
+    .then(() => rolesLibrary.addRoleCapability(role, code, sig))
+    .then(() => rolesLibrary.getCapabilityRoles(code, sig))
+    .then(asserts.equal('0x8000000000000000000000000000000000000000000000000000000000000000'))
+    .then(() => true);
+  });
+
+  it('should not allow to call "removeRoleCapability" for same capability twice', () => {
+    const role = 255;
+    const code = '0xffffffffffffffffffffffffffffffffffffffff';
+    const sig = '0xffffffff';
+    return Promise.resolve()
+    .then(() => rolesLibrary.addRoleCapability(role, code, sig))
+    .then(() => rolesLibrary.removeRoleCapability(role, code, sig))
+    .then(() => rolesLibrary.removeRoleCapability.call(role, code, sig))
+    .then(code => assert.equal(code.toNumber(), ErrorsNamespace.ROLES_NOT_FOUND));
+  });
+
+  it('should not allow to call "removeRoleCapability" on start', () => {
+    const role = 255;
+    const code = '0xffffffffffffffffffffffffffffffffffffffff';
+    const sig = '0xffffffff';
+    return Promise.resolve()
+    .then(() => rolesLibrary.removeRoleCapability.call(role, code, sig))
+    .then(code => assert.equal(code.toNumber(), ErrorsNamespace.ROLES_NOT_FOUND));
+  });
+
   it('should emit CapabilityRemoved event in EventsHistory', () => {
     const role = 255;
     const code = '0xffffffffffffffffffffffffffffffffffffffff';
@@ -348,7 +394,7 @@ contract('Roles2Library', function(accounts) {
     const sig = '0xffffffff';
     return Promise.resolve()
     .then(() => rolesLibrary.addRoleCapability(role, code, sig))
-    .then(() => rolesLibrary.addRoleCapability(role, code, sig, {from: nonOwner}))
+    .then(() => rolesLibrary.removeRoleCapability(role, code, sig, {from: nonOwner}))
     .then(() => rolesLibrary.getCapabilityRoles(code, sig))
     .then(asserts.equal('0x8000000000000000000000000000000000000000000000000000000000000000'))
     .then(() => true);
@@ -399,4 +445,5 @@ contract('Roles2Library', function(accounts) {
     .then(asserts.equal('0x8000000000000000000000000000000800000000000000000000000000000001'))
     .then(() => true);
   });
+ });
 });

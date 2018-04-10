@@ -1,4 +1,10 @@
-pragma solidity 0.4.8;
+/**
+ * Copyright 2017–2018, LaborX PTY
+ * Licensed under the AGPL Version 3 license.
+ */
+
+pragma solidity ^0.4.18;
+
 
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './adapters/Roles2LibraryAdapter.sol';
@@ -42,48 +48,61 @@ import './base/BitOps.sol';
  *     10001001 - Fourth category: first, fourth and eighth skills.
  */
 contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter, BitOps {
-    StorageInterface.AddressUIntMapping skillAreas;
-    StorageInterface.AddressUIntUIntMapping skillCategories;
-    StorageInterface.AddressUIntUIntUIntMapping skills;
+
+    uint constant USER_LIBRARY_SCOPE = 21000;
+    uint constant USER_LIBRARY_INVALID_AREA = USER_LIBRARY_SCOPE + 1;
+    uint constant USER_LIBRARY_INVALID_CATEGORY = USER_LIBRARY_SCOPE + 2;
 
     event SkillAreasSet(address indexed self, address indexed user, uint areas);
     event SkillCategoriesSet(address indexed self, address indexed user, uint area, uint categories);
     event SkillsSet(address indexed self, address indexed user, uint area, uint category, uint skills);
 
-    function UserLibrary(Storage _store, bytes32 _crate, address _roles2Library)
-        StorageAdapter(_store, _crate)
-        Roles2LibraryAdapter(_roles2Library)
+    StorageInterface.AddressUIntMapping skillAreas;
+    StorageInterface.AddressUIntUIntMapping skillCategories;
+    StorageInterface.AddressUIntUIntUIntMapping skills;
+
+    function UserLibrary(
+        Storage _store, 
+        bytes32 _crate, 
+        address _roles2Library
+    )
+    StorageAdapter(_store, _crate)
+    Roles2LibraryAdapter(_roles2Library)
+    public
     {
         skillAreas.init('skillAreas');
         skillCategories.init('skillCategories');
         skills.init('skills');
     }
 
-    function setupEventsHistory(address _eventsHistory) auth() returns(bool) {
-        if (getEventsHistory() != 0x0) {
-            return false;
-        }
+    function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
+        require(_eventsHistory != 0x0);
+
         _setEventsHistory(_eventsHistory);
-        return true;
+        return OK;
     }
 
-    function getAreaInfo(address _user, uint _area)
-        singleOddFlag(_area)
-        constant
-    returns(bool partialArea, bool fullArea) {
+    function getAreaInfo(
+        address _user, 
+        uint _area
+    )
+    singleOddFlag(_area)
+    public view
+    returns (bool partialArea, bool fullArea) 
+    {
         uint areas = store.get(skillAreas, _user);
         return (_hasFlag(areas, _area), _hasFlag(areas, _area << 1));
     }
 
-    function hasArea(address _user, uint _area) constant returns(bool) {
-        var (partial,) = getAreaInfo(_user, _area);
-        return partial;
+    function hasArea(address _user, uint _area) public view returns (bool _partial) {
+        (_partial, ) = getAreaInfo(_user, _area);
     }
 
     function getCategoryInfo(address _user, uint _area, uint _category)
-        singleOddFlag(_category)
-        constant
-    returns(bool partialCategory, bool fullCategory) {
+    singleOddFlag(_category)
+    public view
+    returns (bool partialCategory, bool fullCategory) 
+    {
         var (partialArea, fullArea) = getAreaInfo(_user, _area);
         if (!partialArea) {
             return (false, false);
@@ -91,20 +110,37 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
         if (fullArea) {
             return (true, true);
         }
+
         uint categories = store.get(skillCategories, _user, _area);
         return (_hasFlag(categories, _category), _hasFlag(categories, _category << 1));
     }
 
-    function hasCategory(address _user, uint _area, uint _category) constant returns(bool) {
-        var (partial,) = getCategoryInfo(_user, _area, _category);
-        return partial;
+    function hasCategory(address _user, uint _area, uint _category) public view returns (bool _partial) {
+        (_partial,) = getCategoryInfo(_user, _area, _category);
     }
 
-    function hasSkill(address _user, uint _area, uint _category, uint _skill) singleFlag(_skill) constant returns(bool) {
+    function hasSkill(
+        address _user, 
+        uint _area, 
+        uint _category, 
+        uint _skill
+    ) 
+    singleFlag(_skill) 
+    public view 
+    returns (bool) 
+    {
         return hasSkills(_user, _area, _category, _skill);
     }
 
-    function hasSkills(address _user, uint _area, uint _category, uint _skills) constant returns(bool) {
+    function hasSkills(
+        address _user, 
+        uint _area, 
+        uint _category, 
+        uint _skills
+    ) 
+    public view 
+    returns (bool) 
+    {
         var (partialCategory, fullCategory) = getCategoryInfo(_user, _area, _category);
         if (!partialCategory) {
             return false;
@@ -112,118 +148,156 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
         if (fullCategory) {
             return true;
         }
+        
         uint userSkills = store.get(skills, _user, _area, _category);
         return _hasFlags(userSkills, _skills);
     }
 
-    uint[] tempCategories;
-    uint[] tempSkills;
     // If some area of category is full, then we are not looking into it cause observer can safely
     // assume that everything inside is filled.
-    function getUserSkills(address _user) constant returns(uint, uint[], uint[]) {
-        tempCategories.length = 0;
-        tempSkills.length = 0;
-        uint areas = store.get(skillAreas, _user);
+    function getUserSkills(address _user) 
+    public view 
+    returns (
+        uint areas, 
+        uint[] _categories, 
+        uint[] _skills
+    ) {
+        _categories = new uint[](2**7);
+        _skills = new uint[](2*15);
+        uint categoriesPointer = 0;
+        uint skillsPointer = 0;
+
+        areas = store.get(skillAreas, _user);
         for (uint area = 1; area != 0; area = area << 2) {
             if (_isFullOrNull(areas, area)) {
                 continue;
             }
-            tempCategories.push(store.get(skillCategories, _user, area));
+
+            uint _categoriesPointer = categoriesPointer;
+            _categories[categoriesPointer++] = store.get(skillCategories, _user, area);
             for (uint category = 1; category != 0; category = category << 2) {
-                if (_isFullOrNull(tempCategories[tempCategories.length - 1], category)) {
+                if (_isFullOrNull(_categories[_categoriesPointer], category)) {
                     continue;
                 }
-                tempSkills.push(store.get(skills, _user, area, category));
+                _skills[skillsPointer++] = store.get(skills, _user, area, category);
             }
         }
-        return (areas, tempCategories, tempSkills);
     }
 
-    function setAreas(address _user, uint _areas)
-        ifEvenThenOddTooFlags(_areas)
-        auth()
-    returns(bool) {
+    function setAreas(
+        address _user, 
+        uint _areas
+    )
+    auth
+    ifEvenThenOddTooFlags(_areas)
+    public
+    returns (uint) 
+    {
         for (uint area = 1; area != 0; area = area << 2) {
             if (_isFullOrNull(_areas, area)) {
                 continue;
             }
             if (store.get(skillCategories, _user, area) == 0) {
-                return false;
+                return _emitErrorCode(USER_LIBRARY_INVALID_AREA);
             }
         }
+
         _setAreas(_user, _areas);
-        return true;
+
+        return OK;
     }
 
-    function setCategories(address _user, uint _area, uint _categories)
-        singleOddFlag(_area)
-        ifEvenThenOddTooFlags(_categories)
-        hasFlags(_categories)
-        auth()
-    returns(bool) {
+    function setCategories(
+        address _user, 
+        uint _area, 
+        uint _categories
+    )
+    auth
+    singleOddFlag(_area)
+    ifEvenThenOddTooFlags(_categories)
+    hasFlags(_categories)
+    public
+    returns (uint) 
+    {
         _addArea(_user, _area);
+        
         for (uint category = 1; category != 0; category = category << 2) {
             if (_isFullOrNull(_categories, category)) {
                 continue;
             }
             if (store.get(skills, _user, _area, category) == 0) {
-                return false;
+                return _emitErrorCode(USER_LIBRARY_INVALID_CATEGORY);
             }
         }
+
         _setCategories(_user, _area, _categories);
-        return true;
+
+        return OK;
     }
 
-    function setSkills(address _user, uint _area, uint _category, uint _skills)
-        singleOddFlag(_area)
-        singleOddFlag(_category)
-        hasFlags(_skills)
-        auth()
-    returns(bool) {
+    function setSkills(
+        address _user, 
+        uint _area, 
+        uint _category, 
+        uint _skills
+    )
+    auth
+    singleOddFlag(_area)
+    singleOddFlag(_category)
+    hasFlags(_skills)
+    public
+    returns (uint)
+     {
         _addArea(_user, _area);
         _addCategory(_user, _area, _category);
         _setSkills(_user, _area, _category, _skills);
-        return true;
+        return OK;
     }
 
-    function addMany(address _user, uint _areas, uint[] _categories, uint[] _skills) auth() returns(bool) {
+    function addMany(address _user, uint _areas, uint[] _categories, uint[] _skills) auth public returns (uint) {
         return _setMany(_user, _areas, _categories, _skills, false);
     }
 
-    function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) auth() returns(bool) {
+    function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) auth public returns (uint) {
         return _setMany(_user, _areas, _categories, _skills, true);
     }
 
-    function _setMany(address _user, uint _areas, uint[] _categories, uint[] _skills, bool _overwrite)
-        internal
-    returns(bool) {
+    function _setMany(
+        address _user, 
+        uint _areas, 
+        uint[] _categories, 
+        uint[] _skills, 
+        bool _overwrite
+    )
+    internal
+    returns (uint) 
+    {
         uint categoriesCounter = 0;
         uint skillsCounter = 0;
         if (!_ifEvenThenOddTooFlags(_areas)) {
-            return false;
+            return _emitErrorCode(USER_LIBRARY_INVALID_AREA);
         }
+        
         _setAreas(_user, _overwrite ? _areas : (store.get(skillAreas, _user) | _areas));
+        
         for (uint area = 1; area != 0; area = area << 2) {
             if (_isFullOrNull(_areas, area)) {
                 // Nothing should be put inside full or empty area.
                 continue;
             }
-            if (!_ifEvenThenOddTooFlags(_categories[categoriesCounter])) {
-                throw;
-            }
-            if (_categories[categoriesCounter] == 0) {
-                throw;
-            }
+
+            require(_ifEvenThenOddTooFlags(_categories[categoriesCounter]));
+            require(_categories[categoriesCounter] != 0);
+
             // Set categories for current partial area.
             _setCategories(_user, area, _overwrite ? _categories[categoriesCounter] : (store.get(skillCategories, _user, area) | _categories[categoriesCounter]));
+            
             for (uint category = 1; category != 0; category = category << 2) {
                 if (_isFullOrNull(_categories[categoriesCounter], category)) {
                     // Nothing should be put inside full or empty category.
                     continue;
                 }
-                if (_skills[skillsCounter] == 0) {
-                    throw;
-                }
+                require(_skills[skillsCounter] != 0);
                 // Set skills for current partial category.
                 _setSkills(_user, area, category, _skills[skillsCounter]);
                 // Move to next skills.
@@ -232,7 +306,7 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
             // Move to next categories.
             categoriesCounter += 1;
         }
-        return true;
+        return OK;
     }
 
 
@@ -277,15 +351,15 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
         UserLibrary(getEventsHistory()).emitSkillsSet(_user, _area, _category, _skills);
     }
 
-    function emitSkillAreasSet(address _user, uint _areas) {
+    function emitSkillAreasSet(address _user, uint _areas) public {
         SkillAreasSet(_self(), _user, _areas);
     }
 
-    function emitSkillCategoriesSet(address _user, uint _area, uint _categories) {
+    function emitSkillCategoriesSet(address _user, uint _area, uint _categories) public {
         SkillCategoriesSet(_self(), _user, _area, _categories);
     }
 
-    function emitSkillsSet(address _user, uint _area, uint _category, uint _skills) {
+    function emitSkillsSet(address _user, uint _area, uint _category, uint _skills) public {
         SkillsSet(_self(), _user, _area, _category, _skills);
     }
 

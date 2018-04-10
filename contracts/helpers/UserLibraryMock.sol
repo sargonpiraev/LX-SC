@@ -1,20 +1,29 @@
-pragma solidity 0.4.8;
+/**
+ * Copyright 2017–2018, LaborX PTY
+ * Licensed under the AGPL Version 3 license.
+ */
+
+pragma solidity ^0.4.18;
+
 
 contract UserLibraryMock {
-    uint addRoleCalls = 0;
-    uint setManyCalls = 0; 
 
-    function getCalls() constant returns(uint, uint){
+    uint constant OK = 1;
+
+    uint addRoleCalls = 0;
+    uint setManyCalls = 0;
+
+    function getCalls() public view returns (uint, uint){
         return (addRoleCalls, setManyCalls);
     }
 
-    function addRole(address _user, bytes32 _role) constant returns(bool) {
+    function addRole(address, bytes32) public returns (uint) {
         addRoleCalls++;
-        return true;
+        return OK;
     }
 
-    function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) returns(bool) {
+    function setMany(address, uint, uint[], uint[]) public returns (uint) {
         setManyCalls++;
-        return true;
+        return OK;
     }
 }

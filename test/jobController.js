@@ -4,11 +4,11 @@ const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const ERC20Library = artifacts.require('./ERC20Library.sol');
 const FakeCoin = artifacts.require('./FakeCoin.sol');
 const JobController = artifacts.require('./JobController.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
 const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
+const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Storage = artifacts.require('./Storage.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
@@ -16,8 +16,10 @@ const UserLibrary = artifacts.require('./UserLibrary.sol');
 const Asserts = require('./helpers/asserts');
 const Promise = require('bluebird');
 const Reverter = require('./helpers/reverter');
+const eventsHelper = require('./helpers/eventsHelper');
 
 const helpers = require('./helpers/helpers');
+const ErrorsNamespace = require('../common/errors')
 
 
 contract('JobController', function(accounts) {
@@ -69,22 +71,26 @@ contract('JobController', function(accounts) {
   };
 
   const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
+      if (enabled) {
+          return JobController.deployed().then(jobController => jobController.setRoles2Library(Roles2Library.address));
+      } else {
+          return JobController.deployed().then(jobController => jobController.setRoles2Library(mock.address));
+      }
   };
 
   const ignoreSkillsCheck = (enabled = true) => {
-    return mock.ignore(userLibraryInterface.hasSkills.getData().slice(0, 10), enabled);
+    return mock.ignore(userLibraryInterface.hasSkills.getData(0,0,0,0).slice(0, 10), enabled);
   }
 
   const operationAllowance = (operation, args, results) => {
     let stages = {
-      CREATED: false,
-      ACCEPTED: false,
-      PENDING_START: false,
-      STARTED: false,
-      PENDING_FINISH: false,
-      FINISHED: false,
-      FINALIZED: false
+      CREATED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
+      ACCEPTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
+      PENDING_START: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
+      STARTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
+      PENDING_FINISH: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
+      FINISHED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
+      FINALIZED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE
     };
 
     for (let stage in results) {
@@ -108,32 +114,32 @@ contract('JobController', function(accounts) {
 
       .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
       .then(() => operation.call(...args))
-      .then(result => assert.equal(result, stages.CREATED))
+      .then(result => assert.equal(result.toNumber(), stages.CREATED))
 
       .then(() => jobController.postJobOffer(jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}))
       .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
       .then(() => operation.call(...args))
-      .then(result => assert.equal(result, stages.ACCEPTED))
+      .then(result => assert.equal(result.toNumber(), stages.ACCEPTED))
 
       .then(() => jobController.startWork(jobId, {from: worker}))
       .then(() => operation.call(...args))
-      .then(result => assert.equal(result, stages.PENDING_START))
+      .then(result => assert.equal(result.toNumber(), stages.PENDING_START))
 
       .then(() => jobController.confirmStartWork(jobId, {from: client}))
       .then(() => operation.call(...args))
-      .then(result => assert.equal(result, stages.STARTED))
+      .then(result => assert.equal(result.toNumber(), stages.STARTED))
 
       .then(() => jobController.endWork(jobId, {from: worker}))
       .then(() => operation.call(...args))
-      .then(result => assert.equal(result, stages.PENDING_FINISH))
+      .then(result => assert.equal(result.toNumber(), stages.PENDING_FINISH))
 
       .then(() => jobController.confirmEndWork(jobId, {from: client}))
       .then(() => operation.call(...args))
-      .then(result => assert.equal(result, stages.FINISHED))
+      .then(result => assert.equal(result.toNumber(), stages.FINISHED))
 
       .then(() => jobController.releasePayment(jobId))
       .then(() => operation.call(...args))
-      .then(result => assert.equal(result, stages.FINALIZED));
+      .then(result => assert.equal(result.toNumber(), stages.FINALIZED));
   }
 
   const onReleasePayment = (timeSpent, jobPaymentEstimate, pauses) => {
@@ -195,8 +201,6 @@ contract('JobController', function(accounts) {
     .then(instance => multiEventsHistory = instance)
     .then(() => Storage.deployed())
     .then(instance => storage = instance)
-    .then(() => ManagerMock.deployed())
-    .then(instance => storage.setManager(instance.address))
     .then(() => BalanceHolder.deployed())
     .then(instance => balanceHolder = instance)
     .then(() => ERC20Library.deployed())
@@ -209,26 +213,12 @@ contract('JobController', function(accounts) {
     .then(instance => paymentProcessor = instance)
     .then(() => JobController.deployed())
     .then(instance => jobController = instance)
-
-    .then(() => multiEventsHistory.authorize(erc20Library.address))
-    .then(() => multiEventsHistory.authorize(userLibrary.address))
-    .then(() => multiEventsHistory.authorize(paymentGateway.address))
-    .then(() => multiEventsHistory.authorize(jobController.address))
-
-    .then(() => erc20Library.setupEventsHistory(multiEventsHistory.address))
     .then(() => erc20Library.addContract(fakeCoin.address))
-
-    .then(() => userLibrary.setupEventsHistory(multiEventsHistory.address))
-
     .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
-
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
-
-    .then(() => jobController.setupEventsHistory(multiEventsHistory.address))
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
     .then(() => jobController.setUserLibrary(mock.address))
-
     .then(() => fakeCoin.mint(client, '0xfffffffffffffffffff'))
     .then(() => paymentGateway.deposit('0xfffffffffffffffffff', fakeCoin.address, {from: client}))
     .then(reverter.snapshot);
@@ -248,7 +238,7 @@ contract('JobController', function(accounts) {
           roles2LibraryInterface.canCall.getData(
             caller,
             jobController.address,
-            jobController.contract.setupEventsHistory.getData().slice(0, 10)
+            jobController.contract.setupEventsHistory.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => jobController.setupEventsHistory(newAddress, {from: caller}))
@@ -266,7 +256,7 @@ contract('JobController', function(accounts) {
           roles2LibraryInterface.canCall.getData(
             caller,
             jobController.address,
-            jobController.contract.setPaymentProcessor.getData().slice(0, 10)
+            jobController.contract.setPaymentProcessor.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => jobController.setPaymentProcessor(newAddress, {from: caller}))
@@ -284,7 +274,7 @@ contract('JobController', function(accounts) {
           roles2LibraryInterface.canCall.getData(
             caller,
             jobController.address,
-            jobController.contract.setUserLibrary.getData().slice(0, 10)
+            jobController.contract.setUserLibrary.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => jobController.setUserLibrary(newAddress, {from: caller}))
@@ -302,7 +292,7 @@ contract('JobController', function(accounts) {
           roles2LibraryInterface.canCall.getData(
             caller,
             jobController.address,
-            jobController.contract.setERC20Library.getData().slice(0, 10)
+            jobController.contract.setERC20Library.getData(newAddress).slice(0, 10)
           ), 0)
         )
         .then(() => jobController.setERC20Library(newAddress, {from: caller}))
@@ -359,11 +349,58 @@ contract('JobController', function(accounts) {
         .then(asserts.equal(0));
     });
 
+    it.skip('should NOT allow to post a job with negative skills', () => {
+      const area = 1;
+      const category = 4;
+      const skills = -12;
+      return Promise.resolve()
+        .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+        //.then(() => jobController.getJobSkills.call(1))
+        .then(asserts.equal(0));
+    });
+
+    it('should NOT allow to post a job with negative category', () => {
+      const area = 1;
+      const category = -4;
+      const skills = 3;
+      return Promise.resolve()
+        .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+        .then(asserts.equal(0));
+    });
+
+    it('should NOT allow to post a job with negative area', () => {
+      const area = -1;
+      const category = 4;
+      const skills = 3;
+      return Promise.resolve()
+        .then(() => jobController.postJob.call(area, category, skills, "Job details"))
+        .then(asserts.equal(0));
+    });
+
     it('should allow anyone to post a job', () => {
       return Promise.each(accounts, account => {
         return jobController.postJob.call(4, 4, 4, 'Job details', {from: account})
           .then(jobId => assert.equal(jobId, 1));
       });
+    });
+
+    it('should allow to post a job several times by different users', () => {
+      const clients = accounts.slice(1, 4);
+      const area = 1;
+      const category = 4;
+      const skills = 2;
+      const args = [area, category, skills, "Job details"];
+      return Promise.each(clients, c => {
+          return jobController.postJob(...args, {from: c})
+            .then(helpers.assertLogs([{
+              event: "JobPosted",
+              args: {
+                client: c
+              }
+            }]))
+        })
+        .then(() => jobController.getJobsCount())
+        .then(asserts.equal(3));
     });
 
   });
@@ -378,7 +415,7 @@ contract('JobController', function(accounts) {
           1, Mock.address, '0xfffffffffffffffffff', 1, 1, {from: worker}
           )
         )
-        .then(assert.isFalse);
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_UNSUPPORTED_CONTRACT))
     });
 
     it('should NOT a post job offer with null rate', () => {
@@ -388,7 +425,7 @@ contract('JobController', function(accounts) {
           1, fakeCoin.address, 0, 1, 1, {from: worker}
           )
         )
-        .then(assert.isFalse);
+        .then((code) => assert.equal(code, ErrorsNamespace.JOB_CONTROLLER_INVALID_ESTIMATE))
     });
 
     it('should NOT a post job offer with null estimate', () => {
@@ -398,7 +435,7 @@ contract('JobController', function(accounts) {
           1, fakeCoin.address, '0xfffffffffffffffffff', 0, 1, {from: worker}
           )
         )
-        .then(assert.isFalse);
+        .then((code) => assert.equal(code, ErrorsNamespace.JOB_CONTROLLER_INVALID_ESTIMATE))
     });
 
     it('should NOT post a job offer when rate/estimate/ontop overflow', () => {
@@ -415,7 +452,7 @@ contract('JobController', function(accounts) {
           jobId, fakeCoin.address, rate, estimate, ontop, {from: worker}
           )
         )
-        .then(assert.isFalse);
+        .then((code) => assert.equal(code, ErrorsNamespace.JOB_CONTROLLER_INVALID_ESTIMATE))
     });
 
     it('should allow to post a job offer when lock amount is almost the maximum uint256 value', () => {
@@ -432,7 +469,7 @@ contract('JobController', function(accounts) {
           jobId, fakeCoin.address, rate, estimate, ontop, {from: worker}
           )
         )
-        .then(assert.isTrue);
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.OK))
     });
 
     it("should check skills on posting job offer", () => {
@@ -456,7 +493,24 @@ contract('JobController', function(accounts) {
         .then(() => jobController.postJobOffer.call(
           1, fakeCoin.address, 1000, 180, 1000, {from: worker})
         )
-        .then(assert.isFalse);
+        .then((code) => assert.equal(code, ErrorsNamespace.JOB_CONTROLLER_INVALID_SKILLS))
+    });
+
+    it('should NOT allow to post a job offer to yourself', () => {
+      const jobId = 1;
+      const jobArea = 4;
+      const jobCategory = 4;
+      const jobSkills = 4;
+      const jobDetails = 'Job details';
+      const additionalTime = 60;
+      const workerRate = '0x12f2a36ecd555';
+      const workerOnTop = '0x12f2a36ecd555';
+      const jobEstimate = 180;
+
+      return Promise.resolve()
+        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
+        .then(() => jobController.postJobOffer.call(jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: client}))
+        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
     });
 
     it("should allow to post job offer with no ontop payment", () => {
@@ -466,7 +520,7 @@ contract('JobController', function(accounts) {
           1, fakeCoin.address, '0xfffffffffffffffffff', 1, 0, {from: worker}
           )
         )
-        .then(assert.isTrue);
+        .then((code) => assert.equal(code, ErrorsNamespace.OK))
     });
 
     it("should post job offer if worker skills match", () => {
@@ -477,7 +531,38 @@ contract('JobController', function(accounts) {
         .then(() => jobController.postJobOffer.call(
           1, fakeCoin.address, 1000, 180, 1000, {from: worker})
         )
-        .then(assert.isTrue);
+        .then((code) => assert.equal(code, ErrorsNamespace.OK))
+    });
+
+    it('should allow to post multiple job offers to one job', () => {
+      const workers = accounts.slice(1, 4);
+      const jobId = 1;
+      const jobArea = 4;
+      const jobCategory = 4;
+      const jobSkills = 4;
+      const jobDetails = 'Job details';
+      const workerRate = 55;
+      const workerOnTop = 55;
+      const jobEstimate = 180;
+      const args = [jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop];
+      return Promise.resolve()
+        .then(() => jobController.postJob(
+          jobArea, jobCategory, jobSkills, jobDetails, {from: client}
+        ))
+        .then(() => {
+          return Promise.each(workers, w => {
+            return jobController.postJobOffer(...args, {from: w})
+              .then(tx => helpers.assertLogs(tx, [{
+                address: multiEventsHistory.address,
+                event: "JobOfferPosted",
+                args: {
+                  self: jobController.address,
+                  jobId: jobId,
+                  worker: w
+                }
+              }]));
+          })
+        });
     });
 
   });
@@ -489,7 +574,7 @@ contract('JobController', function(accounts) {
       return Promise.resolve()
         .then(() => jobController.postJob(4, 4, 4, 'Job details', {from: client}))
         .then(() => jobController.acceptOffer.call(1, worker, {from: client}))
-        .then(assert.isFalse);
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_WORKER_RATE_NOT_SET))
     });
 
     it('should THROW on `acceptOffer` if client has insufficient funds', () => {
@@ -532,7 +617,7 @@ contract('JobController', function(accounts) {
         .then(assert.isTrue)
         .then(() => paymentProcessor.approve(1))
         .then(() => jobController.acceptOffer.call(1, worker, {from: client}))
-        .then(assert.isTrue);
+        .then((code) => assert.equal(code, ErrorsNamespace.OK))
     });
 
     it('should lock correct amount of tokens on `acceptOffer`', () => {
@@ -581,65 +666,64 @@ contract('JobController', function(accounts) {
       const jobSkills = 4;
       const jobDetails = 'Job details';
       const additionalTime = 60;
-
       const workerRate = '0x12f2a36ecd555';
       const workerOnTop = '0x12f2a36ecd555';
       const jobEstimate = 180;
 
       return Promise.resolve()
         .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
-
         .then(() => jobController.postJobOffer(jobId, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}))
-
         .then(() => jobController.acceptOffer.call(jobId, worker, {from: stranger}))
-        .then(assert.isFalse)
+        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
         .then(() => jobController.acceptOffer(jobId, worker, {from: client}))
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
-        .then(assert.isTrue)
+        .then((code) => assert.equal(code, ErrorsNamespace.OK))
         .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
-        .then(assert.isFalse)
-
+        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
         .then(() => jobController.startWork.call(jobId, {from: stranger}))
-        .then(assert.isFalse)
+        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
         .then(() => jobController.startWork(jobId, {from: worker}))
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
-        .then(assert.isTrue)
+        .then((code) => assert.equal(code, ErrorsNamespace.OK))
         .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
-        .then(assert.isFalse)
+        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
 
         .then(() => jobController.confirmStartWork.call(jobId, {from: stranger}))
-        .then(assert.isFalse)
+        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
         .then(() => jobController.confirmStartWork(jobId, {from: client}))
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
-        .then(assert.isTrue)
+        .then((code) => assert.equal(code, ErrorsNamespace.OK))
         .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
-        .then(assert.isFalse)
+        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
 
         .then(() => jobController.pauseWork.call(jobId, {from: stranger}))
-        .then(assert.isFalse)
+        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
         .then(() => jobController.pauseWork(jobId, {from: worker}))
-        .then(tx => assert.equal(tx.logs[0].event, 'WorkPaused'))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkPaused"))
+        .then(events => assert.equal(events.length, 1))
 
         .then(() => jobController.resumeWork.call(jobId, {from: stranger}))
-        .then(assert.isFalse)
+        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
         .then(() => jobController.resumeWork(jobId, {from: worker}))
-        .then(tx => assert.equal(tx.logs[0].event, 'WorkResumed'))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkResumed"))
+        .then(events => assert.equal(events.length, 1))
 
         .then(() => jobController.addMoreTime.call(jobId, additionalTime, {from: stranger}))
-        .then(assert.isFalse)
+        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
         .then(() => jobController.addMoreTime(jobId, additionalTime, {from: client}))
-        .then(tx => assert.equal(tx.logs[0].event, 'TimeAdded'))
+        .then(tx => eventsHelper.extractEvents(tx, "TimeAdded"))
+        .then(events => assert.equal(events.length, 1))
 
         .then(() => jobController.endWork.call(jobId, {from: stranger}))
-        .then(assert.isFalse)
+        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
         .then(() => jobController.endWork(jobId, {from: worker}))
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
-        .then(assert.isTrue)
+        .then((code) => assert.equal(code, ErrorsNamespace.OK))
         .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
-        .then(assert.isFalse)
+        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
 
         .then(() => jobController.confirmEndWork.call(jobId, {from: stranger}))
-        .then(assert.isFalse)
+        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
         .then(() => jobController.confirmEndWork(jobId, {from: client}))
 
         .then(() => jobController.releasePayment(jobId))
@@ -650,7 +734,10 @@ contract('JobController', function(accounts) {
     it('should allow anyone to post an offer for a job only when a job has CREATED status', () => {
       const operation = jobController.postJobOffer;
       const args = [1, FakeCoin.address, '0x12F2A36ECD555', 180, '0x12F2A36ECD555', {from: worker}];
-      const results = {CREATED: true};
+      const results = {
+        CREATED: ErrorsNamespace.OK,
+        ACCEPTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
+      };
       return Promise.resolve()
         .then(() => operationAllowance(operation, args, results));
     });
@@ -658,7 +745,11 @@ contract('JobController', function(accounts) {
     it('should allow assigned worker to request work start only when a job has ACCEPTED status', () => {
       const operation = jobController.startWork;
       const args = [1, {from: worker}];
-      const results = {ACCEPTED: true};
+      const results = {
+        CREATED: ErrorsNamespace.UNAUTHORIZED,
+        ACCEPTED: ErrorsNamespace.OK,
+        PENDING_START: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
+      };
       return Promise.resolve()
         .then(() => operationAllowance(operation, args, results));
     });
@@ -666,7 +757,10 @@ contract('JobController', function(accounts) {
     it('should allow client to confirm start work only when job has PENDING_START status', () => {
       const operation = jobController.confirmStartWork;
       const args = [1, {from: client}];
-      const results = {PENDING_START: true};
+      const results = {
+        PENDING_START: ErrorsNamespace.OK,
+        STARTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE
+      };
       return Promise.resolve()
         .then(() => operationAllowance(operation, args, results));
     });
@@ -674,7 +768,12 @@ contract('JobController', function(accounts) {
     it('should allow assigned worker to request end work only when job has STARTED status', () => {
       const operation = jobController.endWork;
       const args = [1, {from: worker}];
-      const results = {STARTED: true};
+      const results = {
+          CREATED: ErrorsNamespace.UNAUTHORIZED,
+          ACCEPTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
+          PENDING_START: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
+          STARTED: ErrorsNamespace.OK,
+      };
       return Promise.resolve()
         .then(() => operationAllowance(operation, args, results));
     });
@@ -682,7 +781,7 @@ contract('JobController', function(accounts) {
     it('should allow client to confirm end work only when job has PENDING_FINISH status', () => {
       const operation = jobController.confirmEndWork;
       const args = [1, {from: client}];
-      const results = {PENDING_FINISH: true};
+      const results = {PENDING_FINISH: ErrorsNamespace.OK};
       return Promise.resolve()
         .then(() => operationAllowance(operation, args, results));
     });
@@ -690,7 +789,7 @@ contract('JobController', function(accounts) {
     it('should allow anyone to release payment only when job has FINISHED status', () => {
       const operation = jobController.releasePayment;
       const args = [1, {from: accounts[3]}];
-      const results = {FINISHED: true};
+      const results = {FINISHED: ErrorsNamespace.OK};
       return Promise.resolve()
         .then(() => operationAllowance(operation, args, results));
     });
@@ -699,10 +798,10 @@ contract('JobController', function(accounts) {
       const operation = jobController.cancelJob;
       const args = [1, {from: client}];
       const results = {
-        ACCEPTED: true,
-        PENDING_START: true,
-        STARTED: true,
-        PENDING_FINISH: true
+        ACCEPTED: ErrorsNamespace.OK,
+        PENDING_START: ErrorsNamespace.OK,
+        STARTED: ErrorsNamespace.OK,
+        PENDING_FINISH: ErrorsNamespace.OK
       };
       return Promise.resolve()
         .then(() => operationAllowance(operation, args, results));
@@ -736,7 +835,7 @@ contract('JobController', function(accounts) {
       .then(() => jobController.getJobState(jobId))
       .then(asserts.equal(6))
       .then(() => jobController.cancelJob.call(jobId, {from: client}))
-      .then(assert.isFalse);
+      .then((code) => assert.equal(code, ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE))
 
     });
 
@@ -759,9 +858,10 @@ contract('JobController', function(accounts) {
         .then(() => jobController.startWork(1, {from: worker}))
         .then(() => jobController.confirmStartWork(1, {from: client}))
         .then(() => jobController.pauseWork(1, {from: worker}))
-        .then(tx => assert.equal(tx.logs[0].event, 'WorkPaused'))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkPaused"))
+        .then(events => assert.equal(events.length, 1))
         .then(() => jobController.pauseWork.call(1, {from: worker}))
-        .then(assert.isFalse);
+        .then((code) => assert.equal(code, ErrorsNamespace.JOB_CONTROLLER_WORK_IS_ALREADY_PAUSED))
     });
 
     it("should NOT allow to resume work if it isn't paused", () => {
@@ -778,7 +878,7 @@ contract('JobController', function(accounts) {
         .then(() => jobController.startWork(1, {from: worker}))
         .then(() => jobController.confirmStartWork(1, {from: client}))
         .then(() => jobController.resumeWork.call(1, {from: worker}))
-        .then(assert.isFalse);
+        .then((code) => assert.equal(code, ErrorsNamespace.JOB_CONTROLLER_WORK_IS_NOT_PAUSED))
     });
 
     it("should NOT add null amount of work time", () => {
@@ -794,11 +894,12 @@ contract('JobController', function(accounts) {
         .then(() => jobController.acceptOffer(1, worker, {from: client}))
         .then(() => jobController.startWork(1, {from: worker}))
         .then(() => jobController.confirmStartWork(1, {from: client}))
-        .then(() => jobController.addMoreTime.call(1, 0, {from: client}))
-        .then(assert.isFalse);
+        .then(() => asserts.throws(
+            jobController.addMoreTime.call(1, 0, {from: client})
+        ))
     });
 
-    it("should THROW when trying to add more time if operation " +
+    it("should NOT success when trying to add more time if operation " +
        "is not allowed by Payment Processor", () => {
       const workerRate = '0x12f2a36ecd555';
       const workerOnTop = '0x12f2a36ecd555';
@@ -811,13 +912,15 @@ contract('JobController', function(accounts) {
         .then(() => jobController.acceptOffer(1, worker, {from: client}))
         .then(() => jobController.startWork(1, {from: worker}))
         .then(() => jobController.confirmStartWork(1, {from: client}))
-        .then(tx => assert.equal(tx.logs[0].event, 'WorkStarted'))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
+        .then(events => assert.equal(events.length, 1))
         .then(() => paymentProcessor.enableServiceMode())
         .then(() => paymentProcessor.serviceMode())
         .then(assert.isTrue)
         .then(() => asserts.throws(
-          jobController.addMoreTime(1, 60, {from: client})
-        ));
+            jobController.addMoreTime.call(1, 60, {from: client})
+        ))
+        // .then(code => assert.equal(code.toNumber(), ErrorsNamespace.PAYMENT_PROCESSOR_OPERATION_IS_NOT_APPROVED))
     });
 
     it("should NOT let client add more work time if he doesn't have enough funds for it", () => {
@@ -832,7 +935,8 @@ contract('JobController', function(accounts) {
         .then(() => jobController.acceptOffer(1, worker, {from: client}))
         .then(() => jobController.startWork(1, {from: worker}))
         .then(() => jobController.confirmStartWork(1, {from: client}))
-        .then(tx => assert.equal(tx.logs[0].event, 'WorkStarted'))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
+        .then(events => assert.equal(events.length, 1))
         .then(() => asserts.throws(
           jobController.addMoreTime(1, 65535, {from: client})
         ));
@@ -856,11 +960,12 @@ contract('JobController', function(accounts) {
       return Promise.resolve()
       // Post job
         .then(() => jobController.postJob(skillsArea, skillsCategory, skills, jobDetails, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobPosted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobPosted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobPosted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.client, client);
@@ -874,11 +979,12 @@ contract('JobController', function(accounts) {
           1, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
           )
         )
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobOfferPosted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobOfferPosted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobOfferPosted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.worker, worker);
@@ -888,89 +994,90 @@ contract('JobController', function(accounts) {
         })
         // Accept job offer
         .then(() => jobController.acceptOffer(1, worker, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobOfferAccepted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobOfferAccepted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobOfferAccepted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.worker, worker);
         })
         // Request start of work
         .then(() => jobController.startWork(1, {from: worker}))
-        .then(tx => assert.equal(tx.logs.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
+        .then(events => assert.equal(events.length, 0))
         // Confirm start of work
         .then(() => jobController.confirmStartWork(1, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkStarted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkStarted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         // Pause work
         .then(() => jobController.pauseWork(1, {from: worker}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkPaused');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkPaused"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkPaused');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         // Resume work
         .then(() => jobController.resumeWork(1, {from: worker}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkResumed');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkResumed"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkResumed');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         // Add more time
         .then(() => jobController.addMoreTime(1, 60, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'TimeAdded');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "TimeAdded"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'TimeAdded');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.time.toString(), '60');
         })
         // Request end of work
         .then(() => jobController.endWork(1, {from: worker}))
-        .then(tx => assert.equal(tx.logs.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkFinished"))
+        .then(events => assert.equal(events.length, 0))
         // Confirm end of work
         .then(() => jobController.confirmEndWork(1, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkFinished');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkFinished"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkFinished');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         .then(() => jobController.releasePayment(1))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'PaymentReleased');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "PaymentReleased"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'PaymentReleased');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-        });
+        })
     });
 
     it('should emit all events on a workflow with canceled job', () => {
@@ -986,11 +1093,12 @@ contract('JobController', function(accounts) {
       return Promise.resolve()
       // Post job
         .then(() => jobController.postJob(skillsArea, skillsCategory, skills, jobDetails, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobPosted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobPosted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobPosted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.client, client);
@@ -1004,11 +1112,12 @@ contract('JobController', function(accounts) {
           1, fakeCoin.address, workerRate, jobEstimate, workerOnTop, {from: worker}
           )
         )
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobOfferPosted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobOfferPosted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobOfferPosted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.worker, worker);
@@ -1018,75 +1127,77 @@ contract('JobController', function(accounts) {
         })
         // Accept job offer
         .then(() => jobController.acceptOffer(1, worker, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobOfferAccepted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobOfferAccepted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobOfferAccepted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.worker, worker);
         })
         // Request start of work
         .then(() => jobController.startWork(1, {from: worker}))
-        .then(tx => assert.equal(tx.logs.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
+        .then(events => assert.equal(events.length, 0))
         // Confirm start of work
         .then(() => jobController.confirmStartWork(1, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkStarted');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkStarted');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         // Pause work
         .then(() => jobController.pauseWork(1, {from: worker}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkPaused');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkPaused"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkPaused');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         // Resume work
         .then(() => jobController.resumeWork(1, {from: worker}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'WorkResumed');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "WorkResumed"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'WorkResumed');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         // Add more time
         .then(() => jobController.addMoreTime(1, 60, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'TimeAdded');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "TimeAdded"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'TimeAdded');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
           assert.equal(log.time.toString(), '60');
         })
         // Request end of work
         .then(() => jobController.endWork(1, {from: worker}))
-        .then(tx => assert.equal(tx.logs.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "JobCanceled"))
+        .then(events => assert.equal(events.length, 0))
         // Cancel job
         .then(() => jobController.cancelJob(1, {from: client}))
-        .then(tx => {
-          assert.equal(tx.logs.length, 1);
-          assert.equal(tx.logs[0].address, multiEventsHistory.address);
-          assert.equal(tx.logs[0].event, 'JobCanceled');
-          const log = tx.logs[0].args;
+        .then(tx => eventsHelper.extractEvents(tx, "JobCanceled"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'JobCanceled');
+          const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
         });
@@ -1121,7 +1232,7 @@ contract('JobController', function(accounts) {
         .then(() => paymentProcessor.serviceMode())
         .then(assert.isTrue)
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
-        .then(assert.isFalse);
+        .then(code => assert.equal(code.toNumber(), ErrorsNamespace.PAYMENT_PROCESSOR_OPERATION_IS_NOT_APPROVED))
     });
 
     it("should allow to cancel job if operation " +
@@ -1149,7 +1260,7 @@ contract('JobController', function(accounts) {
         .then(assert.isTrue)
         .then(() => paymentProcessor.approve(jobId))
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
-        .then(assert.isTrue);
+        .then((code) => assert.equal(code, ErrorsNamespace.OK))
     });
 
     it("should NOT allow to release payment when operation was not allowed by Payment Processor", () => {
@@ -1173,7 +1284,7 @@ contract('JobController', function(accounts) {
         .then(assert.isTrue)
 
         .then(() => jobController.releasePayment.call(jobId))
-        .then(assert.isFalse)
+        .then((code) => assert.equal(code, ErrorsNamespace.PAYMENT_PROCESSOR_OPERATION_IS_NOT_APPROVED))
     });
 
     it("should allow to release payment when operation was allowed by Payment Processor", () => {
@@ -1198,7 +1309,7 @@ contract('JobController', function(accounts) {
         .then(() => paymentProcessor.approve(jobId))
 
         .then(() => jobController.releasePayment.call(jobId))
-        .then(assert.isTrue)
+        .then((code) => assert.equal(code, ErrorsNamespace.OK))
     });
 
     it('should release just jobOfferOnTop on `cancelJob` on ACCEPTED job stage', () => {
@@ -1424,5 +1535,6 @@ contract('JobController', function(accounts) {
     });
 
   });
+
 
 });

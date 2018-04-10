@@ -1,15 +1,13 @@
 "use strict";
 
 const IPFSLibrary = artifacts.require('./IPFSLibrary.sol');
-const ManagerMock = artifacts.require('./ManagerMock.sol');
-const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Storage = artifacts.require('./Storage.sol');
 
 const Asserts = require('./helpers/asserts');
 const Reverter = require('./helpers/reverter');
-
+const Promise = require('bluebird');
 
 contract('IPFSLibrary', function(accounts) {
   const reverter = new Reverter(web3);
@@ -21,38 +19,14 @@ contract('IPFSLibrary', function(accounts) {
   let multiEventsHistory;
   let ipfsLibrary;
   let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
-  let mock;
-
-  const assertExpectations = (expected = 0, callsCount = null) => {
-    let expectationsCount;
-    return () => {
-      return mock.expectationsLeft()
-      .then(asserts.equal(expected))
-      .then(() => mock.expectationsCount())
-      .then(result => expectationsCount = result)
-      .then(() => mock.callsCount())
-      .then(result => asserts.equal(callsCount === null ? expectationsCount : callsCount)(result));
-    };
-  };
-
-  const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
-  };
 
   before('setup', () => {
-    return Mock.deployed()
-    .then(instance => mock = instance)
-    .then(() => ignoreAuth())
-    .then(() => Storage.deployed())
+    return Storage.deployed()
     .then(instance => storage = instance)
-    .then(() => ManagerMock.deployed())
-    .then(instance => storage.setManager(instance.address))
     .then(() => IPFSLibrary.deployed())
     .then(instance => ipfsLibrary = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
-    .then(() => ipfsLibrary.setupEventsHistory(multiEventsHistory.address))
-    .then(() => multiEventsHistory.authorize(ipfsLibrary.address))
     .then(reverter.snapshot);
   });
 
@@ -60,18 +34,9 @@ contract('IPFSLibrary', function(accounts) {
     const caller = accounts[1];
     const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => ignoreAuth(false))
-    .then(() => mock.expect(
-      ipfsLibrary.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
-        ipfsLibrary.address,
-        ipfsLibrary.contract.setupEventsHistory.getData().slice(0, 10)
-      ), 0)
-    )
     .then(() => ipfsLibrary.setupEventsHistory(newAddress, {from: caller}))
-    .then(assertExpectations());
+    .then(() => ipfsLibrary.getEventsHistory.call())
+    .then(_eventsHistory => assert.equal(_eventsHistory, multiEventsHistory.address))
   });
 
   it('should be able to set hash', () => {
@@ -80,6 +45,22 @@ contract('IPFSLibrary', function(accounts) {
     return ipfsLibrary.setHash(key, hash, {from: SENDER})
     .then(() => ipfsLibrary.getHash(SENDER, key))
     .then(asserts.equal(hash));
+  });
+
+  it.skip('should error when invalid key was set', () => {
+    const hash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    const invalidKey = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    return ipfsLibrary.setHash.call(invalidKey, hash, {from: SENDER})
+    .then(assert.isFalse);
+  });
+
+  it('should set valid hash when invalid hash was previously set', () => {
+    const invalidHash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    const validHash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    const key = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
+    return ipfsLibrary.setHash(key, invalidHash, {from: SENDER})
+    .then(() => ipfsLibrary.getHash(SENDER, key))
+    .then(asserts.equal(validHash));
   });
 
   it('should rewrite hash', () => {
@@ -118,6 +99,20 @@ contract('IPFSLibrary', function(accounts) {
     .then(asserts.equal(hash2));
   });
 
+  it('should store hashes for different keys and setters', () => {
+    const sender2 = accounts[3];
+    const hash1 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    const hash2 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00ff';
+    const key1 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
+    const key2 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0000';
+    return ipfsLibrary.setHash(key1, hash1, {from: SENDER})
+    .then(() => ipfsLibrary.setHash(key2, hash2, {from: sender2}))
+    .then(() => ipfsLibrary.getHash(SENDER, key1))
+    .then(asserts.equal(hash1))
+    .then(() => ipfsLibrary.getHash(sender2, key2))
+    .then(asserts.equal(hash2));
+  });
+
   it('should emit "HashSet" event when hash set', () => {
     const hash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const key = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
@@ -131,4 +126,5 @@ contract('IPFSLibrary', function(accounts) {
       assert.equal(result.logs[0].args.hash, hash);
     });
   });
+
 });

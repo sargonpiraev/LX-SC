@@ -1,15 +1,15 @@
 "use strict";
 
-const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
+const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Storage = artifacts.require('./Storage.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
 
 const Asserts = require('./helpers/asserts');
 const Reverter = require('./helpers/reverter');
-
+const eventsHelper = require('./helpers/eventsHelper');
 const helpers = require('./helpers/helpers');
 
 
@@ -38,18 +38,11 @@ contract('UserLibrary', function(accounts) {
     };
   };
 
-  const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
-  };
-
   before('setup', () => {
     return Mock.deployed()
     .then(instance => mock = instance)
-    .then(() => ignoreAuth())
     .then(() => Storage.deployed())
     .then(instance => storage = instance)
-    .then(() => ManagerMock.deployed())
-    .then(instance => storage.setManager(instance.address))
     .then(() => UserLibrary.deployed())
     .then(instance => userLibrary = instance)
     .then(() => MultiEventsHistory.deployed())
@@ -63,14 +56,14 @@ contract('UserLibrary', function(accounts) {
     const caller = accounts[1];
     const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
     return Promise.resolve()
-    .then(() => ignoreAuth(false))
+    .then(() => userLibrary.setRoles2Library(Mock.address))
     .then(() => mock.expect(
       userLibrary.address,
       0,
       roles2LibraryInterface.canCall.getData(
         caller,
         userLibrary.address,
-        userLibrary.contract.setupEventsHistory.getData().slice(0, 10)
+        userLibrary.contract.setupEventsHistory.getData(newAddress).slice(0, 10)
       ), 0)
     )
     .then(() => userLibrary.setupEventsHistory(newAddress, {from: caller}))
@@ -94,7 +87,7 @@ contract('UserLibrary', function(accounts) {
       return a.valueOf() === b.valueOf();
     };
 
-    const parseBigNumbers = bigs => bigs.map(big => big.toString());
+    const parseBigNumbers = bigs => bigs.map(big => big.toString()).filter(e => e !== '0');
 
     const assertUserSkills = (user, expectedSkills) => {
       let actualSkills;
@@ -121,7 +114,7 @@ contract('UserLibrary', function(accounts) {
         const skills = [];
         const expectedSkills = [ 0, categories, skills ];
         return Promise.resolve()
-        .then(() => ignoreAuth(false))
+        .then(() => userLibrary.setRoles2Library(Mock.address))
         .then(() => {
           const expectedSig = helpers.getSig("setMany(address,uint256,uint256[],uint256[])");
           return mock.expect(
@@ -347,7 +340,15 @@ contract('UserLibrary', function(accounts) {
         const expectedSkills = [ areas, categories, skills ];
         return Promise.resolve()
         .then(() => userLibrary.setMany(user, areas, categories, skills))
-        .then(results => assert.equal(results.logs.length, 1 + categories.length + skills.length))
+        .then(tx => {
+            return Promise.resolve()
+                .then(() => eventsHelper.extractEvents(tx, "SkillAreasSet"))
+                .then(events => assert.equal(events.length, 1))
+                .then(() => eventsHelper.extractEvents(tx, "SkillsSet"))
+                .then(events => assert.equal(events.length, skills.length))
+                .then(() => eventsHelper.extractEvents(tx, "SkillCategoriesSet"))
+                .then(events => assert.equal(events.length, categories.length));
+        })
         .then(assertUserSkills(user, expectedSkills))
         .then(() => true);
       });
@@ -364,7 +365,15 @@ contract('UserLibrary', function(accounts) {
         return Promise.resolve()
         .then(() => userLibrary.setMany(user, areas, categories, skills))
         .then(() => userLibrary.setMany(user, areas2, categories2, skills2))
-        .then(results => assert.equal(results.logs.length, 1 + categories2.length + skills2.length))
+        .then(tx => {
+            return Promise.resolve()
+                .then(() => eventsHelper.extractEvents(tx, "SkillAreasSet"))
+                .then(events => assert.equal(events.length, 1))
+                .then(() => eventsHelper.extractEvents(tx, "SkillsSet"))
+                .then(events => assert.equal(events.length, skills2.length))
+                .then(() => eventsHelper.extractEvents(tx, "SkillCategoriesSet"))
+                .then(events => assert.equal(events.length, categories2.length));
+        })
         .then(assertUserSkills(user, expectedSkills))
         .then(() => true);
       });
@@ -379,7 +388,7 @@ contract('UserLibrary', function(accounts) {
         const skills = [];
         const expectedSkills = [ 0, categories, skills ];
         return Promise.resolve()
-        .then(() => ignoreAuth(false))
+        .then(() => userLibrary.setRoles2Library(Mock.address))
         .then(() => {
           const expectedSig = helpers.getSig("addMany(address,uint256,uint256[],uint256[])");
           return mock.expect(
@@ -594,7 +603,15 @@ contract('UserLibrary', function(accounts) {
         const expectedSkills = [ areas, categories, skills ];
         return Promise.resolve()
         .then(() => userLibrary.addMany(user, areas, categories, skills))
-        .then(results => assert.equal(results.logs.length, 6))
+        .then(tx => {
+            return Promise.resolve()
+                .then(() => eventsHelper.extractEvents(tx, "SkillAreasSet"))
+                .then(events => assert.equal(events.length, 1))
+                .then(() => eventsHelper.extractEvents(tx, "SkillsSet"))
+                .then(events => assert.equal(events.length, skills.length))
+                .then(() => eventsHelper.extractEvents(tx, "SkillCategoriesSet"))
+                .then(events => assert.equal(events.length, categories.length));
+        })
         .then(assertUserSkills(user, expectedSkills))
         .then(() => true);
       });
@@ -611,7 +628,15 @@ contract('UserLibrary', function(accounts) {
         return Promise.resolve()
         .then(() => userLibrary.setMany(user, areas, categories, skills))
         .then(() => userLibrary.addMany(user, areas2, categories2, skills2))
-        .then(results => assert.equal(results.logs.length, 3))
+        .then(tx => {
+            return Promise.resolve()
+                .then(() => eventsHelper.extractEvents(tx, "SkillAreasSet"))
+                .then(events => assert.equal(events.length, 1))
+                .then(() => eventsHelper.extractEvents(tx, "SkillsSet"))
+                .then(events => assert.equal(events.length, 1))
+                .then(() => eventsHelper.extractEvents(tx, "SkillCategoriesSet"))
+                .then(events => assert.equal(events.length, 1));
+        })
         .then(assertUserSkills(user, expectedSkills))
         .then(() => true);
       });
@@ -626,14 +651,14 @@ contract('UserLibrary', function(accounts) {
         const skills = [];
         const expectedSkills = [ 0, categories, skills ];
         return Promise.resolve()
-        .then(() => ignoreAuth(false))
+        .then(() => userLibrary.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           userLibrary.address,
           0,
           roles2LibraryInterface.canCall.getData(
             caller,
             userLibrary.address,
-            userLibrary.contract.setAreas.getData().slice(0, 10)
+            userLibrary.contract.setAreas.getData(user, areas).slice(0, 10)
           ), 0)
         )
         .then(() => userLibrary.setAreas(user, areas, {from: caller}))
@@ -650,13 +675,14 @@ contract('UserLibrary', function(accounts) {
         const expectedSkills = [ areas, categories, skills ];
         return Promise.resolve()
         .then(() => userLibrary.setAreas(user, areas))
-        .then(result => {
-          assert.equal(result.logs.length, 1);
-          assert.equal(result.logs[0].address, multiEventsHistory.address);
-          assert.equal(result.logs[0].event, 'SkillAreasSet');
-          assert.equal(result.logs[0].args.user, user);
-          assert.equal(result.logs[0].args.self, userLibrary.address);
-          equal(result.logs[0].args.areas, areas);
+        .then(tx => eventsHelper.extractEvents(tx, "SkillAreasSet"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'SkillAreasSet');
+          assert.equal(events[0].args.user, user);
+          assert.equal(events[0].args.self, userLibrary.address);
+          equal(events[0].args.areas, areas);
         })
         .then(assertUserSkills(user, expectedSkills))
         .then(() => true);
@@ -751,14 +777,14 @@ contract('UserLibrary', function(accounts) {
         const categories = [addFlags(partialAndFullFlag(10))];
         const expectedSkills = [ 0, [], [] ];
         return Promise.resolve()
-        .then(() => ignoreAuth(false))
+        .then(() => userLibrary.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           userLibrary.address,
           0,
           roles2LibraryInterface.canCall.getData(
             caller,
             userLibrary.address,
-            userLibrary.contract.setCategories.getData().slice(0, 10)
+            userLibrary.contract.setCategories.getData(user, area, categories[0]).slice(0, 10)
           ), 0)
         )
         .then(() => userLibrary.setCategories(user, area, categories[0], {from: caller}))
@@ -775,21 +801,28 @@ contract('UserLibrary', function(accounts) {
         const expectedSkills = [ area, categories, skills ];
         return Promise.resolve()
         .then(() => userLibrary.setCategories(user, area, categories[0]))
-        .then(result => {
-          assert.equal(result.logs.length, 2);
+        .then(tx => {
+            return Promise.resolve()
+            .then(() => eventsHelper.extractEvents(tx, "SkillAreasSet"))
+            .then(events => {
+                assert.equal(events.length, 1);
 
-          assert.equal(result.logs[0].address, multiEventsHistory.address);
-          assert.equal(result.logs[0].event, 'SkillAreasSet');
-          assert.equal(result.logs[0].args.user, user);
-          assert.equal(result.logs[0].args.self, userLibrary.address);
-          equal(result.logs[0].args.areas, area);
-
-          assert.equal(result.logs[1].address, multiEventsHistory.address);
-          assert.equal(result.logs[1].event, 'SkillCategoriesSet');
-          assert.equal(result.logs[1].args.user, user);
-          assert.equal(result.logs[1].args.self, userLibrary.address);
-          equal(result.logs[1].args.area, area);
-          equal(result.logs[1].args.categories, categories);
+                assert.equal(events[0].address, multiEventsHistory.address);
+                assert.equal(events[0].event, 'SkillAreasSet');
+                assert.equal(events[0].args.user, user);
+                assert.equal(events[0].args.self, userLibrary.address);
+                equal(events[0].args.areas, area);
+            })
+            .then(() => eventsHelper.extractEvents(tx, "SkillCategoriesSet"))
+            .then(events => {
+                assert.equal(events.length, 1);
+                assert.equal(events[0].address, multiEventsHistory.address);
+                assert.equal(events[0].event, 'SkillCategoriesSet');
+                assert.equal(events[0].args.user, user);
+                assert.equal(events[0].args.self, userLibrary.address);
+                equal(events[0].args.area, area);
+                equal(events[0].args.categories, categories);
+            });
         })
         .then(assertUserSkills(user, expectedSkills))
         .then(() => true);
@@ -924,14 +957,14 @@ contract('UserLibrary', function(accounts) {
         const skills = [addFlags(helpers.getFlag(15))];
         const expectedSkills = [ 0, [], [] ];
         return Promise.resolve()
-        .then(() => ignoreAuth(false))
+        .then(() => userLibrary.setRoles2Library(Mock.address))
         .then(() => mock.expect(
           userLibrary.address,
           0,
           roles2LibraryInterface.canCall.getData(
             caller,
             userLibrary.address,
-            userLibrary.contract.setSkills.getData().slice(0, 10)
+            userLibrary.contract.setSkills.getData(user, area, category, skills[0]).slice(0, 10)
           ), 0)
         )
         .then(() => userLibrary.setSkills(user, area, category, skills[0], {from: caller}))
@@ -948,29 +981,38 @@ contract('UserLibrary', function(accounts) {
         const expectedSkills = [ area, [category], skills ];
         return Promise.resolve()
         .then(() => userLibrary.setSkills(user, area, category, skills[0]))
-        .then(result => {
-          assert.equal(result.logs.length, 3);
-
-          assert.equal(result.logs[0].address, multiEventsHistory.address);
-          assert.equal(result.logs[0].event, 'SkillAreasSet');
-          assert.equal(result.logs[0].args.user, user);
-          assert.equal(result.logs[0].args.self, userLibrary.address);
-          equal(result.logs[0].args.areas, area);
-
-          assert.equal(result.logs[1].address, multiEventsHistory.address);
-          assert.equal(result.logs[1].event, 'SkillCategoriesSet');
-          assert.equal(result.logs[1].args.user, user);
-          assert.equal(result.logs[1].args.self, userLibrary.address);
-          equal(result.logs[1].args.area, area);
-          equal(result.logs[1].args.categories, category);
-
-          assert.equal(result.logs[2].address, multiEventsHistory.address);
-          assert.equal(result.logs[2].event, 'SkillsSet');
-          assert.equal(result.logs[2].args.user, user);
-          assert.equal(result.logs[2].args.self, userLibrary.address);
-          equal(result.logs[2].args.area, area);
-          equal(result.logs[2].args.category, category);
-          equal(result.logs[2].args.skills, skills);
+        .then(tx => {
+            return Promise.resolve()
+            .then(() => eventsHelper.extractEvents(tx, "SkillAreasSet"))
+            .then(events => {
+                assert.equal(events.length, 1);
+                assert.equal(events[0].address, multiEventsHistory.address);
+                assert.equal(events[0].event, 'SkillAreasSet');
+                assert.equal(events[0].args.user, user);
+                assert.equal(events[0].args.self, userLibrary.address);
+                equal(events[0].args.areas, area);
+            })
+            .then(() => eventsHelper.extractEvents(tx, "SkillCategoriesSet"))
+            .then(events => {
+                assert.equal(events.length, 1);
+                assert.equal(events[0].address, multiEventsHistory.address);
+                assert.equal(events[0].event, 'SkillCategoriesSet');
+                assert.equal(events[0].args.user, user);
+                assert.equal(events[0].args.self, userLibrary.address);
+                equal(events[0].args.area, area);
+                equal(events[0].args.categories, category);
+            })
+            .then(() => eventsHelper.extractEvents(tx, "SkillsSet"))
+            .then(events => {
+                assert.equal(events.length, 1);
+                assert.equal(events[0].address, multiEventsHistory.address);
+                assert.equal(events[0].event, 'SkillsSet');
+                assert.equal(events[0].args.user, user);
+                assert.equal(events[0].args.self, userLibrary.address);
+                equal(events[0].args.area, area);
+                equal(events[0].args.category, category);
+                equal(events[0].args.skills, skills);
+            });
         })
         .then(assertUserSkills(user, expectedSkills))
         .then(() => true);

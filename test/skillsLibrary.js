@@ -1,6 +1,5 @@
 "use strict";
 
-const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
@@ -9,7 +8,7 @@ const Storage = artifacts.require('./Storage.sol');
 
 const Asserts = require('./helpers/asserts');
 const Reverter = require('./helpers/reverter');
-
+const eventsHelper = require('./helpers/eventsHelper');
 
 contract('SkillsLibrary', function(accounts) {
   const reverter = new Reverter(web3);
@@ -34,10 +33,6 @@ contract('SkillsLibrary', function(accounts) {
     };
   };
 
-  const ignoreAuth = (enabled = true) => {
-    return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
-  };
-
   const getFlag = index => {
     return web3.toBigNumber(2).pow(index*2);
   };
@@ -55,17 +50,12 @@ contract('SkillsLibrary', function(accounts) {
   before('setup', () => {
     return Mock.deployed()
     .then(instance => mock = instance)
-    .then(() => ignoreAuth())
     .then(() => Storage.deployed())
     .then(instance => storage = instance)
-    .then(() => ManagerMock.deployed())
-    .then(instance => storage.setManager(instance.address))
     .then(() => SkillsLibrary.deployed())
     .then(instance => skillsLibrary = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
-    .then(() => skillsLibrary.setupEventsHistory(multiEventsHistory.address))
-    .then(() => multiEventsHistory.authorize(skillsLibrary.address))
     .then(reverter.snapshot);
   });
 
@@ -120,14 +110,14 @@ contract('SkillsLibrary', function(accounts) {
     const hash = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     const area = getFlag(0);
     return Promise.resolve()
-    .then(() => ignoreAuth(false))
+    .then(() => skillsLibrary.setRoles2Library(Mock.address))
     .then(() => mock.expect(
       skillsLibrary.address,
       0,
       roles2LibraryInterface.canCall.getData(
         accounts[0],
         skillsLibrary.address,
-        skillsLibrary.contract.setArea.getData().slice(0, 10)
+        skillsLibrary.contract.setArea.getData(area, hash).slice(0, 10)
       ), 0)
     )
     .then(() => skillsLibrary.setArea(area, hash))
@@ -160,12 +150,13 @@ contract('SkillsLibrary', function(accounts) {
     const area = getFlag(0);
     return Promise.resolve()
     .then(() => skillsLibrary.setArea(area, hash))
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, multiEventsHistory.address);
-      assert.equal(result.logs[0].event, 'AreaSet');
-      equal(result.logs[0].args.area, area);
-      equal(result.logs[0].args.hash, hash);
+    .then(tx => eventsHelper.extractEvents(tx, "AreaSet"))
+    .then(events => {
+      assert.equal(events.length, 1);
+      assert.equal(events[0].address, multiEventsHistory.address);
+      assert.equal(events[0].event, 'AreaSet');
+      equal(events[0].args.area, area);
+      equal(events[0].args.hash, hash);
     })
     .then(() => true);
   });
@@ -248,14 +239,14 @@ contract('SkillsLibrary', function(accounts) {
     const category = getFlag(0);
     return Promise.resolve()
     .then(() => skillsLibrary.setArea(area, areaHash))
-    .then(() => ignoreAuth(false))
+    .then(() => skillsLibrary.setRoles2Library(Mock.address))
     .then(() => mock.expect(
       skillsLibrary.address,
       0,
       roles2LibraryInterface.canCall.getData(
         accounts[0],
         skillsLibrary.address,
-        skillsLibrary.contract.setCategory.getData().slice(0, 10)
+        skillsLibrary.contract.setCategory.getData(area, category, hash).slice(0, 10)
       ), 0)
     )
     .then(() => skillsLibrary.setCategory(area, category, hash))
@@ -297,13 +288,14 @@ contract('SkillsLibrary', function(accounts) {
     return Promise.resolve()
     .then(() => skillsLibrary.setArea(area, hash))
     .then(() => skillsLibrary.setCategory(area, category, hash))
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, multiEventsHistory.address);
-      assert.equal(result.logs[0].event, 'CategorySet');
-      equal(result.logs[0].args.area, area);
-      equal(result.logs[0].args.category, category);
-      equal(result.logs[0].args.hash, hash);
+    .then(tx => eventsHelper.extractEvents(tx, "CategorySet"))
+    .then(events => {
+      assert.equal(events.length, 1);
+      assert.equal(events[0].address, multiEventsHistory.address);
+      assert.equal(events[0].event, 'CategorySet');
+      equal(events[0].args.area, area);
+      equal(events[0].args.category, category);
+      equal(events[0].args.hash, hash);
     })
     .then(() => true);
   });
@@ -404,14 +396,14 @@ contract('SkillsLibrary', function(accounts) {
     return Promise.resolve()
     .then(() => skillsLibrary.setArea(area, areaHash))
     .then(() => skillsLibrary.setCategory(area, category, hash))
-    .then(() => ignoreAuth(false))
+    .then(() => skillsLibrary.setRoles2Library(Mock.address))
     .then(() => mock.expect(
       skillsLibrary.address,
       0,
       roles2LibraryInterface.canCall.getData(
         accounts[0],
         skillsLibrary.address,
-        skillsLibrary.contract.setSkill.getData().slice(0, 10)
+        skillsLibrary.contract.setSkill.getData(area, category, skill, hash).slice(0, 10)
       ), 0)
     )
     .then(() => skillsLibrary.setSkill(area, category, skill, hash))
@@ -426,14 +418,14 @@ contract('SkillsLibrary', function(accounts) {
     const category = getFlag(0);
     return Promise.resolve()
     .then(() => skillsLibrary.setArea(area, areaHash))
-    .then(() => ignoreAuth(false))
+    .then(() => skillsLibrary.setRoles2Library(Mock.address))
     .then(() => mock.expect(
       skillsLibrary.address,
       0,
       roles2LibraryInterface.canCall.getData(
         accounts[0],
         skillsLibrary.address,
-        skillsLibrary.contract.setCategory.getData().slice(0, 10)
+        skillsLibrary.contract.setCategory.getData(area, category, hash).slice(0, 10)
       ), 0)
     )
     .then(() => skillsLibrary.setCategory(area, category, hash))
@@ -484,14 +476,15 @@ contract('SkillsLibrary', function(accounts) {
     .then(() => skillsLibrary.setArea(area, areaHash))
     .then(() => skillsLibrary.setCategory(area, category, hash))
     .then(() => skillsLibrary.setSkill(area, category, skill, hash))
-    .then(result => {
-      assert.equal(result.logs.length, 1);
-      assert.equal(result.logs[0].address, multiEventsHistory.address);
-      assert.equal(result.logs[0].event, 'SkillSet');
-      equal(result.logs[0].args.area, area);
-      equal(result.logs[0].args.category, category);
-      equal(result.logs[0].args.skill, skill);
-      equal(result.logs[0].args.hash, hash);
+    .then(tx => eventsHelper.extractEvents(tx, "SkillSet"))
+    .then(events => {
+      assert.equal(events.length, 1);
+      assert.equal(events[0].address, multiEventsHistory.address);
+      assert.equal(events[0].event, 'SkillSet');
+      equal(events[0].args.area, area);
+      equal(events[0].args.category, category);
+      equal(events[0].args.skill, skill);
+      equal(events[0].args.hash, hash);
     })
     .then(() => true);
   });

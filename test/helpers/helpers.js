@@ -4,6 +4,7 @@ const Asserts = require('./asserts');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
 const asserts = Asserts(assert);
+const eventsHelper = require('./eventsHelper');
 
 
 module.exports = {
@@ -52,15 +53,20 @@ module.exports = {
     assert.equal(tx.logs[0].event, event);
   },
   error: (tx, events, contract, text) => {
-    assert.equal(tx.logs.length, 1);
-    assert.equal(tx.logs[0].address, events.address);
-    assert.equal(tx.logs[0].event, "Error");
-    assert.equal(tx.logs[0].args.self, contract.address);
-    assert.isTrue(web3.toAscii(tx.logs[0].args.msg).includes(text));
+      const logs = tx.logs;
+
+      for (logEntry of logs) {
+          if (logEntry.event.toLowerCase() == "error") {
+              assert.equal(logEntry.address, events.address);
+              assert.equal(logEntry.event, "Error");
+              assert.equal(logEntry.args.self, contract.address);
+              assert.isTrue(web3.toAscii(logEntry.args.msg).includes(text));
+          }
+      }
   },
-  assertLogs: (length, logs) => {
+  assertLogs: (logs) => {
     return (tx) => {
-      assert.equal(tx.logs.length, length);
+      assert.equal(tx.logs.length, logs.length);
       for (let i in logs) {
         let log = logs[i];
         if (log.address) {
@@ -70,9 +76,21 @@ module.exports = {
           assert.equal(tx.logs[i].event, log.event);
         }
         for (let a in log.args) {
-          assert.equal(tx.logs[i].args[a], log.args[a])
+          if (typeof log.args[a] === "array" || typeof log.args[a] === "object") {
+            // Compare array lengths and contents
+            assert.equal(tx.logs[i].args[a].length, log.args[a].length);
+            for (let m in tx.logs[i].args[a]) {
+              assert.equal(tx.logs[i].args[a][m], log.args[a][m]);
+            }
+          } else {
+            assert.equal(tx.logs[i].args[a], log.args[a]);
+          }
         }
       }
     }
   },
+  assertJump: (error) => {
+    assert.isAbove(error.message.search('invalid opcode'), -1, 'Invalid opcode error must be returned');
+  },
+
 }

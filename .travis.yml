@@ -1,10 +1,12 @@
 sudo: required
 dist: trusty
 language: node_js
-node_js: 6
-install:
-  - "npm install"
-  - "npm run testrpc > /dev/null &"
+node_js: 8
+
+before_install:
+- export NODE_OPTIONS="--max_old_space_size=4096"
+- export PATH=$PATH:$(pwd)/node_modules/.bin
 script:
-  - "npm run test"
-  
+- testrpc -g 1 > /dev/null &
+- truffle migrate
+- truffle test

@@ -3,10 +3,13 @@
   "version": "0.0.1",
   "description": "ChronoBank Labor-X Smart Contracts",
   "scripts": {
-    "test": "truffle test",
-    "compile": "truffle compile",
-    "truffle": "truffle",
-    "testrpc": "testrpc"
+    "test:all": "./node_modules/truffle/build/cli.bundled.js test",
+    "compile": "./node_modules/truffle/build/cli.bundled.js compile",
+    "compile:all": "./node_modules/truffle/build/cli.bundled.js compile --all",
+    "migrate": "./node_modules/truffle/build/cli.bundled.js migrate",
+    "migrate:reset": "./node_modules/truffle/build/cli.bundled.js migrate --reset",
+    "console": "./node_modules/truffle/build/cli.bundled.js console --network development",
+    "testrpc": "./node_modules/ethereumjs-testrpc/build/cli.node.js -g 1 --gasLimit 4700000 --trace_request true | grep -Ev \"FilterSubprovider|eth_getFilterChanges\""
   },
   "repository": {
     "type": "git",
@@ -18,14 +21,15 @@
     "truffle"
   ],
   "author": "ChronoBank",
-  "license": "LGPL-3.0",
+  "license": "AGPL-3.0",
   "bugs": {
     "url": "https://github.com/ChronoBank/LX-SC/issues"
   },
   "homepage": "https://github.com/ChronoBank/LX-SC#readme",
   "dependencies": {
     "bluebird": "^3.5.0",
-    "ethereumjs-testrpc": "^3.0.3",
-    "truffle": "3.2.1"
+    "ethereumjs-testrpc": "^6.0.3",
+    "truffle": "4.1.0",
+    "abi-decoder": "^1.0.9"
   }
 }
