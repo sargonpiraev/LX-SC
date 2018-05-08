@@ -1,0 +1,40 @@
+{
+    "name": "laborx-sc-abi",
+    "version": "0.0.1",
+    "description": "ChronoBank Labor-X Smart Contracts",
+    "scripts": {
+        "release": "standard-version",
+        "test:all": "./node_modules/truffle/build/cli.bundled.js test",
+        "compile": "./node_modules/truffle/build/cli.bundled.js compile",
+        "compile:all": "./node_modules/truffle/build/cli.bundled.js compile --all",
+        "migrate": "./node_modules/truffle/build/cli.bundled.js migrate",
+        "migrate:reset": "./node_modules/truffle/build/cli.bundled.js migrate --reset",
+        "console": "./node_modules/truffle/build/cli.bundled.js console --network development",
+        "testrpc": "./node_modules/ethereumjs-testrpc/build/cli.node.js -g 1 --gasLimit 4700000 --trace_request true | grep -Ev \"FilterSubprovider|eth_getFilterChanges\""
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ChronoBank/LX-SC.git"
+    },
+    "keywords": [
+        "ethereum",
+        "solidity",
+        "truffle"
+    ],
+    "standard-version": {
+        "skip": {
+            "bump": true,
+            "tag" : true
+        }
+    },
+    "author": "ChronoBank",
+    "license": "AGPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChronoBank/LX-SC/issues"
+    },
+    "homepage": "https://github.com/ChronoBank/LX-SC#readme",
+    "dependencies": {
+    },
+    "devDependencies": {
+    }
+}
