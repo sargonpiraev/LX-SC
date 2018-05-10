@@ -141,7 +141,7 @@
         "id": 2,
         "nodeType": "ImportDirective",
         "scope": 57,
-        "sourceUnit": 13968,
+        "sourceUnit": 14028,
         "src": "119:45:0",
         "symbolAliases": [],
         "unitAlias": ""
@@ -152,7 +152,7 @@
         "id": 3,
         "nodeType": "ImportDirective",
         "scope": 57,
-        "sourceUnit": 14307,
+        "sourceUnit": 14367,
         "src": "165:35:0",
         "symbolAliases": [],
         "unitAlias": ""
@@ -166,10 +166,10 @@
               "id": 4,
               "name": "Roles2LibraryAdapter",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 13967,
+              "referencedDeclaration": 14027,
               "src": "229:20:0",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$13967",
+                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$14027",
                 "typeString": "contract Roles2LibraryAdapter"
               }
             },
@@ -179,7 +179,7 @@
           }
         ],
         "contractDependencies": [
-          13967
+          14027
         ],
         "contractKind": "contract",
         "documentation": null,
@@ -187,7 +187,7 @@
         "id": 56,
         "linearizedBaseContracts": [
           56,
-          13967
+          14027
         ],
         "name": "BalanceHolder",
         "nodeType": "ContractDefinition",
@@ -227,10 +227,10 @@
                   "name": "Roles2LibraryAdapter",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13967,
+                  "referencedDeclaration": 14027,
                   "src": "304:20:0",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$13967_$",
+                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$14027_$",
                     "typeString": "type(contract Roles2LibraryAdapter)"
                   }
                 },
@@ -315,7 +315,7 @@
                         "name": "this",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 15616,
+                        "referencedDeclaration": 15676,
                         "src": "509:4:0",
                         "typeDescriptions": {
                           "typeIdentifier": "t_contract$_BalanceHolder_$56",
@@ -360,7 +360,7 @@
                         "referencedDeclaration": 20,
                         "src": "479:9:0",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_contract$_ERC20Interface_$14306",
+                          "typeIdentifier": "t_contract$_ERC20Interface_$14366",
                           "typeString": "contract ERC20Interface"
                         }
                       },
@@ -371,7 +371,7 @@
                       "lValueRequested": false,
                       "memberName": "transferFrom",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 14287,
+                      "referencedDeclaration": 14347,
                       "src": "479:22:0",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_external_nonpayable$_t_address_$_t_address_$_t_uint256_$returns$_t_bool_$",
@@ -413,7 +413,7 @@
                   "name": "auth",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13903,
+                  "referencedDeclaration": 13963,
                   "src": "433:4:0",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -492,7 +492,7 @@
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_contract$_ERC20Interface_$14306",
+                    "typeIdentifier": "t_contract$_ERC20Interface_$14366",
                     "typeString": "contract ERC20Interface"
                   },
                   "typeName": {
@@ -500,10 +500,10 @@
                     "id": 19,
                     "name": "ERC20Interface",
                     "nodeType": "UserDefinedTypeName",
-                    "referencedDeclaration": 14306,
+                    "referencedDeclaration": 14366,
                     "src": "407:14:0",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_contract$_ERC20Interface_$14306",
+                      "typeIdentifier": "t_contract$_ERC20Interface_$14366",
                       "typeString": "contract ERC20Interface"
                     }
                   },
@@ -610,7 +610,7 @@
                         "referencedDeclaration": 41,
                         "src": "651:9:0",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_contract$_ERC20Interface_$14306",
+                          "typeIdentifier": "t_contract$_ERC20Interface_$14366",
                           "typeString": "contract ERC20Interface"
                         }
                       },
@@ -621,7 +621,7 @@
                       "lValueRequested": false,
                       "memberName": "transfer",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 14276,
+                      "referencedDeclaration": 14336,
                       "src": "651:18:0",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_external_nonpayable$_t_address_$_t_uint256_$returns$_t_bool_$",
@@ -663,7 +663,7 @@
                   "name": "auth",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13903,
+                  "referencedDeclaration": 13963,
                   "src": "605:4:0",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -742,7 +742,7 @@
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_contract$_ERC20Interface_$14306",
+                    "typeIdentifier": "t_contract$_ERC20Interface_$14366",
                     "typeString": "contract ERC20Interface"
                   },
                   "typeName": {
@@ -750,10 +750,10 @@
                     "id": 40,
                     "name": "ERC20Interface",
                     "nodeType": "UserDefinedTypeName",
-                    "referencedDeclaration": 14306,
+                    "referencedDeclaration": 14366,
                     "src": "579:14:0",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_contract$_ERC20Interface_$14306",
+                      "typeIdentifier": "t_contract$_ERC20Interface_$14366",
                       "typeString": "contract ERC20Interface"
                     }
                   },
@@ -837,7 +837,7 @@
         "id": 2,
         "nodeType": "ImportDirective",
         "scope": 57,
-        "sourceUnit": 13968,
+        "sourceUnit": 14028,
         "src": "119:45:0",
         "symbolAliases": [],
         "unitAlias": ""
@@ -848,7 +848,7 @@
         "id": 3,
         "nodeType": "ImportDirective",
         "scope": 57,
-        "sourceUnit": 14307,
+        "sourceUnit": 14367,
         "src": "165:35:0",
         "symbolAliases": [],
         "unitAlias": ""
@@ -862,10 +862,10 @@
               "id": 4,
               "name": "Roles2LibraryAdapter",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 13967,
+              "referencedDeclaration": 14027,
               "src": "229:20:0",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$13967",
+                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$14027",
                 "typeString": "contract Roles2LibraryAdapter"
               }
             },
@@ -875,7 +875,7 @@
           }
         ],
         "contractDependencies": [
-          13967
+          14027
         ],
         "contractKind": "contract",
         "documentation": null,
@@ -883,7 +883,7 @@
         "id": 56,
         "linearizedBaseContracts": [
           56,
-          13967
+          14027
         ],
         "name": "BalanceHolder",
         "nodeType": "ContractDefinition",
@@ -923,10 +923,10 @@
                   "name": "Roles2LibraryAdapter",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13967,
+                  "referencedDeclaration": 14027,
                   "src": "304:20:0",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$13967_$",
+                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$14027_$",
                     "typeString": "type(contract Roles2LibraryAdapter)"
                   }
                 },
@@ -1011,7 +1011,7 @@
                         "name": "this",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 15616,
+                        "referencedDeclaration": 15676,
                         "src": "509:4:0",
                         "typeDescriptions": {
                           "typeIdentifier": "t_contract$_BalanceHolder_$56",
@@ -1056,7 +1056,7 @@
                         "referencedDeclaration": 20,
                         "src": "479:9:0",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_contract$_ERC20Interface_$14306",
+                          "typeIdentifier": "t_contract$_ERC20Interface_$14366",
                           "typeString": "contract ERC20Interface"
                         }
                       },
@@ -1067,7 +1067,7 @@
                       "lValueRequested": false,
                       "memberName": "transferFrom",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 14287,
+                      "referencedDeclaration": 14347,
                       "src": "479:22:0",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_external_nonpayable$_t_address_$_t_address_$_t_uint256_$returns$_t_bool_$",
@@ -1109,7 +1109,7 @@
                   "name": "auth",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13903,
+                  "referencedDeclaration": 13963,
                   "src": "433:4:0",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -1188,7 +1188,7 @@
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_contract$_ERC20Interface_$14306",
+                    "typeIdentifier": "t_contract$_ERC20Interface_$14366",
                     "typeString": "contract ERC20Interface"
                   },
                   "typeName": {
@@ -1196,10 +1196,10 @@
                     "id": 19,
                     "name": "ERC20Interface",
                     "nodeType": "UserDefinedTypeName",
-                    "referencedDeclaration": 14306,
+                    "referencedDeclaration": 14366,
                     "src": "407:14:0",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_contract$_ERC20Interface_$14306",
+                      "typeIdentifier": "t_contract$_ERC20Interface_$14366",
                       "typeString": "contract ERC20Interface"
                     }
                   },
@@ -1306,7 +1306,7 @@
                         "referencedDeclaration": 41,
                         "src": "651:9:0",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_contract$_ERC20Interface_$14306",
+                          "typeIdentifier": "t_contract$_ERC20Interface_$14366",
                           "typeString": "contract ERC20Interface"
                         }
                       },
@@ -1317,7 +1317,7 @@
                       "lValueRequested": false,
                       "memberName": "transfer",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 14276,
+                      "referencedDeclaration": 14336,
                       "src": "651:18:0",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_external_nonpayable$_t_address_$_t_uint256_$returns$_t_bool_$",
@@ -1359,7 +1359,7 @@
                   "name": "auth",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13903,
+                  "referencedDeclaration": 13963,
                   "src": "605:4:0",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -1438,7 +1438,7 @@
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_contract$_ERC20Interface_$14306",
+                    "typeIdentifier": "t_contract$_ERC20Interface_$14366",
                     "typeString": "contract ERC20Interface"
                   },
                   "typeName": {
@@ -1446,10 +1446,10 @@
                     "id": 40,
                     "name": "ERC20Interface",
                     "nodeType": "UserDefinedTypeName",
-                    "referencedDeclaration": 14306,
+                    "referencedDeclaration": 14366,
                     "src": "579:14:0",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_contract$_ERC20Interface_$14306",
+                      "typeIdentifier": "t_contract$_ERC20Interface_$14366",
                       "typeString": "contract ERC20Interface"
                     }
                   },
@@ -1519,5 +1519,5 @@
     }
   },
   "schemaVersion": "2.0.0",
-  "updatedAt": "2018-05-08T10:31:40.602Z"
+  "updatedAt": "2018-05-10T14:36:15.301Z"
 }

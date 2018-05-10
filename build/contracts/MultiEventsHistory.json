@@ -130,7 +130,7 @@
         "id": 3474,
         "nodeType": "ImportDirective",
         "scope": 3540,
-        "sourceUnit": 13968,
+        "sourceUnit": 14028,
         "src": "118:45:6",
         "symbolAliases": [],
         "unitAlias": ""
@@ -144,10 +144,10 @@
               "id": 3475,
               "name": "Roles2LibraryAdapter",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 13967,
+              "referencedDeclaration": 14027,
               "src": "543:20:6",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$13967",
+                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$14027",
                 "typeString": "contract Roles2LibraryAdapter"
               }
             },
@@ -157,7 +157,7 @@
           }
         ],
         "contractDependencies": [
-          13967
+          14027
         ],
         "contractKind": "contract",
         "documentation": "@title Events History universal multi contract.\n * Contract serves as an Events storage for any type of contracts.\nEvents appear on this contract address but their definitions provided by calling contracts.\n * Note: all the non constant functions return false instead of throwing in case if state change\ndidn't happen yet.",
@@ -165,7 +165,7 @@
         "id": 3539,
         "linearizedBaseContracts": [
           3539,
-          13967
+          14027
         ],
         "name": "MultiEventsHistory",
         "nodeType": "ContractDefinition",
@@ -250,10 +250,10 @@
                   "name": "Roles2LibraryAdapter",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13967,
+                  "referencedDeclaration": 14027,
                   "src": "717:20:6",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$13967_$",
+                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$14027_$",
                     "typeString": "type(contract Roles2LibraryAdapter)"
                   }
                 },
@@ -510,7 +510,7 @@
                   "name": "auth",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13903,
+                  "referencedDeclaration": 13963,
                   "src": "948:4:6",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -638,7 +638,7 @@
                           "name": "msg",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 15599,
+                          "referencedDeclaration": 15659,
                           "src": "1375:3:6",
                           "typeDescriptions": {
                             "typeIdentifier": "t_magic_message",
@@ -717,7 +717,7 @@
                             "name": "msg",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 15599,
+                            "referencedDeclaration": 15659,
                             "src": "1583:3:6",
                             "typeDescriptions": {
                               "typeIdentifier": "t_magic_message",
@@ -754,7 +754,7 @@
                             "name": "msg",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 15599,
+                            "referencedDeclaration": 15659,
                             "src": "1559:3:6",
                             "typeDescriptions": {
                               "typeIdentifier": "t_magic_message",
@@ -827,7 +827,7 @@
                             "name": "revert",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 15603,
+                            "referencedDeclaration": 15663,
                             "src": "1608:6:6",
                             "typeDescriptions": {
                               "typeIdentifier": "t_function_revert_pure$__$returns$__$",
@@ -917,7 +917,7 @@
         "id": 3474,
         "nodeType": "ImportDirective",
         "scope": 3540,
-        "sourceUnit": 13968,
+        "sourceUnit": 14028,
         "src": "118:45:6",
         "symbolAliases": [],
         "unitAlias": ""
@@ -931,10 +931,10 @@
               "id": 3475,
               "name": "Roles2LibraryAdapter",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 13967,
+              "referencedDeclaration": 14027,
               "src": "543:20:6",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$13967",
+                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$14027",
                 "typeString": "contract Roles2LibraryAdapter"
               }
             },
@@ -944,7 +944,7 @@
           }
         ],
         "contractDependencies": [
-          13967
+          14027
         ],
         "contractKind": "contract",
         "documentation": "@title Events History universal multi contract.\n * Contract serves as an Events storage for any type of contracts.\nEvents appear on this contract address but their definitions provided by calling contracts.\n * Note: all the non constant functions return false instead of throwing in case if state change\ndidn't happen yet.",
@@ -952,7 +952,7 @@
         "id": 3539,
         "linearizedBaseContracts": [
           3539,
-          13967
+          14027
         ],
         "name": "MultiEventsHistory",
         "nodeType": "ContractDefinition",
@@ -1037,10 +1037,10 @@
                   "name": "Roles2LibraryAdapter",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13967,
+                  "referencedDeclaration": 14027,
                   "src": "717:20:6",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$13967_$",
+                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$14027_$",
                     "typeString": "type(contract Roles2LibraryAdapter)"
                   }
                 },
@@ -1297,7 +1297,7 @@
                   "name": "auth",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13903,
+                  "referencedDeclaration": 13963,
                   "src": "948:4:6",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -1425,7 +1425,7 @@
                           "name": "msg",
                           "nodeType": "Identifier",
                           "overloadedDeclarations": [],
-                          "referencedDeclaration": 15599,
+                          "referencedDeclaration": 15659,
                           "src": "1375:3:6",
                           "typeDescriptions": {
                             "typeIdentifier": "t_magic_message",
@@ -1504,7 +1504,7 @@
                             "name": "msg",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 15599,
+                            "referencedDeclaration": 15659,
                             "src": "1583:3:6",
                             "typeDescriptions": {
                               "typeIdentifier": "t_magic_message",
@@ -1541,7 +1541,7 @@
                             "name": "msg",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 15599,
+                            "referencedDeclaration": 15659,
                             "src": "1559:3:6",
                             "typeDescriptions": {
                               "typeIdentifier": "t_magic_message",
@@ -1614,7 +1614,7 @@
                             "name": "revert",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 15603,
+                            "referencedDeclaration": 15663,
                             "src": "1608:6:6",
                             "typeDescriptions": {
                               "typeIdentifier": "t_function_revert_pure$__$returns$__$",
@@ -1713,5 +1713,5 @@
     }
   },
   "schemaVersion": "2.0.0",
-  "updatedAt": "2018-05-08T10:34:05.553Z"
+  "updatedAt": "2018-05-10T14:36:15.306Z"
 }
