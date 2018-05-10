@@ -162,6 +162,10 @@ library StorageInterface {
         Mapping innerMapping;
     }
 
+    struct Bytes32AddressMapping {
+        Mapping innerMapping;
+    }
+
     struct Set {
         UInt count;
         Mapping indexes;
@@ -351,6 +355,10 @@ library StorageInterface {
         init(self.innerSet, _id);
     }
 
+    function init(Bytes32AddressMapping  storage self, bytes32 _id) internal {
+        init(self.innerMapping, _id);
+    }
+
     function set(Config storage self, UInt storage item, uint _value) internal {
         self.store.setUInt(self.crate, item.id, _value);
     }
@@ -506,6 +514,10 @@ library StorageInterface {
 
     function set(Config storage self, UIntUIntUIntBytes32Mapping storage item, uint _key, uint _key2, uint _key3, bytes32 _value) internal {
         set(self, item.innerMapping, bytes32(_key), bytes32(_key2), bytes32(_key3), _value);
+    }
+
+    function set(Config storage self, Bytes32AddressMapping storage item, bytes32 _key, address _value) internal {
+        set(self, item.innerMapping, _key, bytes32(_value));
     }
 
     function add(Config storage self, Set storage item, bytes32 _value) internal {
@@ -692,6 +704,10 @@ library StorageInterface {
 
     function get(Config storage self, UIntUIntBytes32Mapping storage item, uint _key, uint _key2) internal view returns (bytes32) {
         return get(self, item.innerMapping, bytes32(_key), bytes32(_key2));
+    }
+
+    function get(Config storage self, Bytes32AddressMapping storage item, bytes32 _key) internal view returns (address) {
+        return address(get(self, item.innerMapping, _key));
     }
 
     function get(Config storage self, UIntUIntUIntBytes32Mapping storage item, uint _key, uint _key2, uint _key3) internal view returns (bytes32) {

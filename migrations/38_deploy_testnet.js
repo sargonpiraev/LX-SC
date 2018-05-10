@@ -10,7 +10,7 @@ const FakeCoin = artifacts.require('./FakeCoin.sol');
 const Storage = artifacts.require('./Storage.sol');
 
 module.exports = (deployer, network) => {
-    if (network !== "main") {
+    if (network === "development") {
         deployer.deploy(FakeCoin)
         .then(() => deployer.deploy(UserProxyTester))
         .then(() => deployer.deploy(StorageTester, Storage.address, 'StorageTester'))
