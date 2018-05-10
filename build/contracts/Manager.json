@@ -61,7 +61,7 @@
         "id": 8218,
         "nodeType": "ImportDirective",
         "scope": 8595,
-        "sourceUnit": 14451,
+        "sourceUnit": 14511,
         "src": "118:26:13",
         "symbolAliases": [],
         "unitAlias": ""
@@ -200,10 +200,10 @@
               "id": 8229,
               "name": "Owned",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 14450,
+              "referencedDeclaration": 14510,
               "src": "270:5:13",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_Owned_$14450",
+                "typeIdentifier": "t_contract$_Owned_$14510",
                 "typeString": "contract Owned"
               }
             },
@@ -213,7 +213,7 @@
           }
         ],
         "contractDependencies": [
-          14450
+          14510
         ],
         "contractKind": "contract",
         "documentation": null,
@@ -221,7 +221,7 @@
         "id": 8594,
         "linearizedBaseContracts": [
           8594,
-          14450
+          14510
         ],
         "name": "Storage",
         "nodeType": "ContractDefinition",
@@ -721,7 +721,7 @@
                             "name": "msg",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 15599,
+                            "referencedDeclaration": 15659,
                             "src": "834:3:13",
                             "typeDescriptions": {
                               "typeIdentifier": "t_magic_message",
@@ -832,7 +832,7 @@
                             "name": "revert",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 15603,
+                            "referencedDeclaration": 15663,
                             "src": "868:6:13",
                             "typeDescriptions": {
                               "typeIdentifier": "t_function_revert_pure$__$returns$__$",
@@ -998,7 +998,7 @@
                   "name": "onlyContractOwner",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 14332,
+                  "referencedDeclaration": 14392,
                   "src": "957:17:13",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -4622,7 +4622,7 @@
         "id": 8218,
         "nodeType": "ImportDirective",
         "scope": 8595,
-        "sourceUnit": 14451,
+        "sourceUnit": 14511,
         "src": "118:26:13",
         "symbolAliases": [],
         "unitAlias": ""
@@ -4761,10 +4761,10 @@
               "id": 8229,
               "name": "Owned",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 14450,
+              "referencedDeclaration": 14510,
               "src": "270:5:13",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_Owned_$14450",
+                "typeIdentifier": "t_contract$_Owned_$14510",
                 "typeString": "contract Owned"
               }
             },
@@ -4774,7 +4774,7 @@
           }
         ],
         "contractDependencies": [
-          14450
+          14510
         ],
         "contractKind": "contract",
         "documentation": null,
@@ -4782,7 +4782,7 @@
         "id": 8594,
         "linearizedBaseContracts": [
           8594,
-          14450
+          14510
         ],
         "name": "Storage",
         "nodeType": "ContractDefinition",
@@ -5282,7 +5282,7 @@
                             "name": "msg",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 15599,
+                            "referencedDeclaration": 15659,
                             "src": "834:3:13",
                             "typeDescriptions": {
                               "typeIdentifier": "t_magic_message",
@@ -5393,7 +5393,7 @@
                             "name": "revert",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 15603,
+                            "referencedDeclaration": 15663,
                             "src": "868:6:13",
                             "typeDescriptions": {
                               "typeIdentifier": "t_function_revert_pure$__$returns$__$",
@@ -5559,7 +5559,7 @@
                   "name": "onlyContractOwner",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 14332,
+                  "referencedDeclaration": 14392,
                   "src": "957:17:13",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -9159,5 +9159,5 @@
   },
   "networks": {},
   "schemaVersion": "2.0.0",
-  "updatedAt": "2018-05-08T10:23:21.439Z"
+  "updatedAt": "2018-05-10T14:25:44.238Z"
 }

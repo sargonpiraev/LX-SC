@@ -132,7 +132,7 @@
         "id": 6830,
         "nodeType": "ImportDirective",
         "scope": 6892,
-        "sourceUnit": 12224,
+        "sourceUnit": 12284,
         "src": "119:20:10",
         "symbolAliases": [],
         "unitAlias": ""
@@ -143,7 +143,7 @@
         "id": 6831,
         "nodeType": "ImportDirective",
         "scope": 6892,
-        "sourceUnit": 13968,
+        "sourceUnit": 14028,
         "src": "140:45:10",
         "symbolAliases": [],
         "unitAlias": ""
@@ -157,10 +157,10 @@
               "id": 6832,
               "name": "Roles2LibraryAdapter",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 13967,
+              "referencedDeclaration": 14027,
               "src": "209:20:10",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$13967",
+                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$14027",
                 "typeString": "contract Roles2LibraryAdapter"
               }
             },
@@ -170,7 +170,7 @@
           }
         ],
         "contractDependencies": [
-          13967
+          14027
         ],
         "contractKind": "contract",
         "documentation": null,
@@ -178,7 +178,7 @@
         "id": 6891,
         "linearizedBaseContracts": [
           6891,
-          13967
+          14027
         ],
         "name": "Recovery",
         "nodeType": "ContractDefinition",
@@ -300,7 +300,7 @@
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_contract$_User_$12223",
+                    "typeIdentifier": "t_contract$_User_$12283",
                     "typeString": "contract User"
                   },
                   "typeName": {
@@ -308,10 +308,10 @@
                     "id": 6841,
                     "name": "User",
                     "nodeType": "UserDefinedTypeName",
-                    "referencedDeclaration": 12223,
+                    "referencedDeclaration": 12283,
                     "src": "335:4:10",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_contract$_User_$12223",
+                      "typeIdentifier": "t_contract$_User_$12283",
                       "typeString": "contract User"
                     }
                   },
@@ -358,10 +358,10 @@
                   "name": "Roles2LibraryAdapter",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13967,
+                  "referencedDeclaration": 14027,
                   "src": "402:20:10",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$13967_$",
+                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$14027_$",
                     "typeString": "type(contract Roles2LibraryAdapter)"
                   }
                 },
@@ -470,7 +470,7 @@
                         "referencedDeclaration": 6855,
                         "src": "568:13:10",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_contract$_User_$12223",
+                          "typeIdentifier": "t_contract$_User_$12283",
                           "typeString": "contract User"
                         }
                       },
@@ -481,7 +481,7 @@
                       "lValueRequested": false,
                       "memberName": "contractOwner",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 14311,
+                      "referencedDeclaration": 14371,
                       "src": "568:27:10",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_external_view$__$returns$_t_address_$",
@@ -523,7 +523,7 @@
                       "name": "OK",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 13871,
+                      "referencedDeclaration": 13931,
                       "src": "611:2:10",
                       "typeDescriptions": {
                         "typeIdentifier": "t_uint256",
@@ -565,7 +565,7 @@
                           "referencedDeclaration": 6855,
                           "src": "617:13:10",
                           "typeDescriptions": {
-                            "typeIdentifier": "t_contract$_User_$12223",
+                            "typeIdentifier": "t_contract$_User_$12283",
                             "typeString": "contract User"
                           }
                         },
@@ -576,7 +576,7 @@
                         "lValueRequested": false,
                         "memberName": "recoverUser",
                         "nodeType": "MemberAccess",
-                        "referencedDeclaration": 12222,
+                        "referencedDeclaration": 12282,
                         "src": "617:25:10",
                         "typeDescriptions": {
                           "typeIdentifier": "t_function_external_nonpayable$_t_address_$returns$_t_uint256_$",
@@ -622,7 +622,7 @@
                             "name": "revert",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 15603,
+                            "referencedDeclaration": 15663,
                             "src": "671:6:10",
                             "typeDescriptions": {
                               "typeIdentifier": "t_function_revert_pure$__$returns$__$",
@@ -689,7 +689,7 @@
                         "referencedDeclaration": 6855,
                         "src": "733:13:10",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_contract$_User_$12223",
+                          "typeIdentifier": "t_contract$_User_$12283",
                           "typeString": "contract User"
                         }
                       }
@@ -705,7 +705,7 @@
                           "typeString": "address"
                         },
                         {
-                          "typeIdentifier": "t_contract$_User_$12223",
+                          "typeIdentifier": "t_contract$_User_$12283",
                           "typeString": "contract User"
                         }
                       ],
@@ -716,7 +716,7 @@
                       "referencedDeclaration": 6844,
                       "src": "700:13:10",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_event_nonpayable$_t_address_$_t_address_$_t_contract$_User_$12223_$returns$__$",
+                        "typeIdentifier": "t_function_event_nonpayable$_t_address_$_t_address_$_t_contract$_User_$12283_$returns$__$",
                         "typeString": "function (address,address,contract User)"
                       }
                     },
@@ -745,7 +745,7 @@
                     "name": "OK",
                     "nodeType": "Identifier",
                     "overloadedDeclarations": [],
-                    "referencedDeclaration": 13871,
+                    "referencedDeclaration": 13931,
                     "src": "764:2:10",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
@@ -773,7 +773,7 @@
                   "name": "auth",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13903,
+                  "referencedDeclaration": 13963,
                   "src": "516:4:10",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -800,7 +800,7 @@
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_contract$_User_$12223",
+                    "typeIdentifier": "t_contract$_User_$12283",
                     "typeString": "contract User"
                   },
                   "typeName": {
@@ -808,10 +808,10 @@
                     "id": 6854,
                     "name": "User",
                     "nodeType": "UserDefinedTypeName",
-                    "referencedDeclaration": 12223,
+                    "referencedDeclaration": 12283,
                     "src": "475:4:10",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_contract$_User_$12223",
+                      "typeIdentifier": "t_contract$_User_$12283",
                       "typeString": "contract User"
                     }
                   },
@@ -921,7 +921,7 @@
         "id": 6830,
         "nodeType": "ImportDirective",
         "scope": 6892,
-        "sourceUnit": 12224,
+        "sourceUnit": 12284,
         "src": "119:20:10",
         "symbolAliases": [],
         "unitAlias": ""
@@ -932,7 +932,7 @@
         "id": 6831,
         "nodeType": "ImportDirective",
         "scope": 6892,
-        "sourceUnit": 13968,
+        "sourceUnit": 14028,
         "src": "140:45:10",
         "symbolAliases": [],
         "unitAlias": ""
@@ -946,10 +946,10 @@
               "id": 6832,
               "name": "Roles2LibraryAdapter",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 13967,
+              "referencedDeclaration": 14027,
               "src": "209:20:10",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$13967",
+                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$14027",
                 "typeString": "contract Roles2LibraryAdapter"
               }
             },
@@ -959,7 +959,7 @@
           }
         ],
         "contractDependencies": [
-          13967
+          14027
         ],
         "contractKind": "contract",
         "documentation": null,
@@ -967,7 +967,7 @@
         "id": 6891,
         "linearizedBaseContracts": [
           6891,
-          13967
+          14027
         ],
         "name": "Recovery",
         "nodeType": "ContractDefinition",
@@ -1089,7 +1089,7 @@
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_contract$_User_$12223",
+                    "typeIdentifier": "t_contract$_User_$12283",
                     "typeString": "contract User"
                   },
                   "typeName": {
@@ -1097,10 +1097,10 @@
                     "id": 6841,
                     "name": "User",
                     "nodeType": "UserDefinedTypeName",
-                    "referencedDeclaration": 12223,
+                    "referencedDeclaration": 12283,
                     "src": "335:4:10",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_contract$_User_$12223",
+                      "typeIdentifier": "t_contract$_User_$12283",
                       "typeString": "contract User"
                     }
                   },
@@ -1147,10 +1147,10 @@
                   "name": "Roles2LibraryAdapter",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13967,
+                  "referencedDeclaration": 14027,
                   "src": "402:20:10",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$13967_$",
+                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$14027_$",
                     "typeString": "type(contract Roles2LibraryAdapter)"
                   }
                 },
@@ -1259,7 +1259,7 @@
                         "referencedDeclaration": 6855,
                         "src": "568:13:10",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_contract$_User_$12223",
+                          "typeIdentifier": "t_contract$_User_$12283",
                           "typeString": "contract User"
                         }
                       },
@@ -1270,7 +1270,7 @@
                       "lValueRequested": false,
                       "memberName": "contractOwner",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 14311,
+                      "referencedDeclaration": 14371,
                       "src": "568:27:10",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_external_view$__$returns$_t_address_$",
@@ -1312,7 +1312,7 @@
                       "name": "OK",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 13871,
+                      "referencedDeclaration": 13931,
                       "src": "611:2:10",
                       "typeDescriptions": {
                         "typeIdentifier": "t_uint256",
@@ -1354,7 +1354,7 @@
                           "referencedDeclaration": 6855,
                           "src": "617:13:10",
                           "typeDescriptions": {
-                            "typeIdentifier": "t_contract$_User_$12223",
+                            "typeIdentifier": "t_contract$_User_$12283",
                             "typeString": "contract User"
                           }
                         },
@@ -1365,7 +1365,7 @@
                         "lValueRequested": false,
                         "memberName": "recoverUser",
                         "nodeType": "MemberAccess",
-                        "referencedDeclaration": 12222,
+                        "referencedDeclaration": 12282,
                         "src": "617:25:10",
                         "typeDescriptions": {
                           "typeIdentifier": "t_function_external_nonpayable$_t_address_$returns$_t_uint256_$",
@@ -1411,7 +1411,7 @@
                             "name": "revert",
                             "nodeType": "Identifier",
                             "overloadedDeclarations": [],
-                            "referencedDeclaration": 15603,
+                            "referencedDeclaration": 15663,
                             "src": "671:6:10",
                             "typeDescriptions": {
                               "typeIdentifier": "t_function_revert_pure$__$returns$__$",
@@ -1478,7 +1478,7 @@
                         "referencedDeclaration": 6855,
                         "src": "733:13:10",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_contract$_User_$12223",
+                          "typeIdentifier": "t_contract$_User_$12283",
                           "typeString": "contract User"
                         }
                       }
@@ -1494,7 +1494,7 @@
                           "typeString": "address"
                         },
                         {
-                          "typeIdentifier": "t_contract$_User_$12223",
+                          "typeIdentifier": "t_contract$_User_$12283",
                           "typeString": "contract User"
                         }
                       ],
@@ -1505,7 +1505,7 @@
                       "referencedDeclaration": 6844,
                       "src": "700:13:10",
                       "typeDescriptions": {
-                        "typeIdentifier": "t_function_event_nonpayable$_t_address_$_t_address_$_t_contract$_User_$12223_$returns$__$",
+                        "typeIdentifier": "t_function_event_nonpayable$_t_address_$_t_address_$_t_contract$_User_$12283_$returns$__$",
                         "typeString": "function (address,address,contract User)"
                       }
                     },
@@ -1534,7 +1534,7 @@
                     "name": "OK",
                     "nodeType": "Identifier",
                     "overloadedDeclarations": [],
-                    "referencedDeclaration": 13871,
+                    "referencedDeclaration": 13931,
                     "src": "764:2:10",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
@@ -1562,7 +1562,7 @@
                   "name": "auth",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13903,
+                  "referencedDeclaration": 13963,
                   "src": "516:4:10",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -1589,7 +1589,7 @@
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_contract$_User_$12223",
+                    "typeIdentifier": "t_contract$_User_$12283",
                     "typeString": "contract User"
                   },
                   "typeName": {
@@ -1597,10 +1597,10 @@
                     "id": 6854,
                     "name": "User",
                     "nodeType": "UserDefinedTypeName",
-                    "referencedDeclaration": 12223,
+                    "referencedDeclaration": 12283,
                     "src": "475:4:10",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_contract$_User_$12223",
+                      "typeIdentifier": "t_contract$_User_$12283",
                       "typeString": "contract User"
                     }
                   },
@@ -1696,5 +1696,5 @@
     }
   },
   "schemaVersion": "2.0.0",
-  "updatedAt": "2018-05-08T10:27:05.610Z"
+  "updatedAt": "2018-05-10T14:36:15.307Z"
 }

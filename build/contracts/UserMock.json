@@ -78,14 +78,14 @@
     "absolutePath": "/Users/ahiatsevich/Development/chronobank/LX-SC/contracts/helpers/UserMock.sol",
     "exportedSymbols": {
       "UserMock": [
-        15452
+        15512
       ]
     },
-    "id": 15453,
+    "id": 15513,
     "nodeType": "SourceUnit",
     "nodes": [
       {
-        "id": 15416,
+        "id": 15476,
         "literals": [
           "solidity",
           "^",
@@ -101,19 +101,19 @@
         "contractKind": "contract",
         "documentation": null,
         "fullyImplemented": true,
-        "id": 15452,
+        "id": 15512,
         "linearizedBaseContracts": [
-          15452
+          15512
         ],
         "name": "UserMock",
         "nodeType": "ContractDefinition",
         "nodes": [
           {
             "constant": false,
-            "id": 15418,
+            "id": 15478,
             "name": "contractOwner",
             "nodeType": "VariableDeclaration",
-            "scope": 15452,
+            "scope": 15512,
             "src": "143:28:32",
             "stateVariable": true,
             "storageLocation": "default",
@@ -122,7 +122,7 @@
               "typeString": "address"
             },
             "typeName": {
-              "id": 15417,
+              "id": 15477,
               "name": "address",
               "nodeType": "ElementaryTypeName",
               "src": "143:7:32",
@@ -136,10 +136,10 @@
           },
           {
             "constant": false,
-            "id": 15420,
+            "id": 15480,
             "name": "recoverUserCalls",
             "nodeType": "VariableDeclaration",
-            "scope": 15452,
+            "scope": 15512,
             "src": "177:28:32",
             "stateVariable": true,
             "storageLocation": "default",
@@ -148,7 +148,7 @@
               "typeString": "uint256"
             },
             "typeName": {
-              "id": 15419,
+              "id": 15479,
               "name": "uint",
               "nodeType": "ElementaryTypeName",
               "src": "177:4:32",
@@ -162,25 +162,25 @@
           },
           {
             "body": {
-              "id": 15436,
+              "id": 15496,
               "nodeType": "Block",
               "src": "278:93:32",
               "statements": [
                 {
                   "expression": {
                     "argumentTypes": null,
-                    "id": 15429,
+                    "id": 15489,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
                     "lValueRequested": false,
                     "leftHandSide": {
                       "argumentTypes": null,
-                      "id": 15427,
+                      "id": 15487,
                       "name": "contractOwner",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 15418,
+                      "referencedDeclaration": 15478,
                       "src": "288:13:32",
                       "typeDescriptions": {
                         "typeIdentifier": "t_address",
@@ -191,11 +191,11 @@
                     "operator": "=",
                     "rightHandSide": {
                       "argumentTypes": null,
-                      "id": 15428,
+                      "id": 15488,
                       "name": "_newAddress",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 15422,
+                      "referencedDeclaration": 15482,
                       "src": "304:11:32",
                       "typeDescriptions": {
                         "typeIdentifier": "t_address",
@@ -208,14 +208,14 @@
                       "typeString": "address"
                     }
                   },
-                  "id": 15430,
+                  "id": 15490,
                   "nodeType": "ExpressionStatement",
                   "src": "288:27:32"
                 },
                 {
                   "expression": {
                     "argumentTypes": null,
-                    "id": 15432,
+                    "id": 15492,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -226,11 +226,11 @@
                     "src": "325:18:32",
                     "subExpression": {
                       "argumentTypes": null,
-                      "id": 15431,
+                      "id": 15491,
                       "name": "recoverUserCalls",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 15420,
+                      "referencedDeclaration": 15480,
                       "src": "325:16:32",
                       "typeDescriptions": {
                         "typeIdentifier": "t_uint256",
@@ -242,7 +242,7 @@
                       "typeString": "uint256"
                     }
                   },
-                  "id": 15433,
+                  "id": 15493,
                   "nodeType": "ExpressionStatement",
                   "src": "325:18:32"
                 },
@@ -250,7 +250,7 @@
                   "expression": {
                     "argumentTypes": null,
                     "hexValue": "74727565",
-                    "id": 15434,
+                    "id": 15494,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": true,
@@ -265,14 +265,14 @@
                     },
                     "value": "true"
                   },
-                  "functionReturnParameters": 15426,
-                  "id": 15435,
+                  "functionReturnParameters": 15486,
+                  "id": 15495,
                   "nodeType": "Return",
                   "src": "353:11:32"
                 }
               ]
             },
-            "id": 15437,
+            "id": 15497,
             "implemented": true,
             "isConstructor": false,
             "isDeclaredConst": false,
@@ -280,15 +280,15 @@
             "name": "recoverUser",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 15423,
+              "id": 15483,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 15422,
+                  "id": 15482,
                   "name": "_newAddress",
                   "nodeType": "VariableDeclaration",
-                  "scope": 15437,
+                  "scope": 15497,
                   "src": "233:19:32",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -297,7 +297,7 @@
                     "typeString": "address"
                   },
                   "typeName": {
-                    "id": 15421,
+                    "id": 15481,
                     "name": "address",
                     "nodeType": "ElementaryTypeName",
                     "src": "233:7:32",
@@ -314,15 +314,15 @@
             },
             "payable": false,
             "returnParameters": {
-              "id": 15426,
+              "id": 15486,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 15425,
+                  "id": 15485,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 15437,
+                  "scope": 15497,
                   "src": "272:4:32",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -331,7 +331,7 @@
                     "typeString": "bool"
                   },
                   "typeName": {
-                    "id": 15424,
+                    "id": 15484,
                     "name": "bool",
                     "nodeType": "ElementaryTypeName",
                     "src": "272:4:32",
@@ -346,7 +346,7 @@
               ],
               "src": "271:6:32"
             },
-            "scope": 15452,
+            "scope": 15512,
             "src": "212:159:32",
             "stateMutability": "nonpayable",
             "superFunction": null,
@@ -354,25 +354,25 @@
           },
           {
             "body": {
-              "id": 15450,
+              "id": 15510,
               "nodeType": "Block",
               "src": "445:63:32",
               "statements": [
                 {
                   "expression": {
                     "argumentTypes": null,
-                    "id": 15446,
+                    "id": 15506,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
                     "lValueRequested": false,
                     "leftHandSide": {
                       "argumentTypes": null,
-                      "id": 15444,
+                      "id": 15504,
                       "name": "contractOwner",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 15418,
+                      "referencedDeclaration": 15478,
                       "src": "455:13:32",
                       "typeDescriptions": {
                         "typeIdentifier": "t_address",
@@ -383,11 +383,11 @@
                     "operator": "=",
                     "rightHandSide": {
                       "argumentTypes": null,
-                      "id": 15445,
+                      "id": 15505,
                       "name": "_newOwner",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 15439,
+                      "referencedDeclaration": 15499,
                       "src": "471:9:32",
                       "typeDescriptions": {
                         "typeIdentifier": "t_address",
@@ -400,7 +400,7 @@
                       "typeString": "address"
                     }
                   },
-                  "id": 15447,
+                  "id": 15507,
                   "nodeType": "ExpressionStatement",
                   "src": "455:25:32"
                 },
@@ -408,7 +408,7 @@
                   "expression": {
                     "argumentTypes": null,
                     "hexValue": "74727565",
-                    "id": 15448,
+                    "id": 15508,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": true,
@@ -423,14 +423,14 @@
                     },
                     "value": "true"
                   },
-                  "functionReturnParameters": 15443,
-                  "id": 15449,
+                  "functionReturnParameters": 15503,
+                  "id": 15509,
                   "nodeType": "Return",
                   "src": "490:11:32"
                 }
               ]
             },
-            "id": 15451,
+            "id": 15511,
             "implemented": true,
             "isConstructor": false,
             "isDeclaredConst": false,
@@ -438,15 +438,15 @@
             "name": "setContractOwner",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 15440,
+              "id": 15500,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 15439,
+                  "id": 15499,
                   "name": "_newOwner",
                   "nodeType": "VariableDeclaration",
-                  "scope": 15451,
+                  "scope": 15511,
                   "src": "403:17:32",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -455,7 +455,7 @@
                     "typeString": "address"
                   },
                   "typeName": {
-                    "id": 15438,
+                    "id": 15498,
                     "name": "address",
                     "nodeType": "ElementaryTypeName",
                     "src": "403:7:32",
@@ -472,15 +472,15 @@
             },
             "payable": false,
             "returnParameters": {
-              "id": 15443,
+              "id": 15503,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 15442,
+                  "id": 15502,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 15451,
+                  "scope": 15511,
                   "src": "440:4:32",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -489,7 +489,7 @@
                     "typeString": "bool"
                   },
                   "typeName": {
-                    "id": 15441,
+                    "id": 15501,
                     "name": "bool",
                     "nodeType": "ElementaryTypeName",
                     "src": "440:4:32",
@@ -504,14 +504,14 @@
               ],
               "src": "439:6:32"
             },
-            "scope": 15452,
+            "scope": 15512,
             "src": "377:131:32",
             "stateMutability": "nonpayable",
             "superFunction": null,
             "visibility": "external"
           }
         ],
-        "scope": 15453,
+        "scope": 15513,
         "src": "118:393:32"
       }
     ],
@@ -521,14 +521,14 @@
     "absolutePath": "/Users/ahiatsevich/Development/chronobank/LX-SC/contracts/helpers/UserMock.sol",
     "exportedSymbols": {
       "UserMock": [
-        15452
+        15512
       ]
     },
-    "id": 15453,
+    "id": 15513,
     "nodeType": "SourceUnit",
     "nodes": [
       {
-        "id": 15416,
+        "id": 15476,
         "literals": [
           "solidity",
           "^",
@@ -544,19 +544,19 @@
         "contractKind": "contract",
         "documentation": null,
         "fullyImplemented": true,
-        "id": 15452,
+        "id": 15512,
         "linearizedBaseContracts": [
-          15452
+          15512
         ],
         "name": "UserMock",
         "nodeType": "ContractDefinition",
         "nodes": [
           {
             "constant": false,
-            "id": 15418,
+            "id": 15478,
             "name": "contractOwner",
             "nodeType": "VariableDeclaration",
-            "scope": 15452,
+            "scope": 15512,
             "src": "143:28:32",
             "stateVariable": true,
             "storageLocation": "default",
@@ -565,7 +565,7 @@
               "typeString": "address"
             },
             "typeName": {
-              "id": 15417,
+              "id": 15477,
               "name": "address",
               "nodeType": "ElementaryTypeName",
               "src": "143:7:32",
@@ -579,10 +579,10 @@
           },
           {
             "constant": false,
-            "id": 15420,
+            "id": 15480,
             "name": "recoverUserCalls",
             "nodeType": "VariableDeclaration",
-            "scope": 15452,
+            "scope": 15512,
             "src": "177:28:32",
             "stateVariable": true,
             "storageLocation": "default",
@@ -591,7 +591,7 @@
               "typeString": "uint256"
             },
             "typeName": {
-              "id": 15419,
+              "id": 15479,
               "name": "uint",
               "nodeType": "ElementaryTypeName",
               "src": "177:4:32",
@@ -605,25 +605,25 @@
           },
           {
             "body": {
-              "id": 15436,
+              "id": 15496,
               "nodeType": "Block",
               "src": "278:93:32",
               "statements": [
                 {
                   "expression": {
                     "argumentTypes": null,
-                    "id": 15429,
+                    "id": 15489,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
                     "lValueRequested": false,
                     "leftHandSide": {
                       "argumentTypes": null,
-                      "id": 15427,
+                      "id": 15487,
                       "name": "contractOwner",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 15418,
+                      "referencedDeclaration": 15478,
                       "src": "288:13:32",
                       "typeDescriptions": {
                         "typeIdentifier": "t_address",
@@ -634,11 +634,11 @@
                     "operator": "=",
                     "rightHandSide": {
                       "argumentTypes": null,
-                      "id": 15428,
+                      "id": 15488,
                       "name": "_newAddress",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 15422,
+                      "referencedDeclaration": 15482,
                       "src": "304:11:32",
                       "typeDescriptions": {
                         "typeIdentifier": "t_address",
@@ -651,14 +651,14 @@
                       "typeString": "address"
                     }
                   },
-                  "id": 15430,
+                  "id": 15490,
                   "nodeType": "ExpressionStatement",
                   "src": "288:27:32"
                 },
                 {
                   "expression": {
                     "argumentTypes": null,
-                    "id": 15432,
+                    "id": 15492,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
@@ -669,11 +669,11 @@
                     "src": "325:18:32",
                     "subExpression": {
                       "argumentTypes": null,
-                      "id": 15431,
+                      "id": 15491,
                       "name": "recoverUserCalls",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 15420,
+                      "referencedDeclaration": 15480,
                       "src": "325:16:32",
                       "typeDescriptions": {
                         "typeIdentifier": "t_uint256",
@@ -685,7 +685,7 @@
                       "typeString": "uint256"
                     }
                   },
-                  "id": 15433,
+                  "id": 15493,
                   "nodeType": "ExpressionStatement",
                   "src": "325:18:32"
                 },
@@ -693,7 +693,7 @@
                   "expression": {
                     "argumentTypes": null,
                     "hexValue": "74727565",
-                    "id": 15434,
+                    "id": 15494,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": true,
@@ -708,14 +708,14 @@
                     },
                     "value": "true"
                   },
-                  "functionReturnParameters": 15426,
-                  "id": 15435,
+                  "functionReturnParameters": 15486,
+                  "id": 15495,
                   "nodeType": "Return",
                   "src": "353:11:32"
                 }
               ]
             },
-            "id": 15437,
+            "id": 15497,
             "implemented": true,
             "isConstructor": false,
             "isDeclaredConst": false,
@@ -723,15 +723,15 @@
             "name": "recoverUser",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 15423,
+              "id": 15483,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 15422,
+                  "id": 15482,
                   "name": "_newAddress",
                   "nodeType": "VariableDeclaration",
-                  "scope": 15437,
+                  "scope": 15497,
                   "src": "233:19:32",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -740,7 +740,7 @@
                     "typeString": "address"
                   },
                   "typeName": {
-                    "id": 15421,
+                    "id": 15481,
                     "name": "address",
                     "nodeType": "ElementaryTypeName",
                     "src": "233:7:32",
@@ -757,15 +757,15 @@
             },
             "payable": false,
             "returnParameters": {
-              "id": 15426,
+              "id": 15486,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 15425,
+                  "id": 15485,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 15437,
+                  "scope": 15497,
                   "src": "272:4:32",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -774,7 +774,7 @@
                     "typeString": "bool"
                   },
                   "typeName": {
-                    "id": 15424,
+                    "id": 15484,
                     "name": "bool",
                     "nodeType": "ElementaryTypeName",
                     "src": "272:4:32",
@@ -789,7 +789,7 @@
               ],
               "src": "271:6:32"
             },
-            "scope": 15452,
+            "scope": 15512,
             "src": "212:159:32",
             "stateMutability": "nonpayable",
             "superFunction": null,
@@ -797,25 +797,25 @@
           },
           {
             "body": {
-              "id": 15450,
+              "id": 15510,
               "nodeType": "Block",
               "src": "445:63:32",
               "statements": [
                 {
                   "expression": {
                     "argumentTypes": null,
-                    "id": 15446,
+                    "id": 15506,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": false,
                     "lValueRequested": false,
                     "leftHandSide": {
                       "argumentTypes": null,
-                      "id": 15444,
+                      "id": 15504,
                       "name": "contractOwner",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 15418,
+                      "referencedDeclaration": 15478,
                       "src": "455:13:32",
                       "typeDescriptions": {
                         "typeIdentifier": "t_address",
@@ -826,11 +826,11 @@
                     "operator": "=",
                     "rightHandSide": {
                       "argumentTypes": null,
-                      "id": 15445,
+                      "id": 15505,
                       "name": "_newOwner",
                       "nodeType": "Identifier",
                       "overloadedDeclarations": [],
-                      "referencedDeclaration": 15439,
+                      "referencedDeclaration": 15499,
                       "src": "471:9:32",
                       "typeDescriptions": {
                         "typeIdentifier": "t_address",
@@ -843,7 +843,7 @@
                       "typeString": "address"
                     }
                   },
-                  "id": 15447,
+                  "id": 15507,
                   "nodeType": "ExpressionStatement",
                   "src": "455:25:32"
                 },
@@ -851,7 +851,7 @@
                   "expression": {
                     "argumentTypes": null,
                     "hexValue": "74727565",
-                    "id": 15448,
+                    "id": 15508,
                     "isConstant": false,
                     "isLValue": false,
                     "isPure": true,
@@ -866,14 +866,14 @@
                     },
                     "value": "true"
                   },
-                  "functionReturnParameters": 15443,
-                  "id": 15449,
+                  "functionReturnParameters": 15503,
+                  "id": 15509,
                   "nodeType": "Return",
                   "src": "490:11:32"
                 }
               ]
             },
-            "id": 15451,
+            "id": 15511,
             "implemented": true,
             "isConstructor": false,
             "isDeclaredConst": false,
@@ -881,15 +881,15 @@
             "name": "setContractOwner",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 15440,
+              "id": 15500,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 15439,
+                  "id": 15499,
                   "name": "_newOwner",
                   "nodeType": "VariableDeclaration",
-                  "scope": 15451,
+                  "scope": 15511,
                   "src": "403:17:32",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -898,7 +898,7 @@
                     "typeString": "address"
                   },
                   "typeName": {
-                    "id": 15438,
+                    "id": 15498,
                     "name": "address",
                     "nodeType": "ElementaryTypeName",
                     "src": "403:7:32",
@@ -915,15 +915,15 @@
             },
             "payable": false,
             "returnParameters": {
-              "id": 15443,
+              "id": 15503,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 15442,
+                  "id": 15502,
                   "name": "",
                   "nodeType": "VariableDeclaration",
-                  "scope": 15451,
+                  "scope": 15511,
                   "src": "440:4:32",
                   "stateVariable": false,
                   "storageLocation": "default",
@@ -932,7 +932,7 @@
                     "typeString": "bool"
                   },
                   "typeName": {
-                    "id": 15441,
+                    "id": 15501,
                     "name": "bool",
                     "nodeType": "ElementaryTypeName",
                     "src": "440:4:32",
@@ -947,14 +947,14 @@
               ],
               "src": "439:6:32"
             },
-            "scope": 15452,
+            "scope": 15512,
             "src": "377:131:32",
             "stateMutability": "nonpayable",
             "superFunction": null,
             "visibility": "external"
           }
         ],
-        "scope": 15453,
+        "scope": 15513,
         "src": "118:393:32"
       }
     ],
@@ -973,5 +973,5 @@
     }
   },
   "schemaVersion": "2.0.0",
-  "updatedAt": "2018-05-08T10:34:46.072Z"
+  "updatedAt": "2018-05-10T14:25:44.508Z"
 }
