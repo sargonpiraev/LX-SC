@@ -86,11 +86,27 @@ contract('Contracts Manager', function(accounts) {
             assert.equal(await contractsManager.getContractAddressByType("TEST"), zeroAddress);
         });
 
-        it("allows a auth account to change the contract address", async () => {
+        it("allows an auth account to change the contract address", async () => {
             assert.isTrue((await contractsManager.addContract.call("0x01", "TEST")).eq(1));
 
             await contractsManager.addContract(accounts[2], "TEST");
             assert.equal(await contractsManager.getContractAddressByType("TEST"), accounts[2]);
+        });
+
+        it("allows an auth account to change the contract address", async () => {
+            await contractsManager.addContract(accounts[3], "TEST");
+            assert.equal(await contractsManager.getContractAddressByType("TEST"), accounts[3]);
+
+            await contractsManager.addContract(accounts[4], "TEST");
+            assert.equal(await contractsManager.getContractAddressByType("TEST"), accounts[4]);
+        });
+
+        it("doesn't allows a non-auth account to change the contract address", async () => {
+            await contractsManager.addContract(accounts[5], "TEST");
+            assert.equal(await contractsManager.getContractAddressByType("TEST"), accounts[5]);
+
+            await contractsManager.addContract(accounts[6], "TEST", {from: accounts[2]});
+            assert.equal(await contractsManager.getContractAddressByType("TEST"), accounts[5]);
         });
     });
 });
