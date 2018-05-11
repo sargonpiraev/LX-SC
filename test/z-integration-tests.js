@@ -44,6 +44,9 @@ contract('Integration tests (user stories)', (accounts) => {
         client: 18,
         validator: 4
     }
+
+
+    
     const users = {
         default: accounts[0],
         contractOwner: accounts[0],
@@ -218,18 +221,18 @@ contract('Integration tests (user stories)', (accounts) => {
             it("`root` user should be root", async () => {
                 assert.isTrue(await contracts.rolesLibrary.isUserRoot.call(users.root))
             })
-            
+
             it("should be able to set other user as an admin with OK code", async () => {
                 assert.equal((await contracts.ratingLibrary.setRootUser.call(users.default, true, { from: users.contractOwner, })))
             })
         })
-        
+
         describe("I want to be able to create boards", () => {
-            
+
             after(async () => {
                 await reverter.revert()
             })
-            
+
             it("`root` user should be root user", async () => {
                 assert.isTrue(await contracts.rolesLibrary.isUserRoot.call(users.root))
             })
@@ -238,7 +241,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 const createBoardData = contracts.boardController.contract.createBoard.getData(0,0,0,0,0).slice(0,10)
                 const roles = await contracts.rolesLibrary.getUserRoles.call(users.root)
                 const capabilities = await contracts.rolesLibrary.getCapabilityRoles.call(contracts.boardController.address, createBoardData)
-                
+
                 assert.equal((await contracts.mock.bitAndBytes32ToBytes32.call(roles, capabilities)).toNumber(), 0)
             })
 
@@ -282,7 +285,7 @@ contract('Integration tests (user stories)', (accounts) => {
         })
 
         describe("I want to be able to add/remove token contracts to ERC20 library", () => {
-            
+
             describe("add", () => {
                 let otherContract
 
@@ -492,10 +495,10 @@ contract('Integration tests (user stories)', (accounts) => {
             before(async () => {
                 erc20NonStandartToken = await FakeCoin.new()
                 await contracts.erc20Manager.addContract(erc20NonStandartToken.address, { from: users.root })
-                
+
                 await erc20NonStandartToken.mint(users.client, depositBalance)
                 await contracts.paymentGateway.deposit(depositBalance, erc20NonStandartToken.address, { from: users.client })
-                
+
                 await setupBoardWithJobs()
                 job = jobs[0]
                 await setupWorker(job, users.worker)
@@ -511,13 +514,13 @@ contract('Integration tests (user stories)', (accounts) => {
             it("worker should be able to post job offer in tokens with OK code", async () => {
                 assert.equal((await contracts.jobController.postJobOffer.call(job.id, erc20NonStandartToken.address, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.OK)
             })
-            
+
             it("worker should be able to post job offer in tokens", async () => {
                 const tx = await contracts.jobController.postJobOffer(job.id, erc20NonStandartToken.address, 200, 200, 100, { from: users.worker })
                 const jobOfferPostedEvent = (await eventsHelper.findEvent([contracts.jobController,], tx, "JobOfferPosted"))[0]
                 assert.isDefined(jobOfferPostedEvent)
             })
-            
+
             it("should be able to accept and start working", async () => {
                 await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client })
                 await contracts.jobController.startWork(job.id, { from: users.worker })
@@ -532,7 +535,7 @@ contract('Integration tests (user stories)', (accounts) => {
             it("should be able to end work", async () => {
                 await contracts.jobController.endWork(job.id, { from: users.worker })
                 await contracts.jobController.confirmEndWork(job.id, { from: users.client })
-                
+
                 const jobState = await contracts.jobController.getJobState.call(job.id)
                 assert.equal(jobState, stages.FINISHED)
             })
@@ -572,7 +575,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await setupWorker(otherJob, users.worker2)
 
                 initialWorker2Balance = await contracts.coin.balanceOf.call(users.worker2)
-                assert.equal(initialWorker2Balance, 0)                
+                assert.equal(initialWorker2Balance, 0)
             })
 
             after(async () => {
@@ -590,7 +593,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await helpers.increaseTime(4*60*60) // 4 hours
                 await contracts.jobController.endWork(job.id, { from: users.worker })
                 await contracts.jobController.confirmEndWork(job.id, { from: users.client })
-                
+
                 await contracts.jobController.releasePayment(job.id, { from: users.default })
 
                 afterPaymentWorkerBalance = (await contracts.paymentGateway.getBalance.call(users.worker, contracts.coin.address)).toNumber()
@@ -634,7 +637,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             let afterPaymentWorker2Balance
-            
+
             it("the other worker should be able to receive a payment for his work", async () => {
                 await contracts.jobController.releasePayment(otherJob.id, { from: users.default })
 
@@ -646,7 +649,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 assert.isAbove(afterPaymentWorker2Balance, afterPaymentWorkerBalance)
             })
         })
-        
+
         describe("I want to give feedback on worker's labor and", () => {
             let job
             let expectedWorkerRating = {}
@@ -668,7 +671,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await helpers.increaseTime(2*60*60) // 2 hours
                 await contracts.jobController.endWork(job.id, { from: users.worker })
                 await contracts.jobController.confirmEndWork(job.id, { from: users.client })
-    
+
                 await contracts.jobController.releasePayment(job.id, { from: users.default })
             })
 
@@ -717,12 +720,12 @@ contract('Integration tests (user stories)', (accounts) => {
             it("should be able to set up skill rating for the worker with OK code", async () => {
                 assert.equal((await contracts.ratingLibrary.rateWorkerSkills.call(job.id, users.worker, job.area, job.category, [job.skills], [skillRatings[job.skills]], { from: users.client })).toNumber(), ErrorsScope.OK)
             })
-            
+
             it("should be able to set up skill rating for the worker", async () => {
-                const tx = await contracts.ratingLibrary.rateWorkerSkills(job.id, users.worker, job.area, job.category, [job.skills], [skillRatings[job.skills]], { from: users.client }) 
+                const tx = await contracts.ratingLibrary.rateWorkerSkills(job.id, users.worker, job.area, job.category, [job.skills], [skillRatings[job.skills]], { from: users.client })
                 const skillRatingGivenEvent = (await eventsHelper.findEvent([contracts.ratingLibrary,], tx, "SkillRatingGiven"))[0]
                 assert.isDefined(skillRatingGivenEvent)
-                
+
                 let [ _client, skillRating, ] = await contracts.ratingLibrary.getSkillRating.call(users.worker, job.area, job.category, job.skills, job.id)
                 assert.equal(_client, users.client)
                 assert.equal(skillRatings[job.skills], skillRating)
@@ -733,12 +736,12 @@ contract('Integration tests (user stories)', (accounts) => {
             it("shouldn't be able to update skill rating for the worker with RATING_AND_REPUTATION_CANNOT_SET_RATING code", async () => {
                 assert.equal((await contracts.ratingLibrary.rateWorkerSkills.call(job.id, users.worker, job.area, job.category, [job.skills], [updatedSkillRatingSkills,], { from: users.client })).toNumber(), ErrorsScope.RATING_AND_REPUTATION_CANNOT_SET_RATING)
             })
-            
+
             it("shouldn't be able to update skill rating for the worker", async () => {
-                const tx = await contracts.ratingLibrary.rateWorkerSkills(job.id, users.worker, job.area, job.category, [job.skills], [updatedSkillRatingSkills,], { from: users.client }) 
+                const tx = await contracts.ratingLibrary.rateWorkerSkills(job.id, users.worker, job.area, job.category, [job.skills], [updatedSkillRatingSkills,], { from: users.client })
                 const skillRatingGivenEvent = (await eventsHelper.findEvent([contracts.ratingLibrary,], tx, "SkillRatingGiven"))[0]
                 assert.isUndefined(skillRatingGivenEvent)
-                
+
                 let [ _client, skillRating, ] = await contracts.ratingLibrary.getSkillRating.call(users.worker, job.area, job.category, job.skills, job.id)
                 assert.equal(_client, users.client)
                 assert.equal(skillRatings[job.skills], skillRating)
@@ -757,9 +760,9 @@ contract('Integration tests (user stories)', (accounts) => {
                 workerExpertise = jobs[0]
 
                 await setupWorker(workerExpertise, users.worker)
-                
+
             })
-            
+
             after(async () => {
                 cleanUpBoards()
                 await reverter.revert()
@@ -781,7 +784,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
                     if (jobSkillsArea != workerExpertise.area ||
                         jobSkillsCategory != workerExpertise.category ||
-                        jobSkills != workerExpertise.skills) 
+                        jobSkills != workerExpertise.skills)
                     {
                         return;
                     }
@@ -834,10 +837,10 @@ contract('Integration tests (user stories)', (accounts) => {
             it("job should have `Accepted` state", async () => {
                 assert.equal((await contracts.jobController.getJobState.call(job.id)).toNumber(), stages.ACCEPTED)
             })
-            
+
             it("should be able to start work", async () => {
                 await contracts.jobController.startWork(job.id, { from: users.worker })
-                
+
                 assert.equal((await contracts.jobController.getJobState.call(job.id)).toNumber(), stages.PENDING_START)
             })
 
@@ -854,7 +857,7 @@ contract('Integration tests (user stories)', (accounts) => {
             it("should end work when it is ready with OK code", async () => {
                 assert.equal((await contracts.jobController.endWork.call(job.id, { from: users.worker })).toNumber(), ErrorsScope.OK)
             })
-            
+
             it("should end work when it is ready", async () => {
                 await contracts.jobController.endWork(job.id, { from: users.worker })
 
@@ -907,7 +910,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
                     if (jobSkillsArea != workerExpertise.area ||
                         jobSkillsCategory != workerExpertise.category ||
-                        jobSkills != workerExpertise.skills) 
+                        jobSkills != workerExpertise.skills)
                     {
                         return;
                     }
@@ -966,7 +969,7 @@ contract('Integration tests (user stories)', (accounts) => {
             it("worker should be able to update his job offer with OK code", async () => {
                 assert.equal((await contracts.jobController.postJobOffer.call(job.id, contracts.coin.address, 90, 100, 90, { from: users.worker })).toNumber(), ErrorsScope.OK)
             })
-            
+
             it("worker should be able to update his job offer", async () => {
                 const tx = await contracts.jobController.postJobOffer(job.id, contracts.coin.address, 90, 100, 90, { from: users.worker })
                 const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
@@ -986,7 +989,7 @@ contract('Integration tests (user stories)', (accounts) => {
             it("worker should be able to update his job offer with OK code", async () => {
                 assert.equal((await contracts.jobController.postJobOffer.call(job.id, contracts.coin.address, 90, 80, 80, { from: users.worker })).toNumber(), ErrorsScope.OK)
             })
-            
+
             it("worker should be able to update his job offer", async () => {
                 const tx = await contracts.jobController.postJobOffer(job.id, contracts.coin.address, 90, 80, 80, { from: users.worker })
                 const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
@@ -1029,7 +1032,7 @@ contract('Integration tests (user stories)', (accounts) => {
             before(async () => {
                 await setupBoardWithJobs()
                 job = jobs[0]
-                
+
                 await setupWorker(job, users.worker)
 
                 initialWorkerBalance = (await contracts.paymentGateway.getBalance.call(users.worker, contracts.coin.address)).toNumber()
@@ -1046,7 +1049,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
                 otherJob = jobs[2]
                 await setupWorker(otherJob, users.worker2)
-                
+
                 initialWorker2Balance = await contracts.paymentGateway.getBalance.call(users.worker2, contracts.coin.address)
             })
 
@@ -1062,7 +1065,7 @@ contract('Integration tests (user stories)', (accounts) => {
             it("should be able to pause work with OK code", async () => {
                 assert.equal((await contracts.jobController.pauseWork.call(job.id, { from: users.worker })).toNumber(), ErrorsScope.OK)
             })
-            
+
             it("should be able to pause work", async () => {
                 let tx = await contracts.jobController.pauseWork(job.id, { from: users.worker })
                 let jobPausedEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'WorkPaused'))[0]
@@ -1076,7 +1079,7 @@ contract('Integration tests (user stories)', (accounts) => {
             it("should be able to resume work with OK code", async () => {
                 assert.equal((await contracts.jobController.resumeWork.call(job.id, { from: users.worker })).toNumber(), ErrorsScope.OK)
             })
-            
+
             it("should be able to resume work", async () => {
                 let tx = await contracts.jobController.resumeWork(job.id, { from: users.worker })
                 let jobResumedEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'WorkResumed'))[0]
@@ -1131,7 +1134,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
                 expectedJobRating[users.client] = 8
             })
-            
+
             after(async () => {
                 cleanUpBoards()
                 await reverter.revert()
@@ -1139,7 +1142,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("should not be able to leave feedback after posting job offer with RATING_AND_REPUTATION_CANNOT_SET_RATING code", async () => {
                 await contracts.jobController.postJobOffer(job.id, contracts.coin.address, 100, 100, 100, { from: users.worker })
-                
+
                 assert.equal((await contracts.ratingLibrary.setJobRating.call(users.client, expectedJobRating[users.client], job.id, { from: users.worker })).toNumber(), ErrorsScope.RATING_AND_REPUTATION_CANNOT_SET_RATING)
             })
 
@@ -1148,13 +1151,13 @@ contract('Integration tests (user stories)', (accounts) => {
 
                 assert.equal((await contracts.ratingLibrary.setJobRating.call(users.client, expectedJobRating[users.client], job.id, { from: users.worker })).toNumber(), ErrorsScope.RATING_AND_REPUTATION_CANNOT_SET_RATING)
             })
-            
+
             it("should not be able to leave feedback after starting work with RATING_AND_REPUTATION_CANNOT_SET_RATING code", async () => {
                 await contracts.jobController.startWork(job.id, { from: users.worker })
 
                 assert.equal((await contracts.ratingLibrary.setJobRating.call(users.client, expectedJobRating[users.client], job.id, { from: users.worker })).toNumber(), ErrorsScope.RATING_AND_REPUTATION_CANNOT_SET_RATING)
             })
-            
+
             it("should not be able to leave feedback after confirming work start with RATING_AND_REPUTATION_CANNOT_SET_RATING code", async () => {
                 await contracts.jobController.confirmStartWork(job.id, { from: users.client })
 
@@ -1164,19 +1167,19 @@ contract('Integration tests (user stories)', (accounts) => {
             it("some time should pass", async () => {
                 await helpers.increaseTime(2*60*60) // 2 hours
             })
-            
+
             it("should not be able to leave feedback after ending work with RATING_AND_REPUTATION_CANNOT_SET_RATING code", async () => {
                 await contracts.jobController.endWork(job.id, { from: users.worker })
 
                 assert.equal((await contracts.ratingLibrary.setJobRating.call(users.client, expectedJobRating[users.client], job.id, { from: users.worker })).toNumber(), ErrorsScope.RATING_AND_REPUTATION_CANNOT_SET_RATING)
             })
-            
+
             it("should not be able to leave feedback after confirming work end with RATING_AND_REPUTATION_CANNOT_SET_RATING code", async () => {
                 await contracts.jobController.confirmEndWork(job.id, { from: users.client })
 
                 assert.equal((await contracts.ratingLibrary.setJobRating.call(users.client, expectedJobRating[users.client], job.id, { from: users.worker })).toNumber(), ErrorsScope.RATING_AND_REPUTATION_CANNOT_SET_RATING)
             })
-            
+
             it("should be able to leave feedback after finalizing payment for a work with OK code", async () => {
                 await contracts.jobController.releasePayment(job.id, { from: users.default })
 
@@ -1213,8 +1216,8 @@ contract('Integration tests (user stories)', (accounts) => {
         describe("I cannot post a job offer if I does not have enough skills", () => {
             let applicableJob
             var notApplicableJob
-            
-            
+
+
             before(async () => {
                 await setupBoardWithJobs()
                 applicableJob = jobs[0]
@@ -1228,40 +1231,40 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             describe("match all skills", async () => {
-                
+
                 it("should be able to post an offer for a job if have enough skill with OK code", async () => {
                     assert.equal((await contracts.jobController.postJobOffer.call(applicableJob.id, contracts.coin.address, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.OK)
                 })
             })
 
             describe("no areas", async () => {
-                
+
                 before(async () => {
                     notApplicableJob = jobs[5]
                 })
-    
+
                 it("should not be able to post an offer for a job if does not have enough skills for it with JOB_CONTROLLER_INVALID_SKILLS code", async () => {
                     assert.equal((await contracts.jobController.postJobOffer.call(notApplicableJob.id, contracts.coin.address, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.JOB_CONTROLLER_INVALID_SKILLS)
                 })
             })
-            
+
             describe("no categories", async () => {
-                
+
                 before(async () => {
                     notApplicableJob = jobs[4]
                 })
-    
+
                 it("should not be able to post an offer for a job if does not have enough skills for it with JOB_CONTROLLER_INVALID_SKILLS code", async () => {
                     assert.equal((await contracts.jobController.postJobOffer.call(notApplicableJob.id, contracts.coin.address, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.JOB_CONTROLLER_INVALID_SKILLS)
                 })
             })
-            
+
             describe("no skills", async () => {
-                
+
                 before(async () => {
                     notApplicableJob = jobs[1]
                 })
-    
+
                 it("should not be able to post an offer for a job if does not have enough skills for it with JOB_CONTROLLER_INVALID_SKILLS code", async () => {
                     assert.equal((await contracts.jobController.postJobOffer.call(notApplicableJob.id, contracts.coin.address, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.JOB_CONTROLLER_INVALID_SKILLS)
                 })
@@ -1290,19 +1293,19 @@ contract('Integration tests (user stories)', (accounts) => {
             const recoverData = contracts.recovery.contract.recoverUser.getData(0x0, 0x0)
             await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.recovery.address, recoverData, { from: users.contractOwner })
         })
-       
+
         after(async () => {
             await reverter.revert()
         })
 
         describe("I want to be able to register in system", () => {
-            
+
             it("user should not be able to register itself with UNAUTHORIZED code", async () => {
                 assert.equal((await contracts.userFactory.createUserWithProxyAndRecovery.call(
-                    userMainAddress, 
-                    userRecoveryAddress, 
-                    userInfo.roles, 
-                    userInfo.areas, 
+                    userMainAddress,
+                    userRecoveryAddress,
+                    userInfo.roles,
+                    userInfo.areas,
                     userInfo.categories,
                     userInfo.skills,
                     { from: userMainAddress, }
@@ -1311,10 +1314,10 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("moderator should moderate user's data and create user if all is good with OK code", async () => {
                 assert.equal((await contracts.userFactory.createUserWithProxyAndRecovery.call(
-                    userMainAddress, 
-                    userRecoveryAddress, 
-                    userInfo.roles, 
-                    userInfo.areas, 
+                    userMainAddress,
+                    userRecoveryAddress,
+                    userInfo.roles,
+                    userInfo.areas,
                     userInfo.categories,
                     userInfo.skills,
                     { from: users.moderator, }
@@ -1323,10 +1326,10 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("moderator should moderate user's data and create user if all is good", async () => {
                 const tx = await contracts.userFactory.createUserWithProxyAndRecovery(
-                    userMainAddress, 
-                    userRecoveryAddress, 
-                    userInfo.roles, 
-                    userInfo.areas, 
+                    userMainAddress,
+                    userRecoveryAddress,
+                    userInfo.roles,
+                    userInfo.areas,
                     userInfo.categories,
                     userInfo.skills,
                     { from: users.moderator, }
@@ -1343,11 +1346,11 @@ contract('Integration tests (user stories)', (accounts) => {
             it("user should not be able to restore by himself with UNAUTHORIZED code", async () => {
                 assert.equal((await contracts.recovery.recoverUser.call(userContract.address, userNewAddress, { from: userMainAddress, })).toNumber(), ErrorsScope.UNAUTHORIZED)
             })
-            
+
             it("moderator should be able to restore user with new address with OK code", async () => {
                 assert.equal((await contracts.recovery.recoverUser.call(userContract.address, userNewAddress, { from: users.moderator, })).toNumber(), ErrorsScope.OK)
             })
-            
+
             it("moderator should be able to restore user with new address", async () => {
                 const tx = await contracts.recovery.recoverUser(userContract.address, userNewAddress, { from: users.moderator, })
                 const userRecoveredEvent = (await eventsHelper.findEvent([contracts.recovery,], tx, "UserRecovered"))[0]
@@ -1386,7 +1389,7 @@ contract('Integration tests (user stories)', (accounts) => {
             it("should be able to recover by the new recovery address with OK code", async () => {
                 assert.equal((await userContract.recoverUser.call(userMainAddress, { from: users.moderator, })).toNumber(), ErrorsScope.OK)
             })
-            
+
             it("should be able to recover by the new recovery address", async () => {
                 await userContract.recoverUser(userMainAddress, { from: users.moderator, })
                 assert.equal(await userContract.contractOwner.call(), userMainAddress)
