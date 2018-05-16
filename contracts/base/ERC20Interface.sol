@@ -10,6 +10,7 @@ contract ERC20Interface {
     event Approval(address indexed from, address indexed spender, uint256 value);
     string public symbol;
 
+    function decimals() public view returns (uint8);
     function totalSupply() public view returns (uint256 supply);
     function balanceOf(address _owner) public view returns (uint256 balance);
     function transfer(address _to, uint256 _value) public returns (bool success);
