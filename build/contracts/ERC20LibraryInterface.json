@@ -1,0 +1,1743 @@
+{
+  "contractName": "ERC20LibraryInterface",
+  "abi": [
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "name": "_contract",
+          "type": "address"
+        }
+      ],
+      "name": "includes",
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "sourceMap": "",
+  "deployedSourceMap": "",
+  "source": "/**\n * Copyright 2017–2018, LaborX PTY\n * Licensed under the AGPL Version 3 license.\n */\n\npragma solidity ^0.4.18;\n\n\nimport './Roles2LibraryAdapter.sol';\n\n\ncontract ERC20LibraryInterface {\n    function includes(address _contract) public view returns(bool);\n}\n\n\ncontract Roles2LibraryAndERC20LibraryAdapter is Roles2LibraryAdapter {\n\n    ERC20LibraryInterface erc20Library;\n\n    uint constant ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_SCOPE = 14000;\n    uint constant ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_UNSUPPORTED_CONTRACT = ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_SCOPE + 1;\n\n    modifier onlySupportedContract(address _contract) {\n        if (!erc20Library.includes(_contract)) {\n            assembly {\n                mstore(0, 14001) // ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_UNSUPPORTED_CONTRACT\n                return(0, 32)\n            }\n        }\n        _;\n    }\n\n    function Roles2LibraryAndERC20LibraryAdapter(\n        address _roles2Library,\n        address _erc20Library\n    )\n    Roles2LibraryAdapter(_roles2Library)\n    public\n    {\n        erc20Library = ERC20LibraryInterface(_erc20Library);\n    }\n\n    function setERC20Library(ERC20LibraryInterface _erc20Library) public auth returns (uint) {\n        erc20Library = _erc20Library;\n        return OK;\n    }\n\n}\n",
+  "sourcePath": "/Users/ahiatsevich/Development/chronobank/LX-SC/contracts/adapters/Roles2LibraryAndERC20LibraryAdapter.sol",
+  "ast": {
+    "absolutePath": "/Users/ahiatsevich/Development/chronobank/LX-SC/contracts/adapters/Roles2LibraryAndERC20LibraryAdapter.sol",
+    "exportedSymbols": {
+      "ERC20LibraryInterface": [
+        14038
+      ],
+      "Roles2LibraryAndERC20LibraryAdapter": [
+        14098
+      ]
+    },
+    "id": 14099,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 14029,
+        "literals": [
+          "solidity",
+          "^",
+          "0.4",
+          ".18"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "92:24:22"
+      },
+      {
+        "absolutePath": "/Users/ahiatsevich/Development/chronobank/LX-SC/contracts/adapters/Roles2LibraryAdapter.sol",
+        "file": "./Roles2LibraryAdapter.sol",
+        "id": 14030,
+        "nodeType": "ImportDirective",
+        "scope": 14099,
+        "sourceUnit": 14028,
+        "src": "119:36:22",
+        "symbolAliases": [],
+        "unitAlias": ""
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "documentation": null,
+        "fullyImplemented": false,
+        "id": 14038,
+        "linearizedBaseContracts": [
+          14038
+        ],
+        "name": "ERC20LibraryInterface",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": null,
+            "id": 14037,
+            "implemented": false,
+            "isConstructor": false,
+            "isDeclaredConst": true,
+            "modifiers": [],
+            "name": "includes",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 14033,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 14032,
+                  "name": "_contract",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14037,
+                  "src": "213:17:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 14031,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "213:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "212:19:22"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 14036,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 14035,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14037,
+                  "src": "252:4:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bool",
+                    "typeString": "bool"
+                  },
+                  "typeName": {
+                    "id": 14034,
+                    "name": "bool",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "252:4:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "251:6:22"
+            },
+            "scope": 14038,
+            "src": "195:63:22",
+            "stateMutability": "view",
+            "superFunction": null,
+            "visibility": "public"
+          }
+        ],
+        "scope": 14099,
+        "src": "158:102:22"
+      },
+      {
+        "baseContracts": [
+          {
+            "arguments": [],
+            "baseName": {
+              "contractScope": null,
+              "id": 14039,
+              "name": "Roles2LibraryAdapter",
+              "nodeType": "UserDefinedTypeName",
+              "referencedDeclaration": 14027,
+              "src": "311:20:22",
+              "typeDescriptions": {
+                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$14027",
+                "typeString": "contract Roles2LibraryAdapter"
+              }
+            },
+            "id": 14040,
+            "nodeType": "InheritanceSpecifier",
+            "src": "311:20:22"
+          }
+        ],
+        "contractDependencies": [
+          14027
+        ],
+        "contractKind": "contract",
+        "documentation": null,
+        "fullyImplemented": true,
+        "id": 14098,
+        "linearizedBaseContracts": [
+          14098,
+          14027
+        ],
+        "name": "Roles2LibraryAndERC20LibraryAdapter",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "constant": false,
+            "id": 14042,
+            "name": "erc20Library",
+            "nodeType": "VariableDeclaration",
+            "scope": 14098,
+            "src": "339:34:22",
+            "stateVariable": true,
+            "storageLocation": "default",
+            "typeDescriptions": {
+              "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+              "typeString": "contract ERC20LibraryInterface"
+            },
+            "typeName": {
+              "contractScope": null,
+              "id": 14041,
+              "name": "ERC20LibraryInterface",
+              "nodeType": "UserDefinedTypeName",
+              "referencedDeclaration": 14038,
+              "src": "339:21:22",
+              "typeDescriptions": {
+                "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                "typeString": "contract ERC20LibraryInterface"
+              }
+            },
+            "value": null,
+            "visibility": "internal"
+          },
+          {
+            "constant": true,
+            "id": 14045,
+            "name": "ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_SCOPE",
+            "nodeType": "VariableDeclaration",
+            "scope": 14098,
+            "src": "380:69:22",
+            "stateVariable": true,
+            "storageLocation": "default",
+            "typeDescriptions": {
+              "typeIdentifier": "t_uint256",
+              "typeString": "uint256"
+            },
+            "typeName": {
+              "id": 14043,
+              "name": "uint",
+              "nodeType": "ElementaryTypeName",
+              "src": "380:4:22",
+              "typeDescriptions": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              }
+            },
+            "value": {
+              "argumentTypes": null,
+              "hexValue": "3134303030",
+              "id": 14044,
+              "isConstant": false,
+              "isLValue": false,
+              "isPure": true,
+              "kind": "number",
+              "lValueRequested": false,
+              "nodeType": "Literal",
+              "src": "444:5:22",
+              "subdenomination": null,
+              "typeDescriptions": {
+                "typeIdentifier": "t_rational_14000_by_1",
+                "typeString": "int_const 14000"
+              },
+              "value": "14000"
+            },
+            "visibility": "internal"
+          },
+          {
+            "constant": true,
+            "id": 14050,
+            "name": "ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_UNSUPPORTED_CONTRACT",
+            "nodeType": "VariableDeclaration",
+            "scope": 14098,
+            "src": "455:130:22",
+            "stateVariable": true,
+            "storageLocation": "default",
+            "typeDescriptions": {
+              "typeIdentifier": "t_uint256",
+              "typeString": "uint256"
+            },
+            "typeName": {
+              "id": 14046,
+              "name": "uint",
+              "nodeType": "ElementaryTypeName",
+              "src": "455:4:22",
+              "typeDescriptions": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              }
+            },
+            "value": {
+              "argumentTypes": null,
+              "commonType": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              },
+              "id": 14049,
+              "isConstant": false,
+              "isLValue": false,
+              "isPure": true,
+              "lValueRequested": false,
+              "leftExpression": {
+                "argumentTypes": null,
+                "id": 14047,
+                "name": "ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_SCOPE",
+                "nodeType": "Identifier",
+                "overloadedDeclarations": [],
+                "referencedDeclaration": 14045,
+                "src": "534:47:22",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_uint256",
+                  "typeString": "uint256"
+                }
+              },
+              "nodeType": "BinaryOperation",
+              "operator": "+",
+              "rightExpression": {
+                "argumentTypes": null,
+                "hexValue": "31",
+                "id": 14048,
+                "isConstant": false,
+                "isLValue": false,
+                "isPure": true,
+                "kind": "number",
+                "lValueRequested": false,
+                "nodeType": "Literal",
+                "src": "584:1:22",
+                "subdenomination": null,
+                "typeDescriptions": {
+                  "typeIdentifier": "t_rational_1_by_1",
+                  "typeString": "int_const 1"
+                },
+                "value": "1"
+              },
+              "src": "534:51:22",
+              "typeDescriptions": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              }
+            },
+            "visibility": "internal"
+          },
+          {
+            "body": {
+              "id": 14063,
+              "nodeType": "Block",
+              "src": "642:243:22",
+              "statements": [
+                {
+                  "condition": {
+                    "argumentTypes": null,
+                    "id": 14058,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "lValueRequested": false,
+                    "nodeType": "UnaryOperation",
+                    "operator": "!",
+                    "prefix": true,
+                    "src": "656:33:22",
+                    "subExpression": {
+                      "argumentTypes": null,
+                      "arguments": [
+                        {
+                          "argumentTypes": null,
+                          "id": 14056,
+                          "name": "_contract",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 14052,
+                          "src": "679:9:22",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_address",
+                            "typeString": "address"
+                          }
+                        }
+                      ],
+                      "expression": {
+                        "argumentTypes": [
+                          {
+                            "typeIdentifier": "t_address",
+                            "typeString": "address"
+                          }
+                        ],
+                        "expression": {
+                          "argumentTypes": null,
+                          "id": 14054,
+                          "name": "erc20Library",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 14042,
+                          "src": "657:12:22",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                            "typeString": "contract ERC20LibraryInterface"
+                          }
+                        },
+                        "id": 14055,
+                        "isConstant": false,
+                        "isLValue": false,
+                        "isPure": false,
+                        "lValueRequested": false,
+                        "memberName": "includes",
+                        "nodeType": "MemberAccess",
+                        "referencedDeclaration": 14037,
+                        "src": "657:21:22",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_function_external_view$_t_address_$returns$_t_bool_$",
+                          "typeString": "function (address) view external returns (bool)"
+                        }
+                      },
+                      "id": 14057,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": false,
+                      "kind": "functionCall",
+                      "lValueRequested": false,
+                      "names": [],
+                      "nodeType": "FunctionCall",
+                      "src": "657:32:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bool",
+                        "typeString": "bool"
+                      }
+                    },
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    }
+                  },
+                  "falseBody": null,
+                  "id": 14061,
+                  "nodeType": "IfStatement",
+                  "src": "652:216:22",
+                  "trueBody": {
+                    "id": 14060,
+                    "nodeType": "Block",
+                    "src": "691:177:22",
+                    "statements": [
+                      {
+                        "externalReferences": [],
+                        "id": 14059,
+                        "nodeType": "InlineAssembly",
+                        "operations": "{\n    mstore(0, 14001)\n    return(0, 32)\n}",
+                        "src": "705:163:22"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": 14062,
+                  "nodeType": "PlaceholderStatement",
+                  "src": "877:1:22"
+                }
+              ]
+            },
+            "id": 14064,
+            "name": "onlySupportedContract",
+            "nodeType": "ModifierDefinition",
+            "parameters": {
+              "id": 14053,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 14052,
+                  "name": "_contract",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14064,
+                  "src": "623:17:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 14051,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "623:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "622:19:22"
+            },
+            "src": "592:293:22",
+            "visibility": "internal"
+          },
+          {
+            "body": {
+              "id": 14080,
+              "nodeType": "Block",
+              "src": "1061:68:22",
+              "statements": [
+                {
+                  "expression": {
+                    "argumentTypes": null,
+                    "id": 14078,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "lValueRequested": false,
+                    "leftHandSide": {
+                      "argumentTypes": null,
+                      "id": 14074,
+                      "name": "erc20Library",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 14042,
+                      "src": "1071:12:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                        "typeString": "contract ERC20LibraryInterface"
+                      }
+                    },
+                    "nodeType": "Assignment",
+                    "operator": "=",
+                    "rightHandSide": {
+                      "argumentTypes": null,
+                      "arguments": [
+                        {
+                          "argumentTypes": null,
+                          "id": 14076,
+                          "name": "_erc20Library",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 14068,
+                          "src": "1108:13:22",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_address",
+                            "typeString": "address"
+                          }
+                        }
+                      ],
+                      "expression": {
+                        "argumentTypes": [
+                          {
+                            "typeIdentifier": "t_address",
+                            "typeString": "address"
+                          }
+                        ],
+                        "id": 14075,
+                        "name": "ERC20LibraryInterface",
+                        "nodeType": "Identifier",
+                        "overloadedDeclarations": [],
+                        "referencedDeclaration": 14038,
+                        "src": "1086:21:22",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_type$_t_contract$_ERC20LibraryInterface_$14038_$",
+                          "typeString": "type(contract ERC20LibraryInterface)"
+                        }
+                      },
+                      "id": 14077,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": false,
+                      "kind": "typeConversion",
+                      "lValueRequested": false,
+                      "names": [],
+                      "nodeType": "FunctionCall",
+                      "src": "1086:36:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                        "typeString": "contract ERC20LibraryInterface"
+                      }
+                    },
+                    "src": "1071:51:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                      "typeString": "contract ERC20LibraryInterface"
+                    }
+                  },
+                  "id": 14079,
+                  "nodeType": "ExpressionStatement",
+                  "src": "1071:51:22"
+                }
+              ]
+            },
+            "id": 14081,
+            "implemented": true,
+            "isConstructor": true,
+            "isDeclaredConst": false,
+            "modifiers": [
+              {
+                "arguments": [
+                  {
+                    "argumentTypes": null,
+                    "id": 14071,
+                    "name": "_roles2Library",
+                    "nodeType": "Identifier",
+                    "overloadedDeclarations": [],
+                    "referencedDeclaration": 14066,
+                    "src": "1030:14:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  }
+                ],
+                "id": 14072,
+                "modifierName": {
+                  "argumentTypes": null,
+                  "id": 14070,
+                  "name": "Roles2LibraryAdapter",
+                  "nodeType": "Identifier",
+                  "overloadedDeclarations": [],
+                  "referencedDeclaration": 14027,
+                  "src": "1009:20:22",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$14027_$",
+                    "typeString": "type(contract Roles2LibraryAdapter)"
+                  }
+                },
+                "nodeType": "ModifierInvocation",
+                "src": "1009:36:22"
+              }
+            ],
+            "name": "Roles2LibraryAndERC20LibraryAdapter",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 14069,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 14066,
+                  "name": "_roles2Library",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14081,
+                  "src": "945:22:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 14065,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "945:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 14068,
+                  "name": "_erc20Library",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14081,
+                  "src": "977:21:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 14067,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "977:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "935:69:22"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 14073,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "1061:0:22"
+            },
+            "scope": 14098,
+            "src": "891:238:22",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "public"
+          },
+          {
+            "body": {
+              "id": 14096,
+              "nodeType": "Block",
+              "src": "1224:64:22",
+              "statements": [
+                {
+                  "expression": {
+                    "argumentTypes": null,
+                    "id": 14092,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "lValueRequested": false,
+                    "leftHandSide": {
+                      "argumentTypes": null,
+                      "id": 14090,
+                      "name": "erc20Library",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 14042,
+                      "src": "1234:12:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                        "typeString": "contract ERC20LibraryInterface"
+                      }
+                    },
+                    "nodeType": "Assignment",
+                    "operator": "=",
+                    "rightHandSide": {
+                      "argumentTypes": null,
+                      "id": 14091,
+                      "name": "_erc20Library",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 14083,
+                      "src": "1249:13:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                        "typeString": "contract ERC20LibraryInterface"
+                      }
+                    },
+                    "src": "1234:28:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                      "typeString": "contract ERC20LibraryInterface"
+                    }
+                  },
+                  "id": 14093,
+                  "nodeType": "ExpressionStatement",
+                  "src": "1234:28:22"
+                },
+                {
+                  "expression": {
+                    "argumentTypes": null,
+                    "id": 14094,
+                    "name": "OK",
+                    "nodeType": "Identifier",
+                    "overloadedDeclarations": [],
+                    "referencedDeclaration": 13931,
+                    "src": "1279:2:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "functionReturnParameters": 14089,
+                  "id": 14095,
+                  "nodeType": "Return",
+                  "src": "1272:9:22"
+                }
+              ]
+            },
+            "id": 14097,
+            "implemented": true,
+            "isConstructor": false,
+            "isDeclaredConst": false,
+            "modifiers": [
+              {
+                "arguments": [],
+                "id": 14086,
+                "modifierName": {
+                  "argumentTypes": null,
+                  "id": 14085,
+                  "name": "auth",
+                  "nodeType": "Identifier",
+                  "overloadedDeclarations": [],
+                  "referencedDeclaration": 13963,
+                  "src": "1204:4:22",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_modifier$__$",
+                    "typeString": "modifier ()"
+                  }
+                },
+                "nodeType": "ModifierInvocation",
+                "src": "1204:4:22"
+              }
+            ],
+            "name": "setERC20Library",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 14084,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 14083,
+                  "name": "_erc20Library",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14097,
+                  "src": "1160:35:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                    "typeString": "contract ERC20LibraryInterface"
+                  },
+                  "typeName": {
+                    "contractScope": null,
+                    "id": 14082,
+                    "name": "ERC20LibraryInterface",
+                    "nodeType": "UserDefinedTypeName",
+                    "referencedDeclaration": 14038,
+                    "src": "1160:21:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                      "typeString": "contract ERC20LibraryInterface"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1159:37:22"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 14089,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 14088,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14097,
+                  "src": "1218:4:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 14087,
+                    "name": "uint",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1218:4:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1217:6:22"
+            },
+            "scope": 14098,
+            "src": "1135:153:22",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "public"
+          }
+        ],
+        "scope": 14099,
+        "src": "263:1028:22"
+      }
+    ],
+    "src": "92:1200:22"
+  },
+  "legacyAST": {
+    "absolutePath": "/Users/ahiatsevich/Development/chronobank/LX-SC/contracts/adapters/Roles2LibraryAndERC20LibraryAdapter.sol",
+    "exportedSymbols": {
+      "ERC20LibraryInterface": [
+        14038
+      ],
+      "Roles2LibraryAndERC20LibraryAdapter": [
+        14098
+      ]
+    },
+    "id": 14099,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 14029,
+        "literals": [
+          "solidity",
+          "^",
+          "0.4",
+          ".18"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "92:24:22"
+      },
+      {
+        "absolutePath": "/Users/ahiatsevich/Development/chronobank/LX-SC/contracts/adapters/Roles2LibraryAdapter.sol",
+        "file": "./Roles2LibraryAdapter.sol",
+        "id": 14030,
+        "nodeType": "ImportDirective",
+        "scope": 14099,
+        "sourceUnit": 14028,
+        "src": "119:36:22",
+        "symbolAliases": [],
+        "unitAlias": ""
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "documentation": null,
+        "fullyImplemented": false,
+        "id": 14038,
+        "linearizedBaseContracts": [
+          14038
+        ],
+        "name": "ERC20LibraryInterface",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": null,
+            "id": 14037,
+            "implemented": false,
+            "isConstructor": false,
+            "isDeclaredConst": true,
+            "modifiers": [],
+            "name": "includes",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 14033,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 14032,
+                  "name": "_contract",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14037,
+                  "src": "213:17:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 14031,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "213:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "212:19:22"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 14036,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 14035,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14037,
+                  "src": "252:4:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bool",
+                    "typeString": "bool"
+                  },
+                  "typeName": {
+                    "id": 14034,
+                    "name": "bool",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "252:4:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "251:6:22"
+            },
+            "scope": 14038,
+            "src": "195:63:22",
+            "stateMutability": "view",
+            "superFunction": null,
+            "visibility": "public"
+          }
+        ],
+        "scope": 14099,
+        "src": "158:102:22"
+      },
+      {
+        "baseContracts": [
+          {
+            "arguments": [],
+            "baseName": {
+              "contractScope": null,
+              "id": 14039,
+              "name": "Roles2LibraryAdapter",
+              "nodeType": "UserDefinedTypeName",
+              "referencedDeclaration": 14027,
+              "src": "311:20:22",
+              "typeDescriptions": {
+                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$14027",
+                "typeString": "contract Roles2LibraryAdapter"
+              }
+            },
+            "id": 14040,
+            "nodeType": "InheritanceSpecifier",
+            "src": "311:20:22"
+          }
+        ],
+        "contractDependencies": [
+          14027
+        ],
+        "contractKind": "contract",
+        "documentation": null,
+        "fullyImplemented": true,
+        "id": 14098,
+        "linearizedBaseContracts": [
+          14098,
+          14027
+        ],
+        "name": "Roles2LibraryAndERC20LibraryAdapter",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "constant": false,
+            "id": 14042,
+            "name": "erc20Library",
+            "nodeType": "VariableDeclaration",
+            "scope": 14098,
+            "src": "339:34:22",
+            "stateVariable": true,
+            "storageLocation": "default",
+            "typeDescriptions": {
+              "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+              "typeString": "contract ERC20LibraryInterface"
+            },
+            "typeName": {
+              "contractScope": null,
+              "id": 14041,
+              "name": "ERC20LibraryInterface",
+              "nodeType": "UserDefinedTypeName",
+              "referencedDeclaration": 14038,
+              "src": "339:21:22",
+              "typeDescriptions": {
+                "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                "typeString": "contract ERC20LibraryInterface"
+              }
+            },
+            "value": null,
+            "visibility": "internal"
+          },
+          {
+            "constant": true,
+            "id": 14045,
+            "name": "ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_SCOPE",
+            "nodeType": "VariableDeclaration",
+            "scope": 14098,
+            "src": "380:69:22",
+            "stateVariable": true,
+            "storageLocation": "default",
+            "typeDescriptions": {
+              "typeIdentifier": "t_uint256",
+              "typeString": "uint256"
+            },
+            "typeName": {
+              "id": 14043,
+              "name": "uint",
+              "nodeType": "ElementaryTypeName",
+              "src": "380:4:22",
+              "typeDescriptions": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              }
+            },
+            "value": {
+              "argumentTypes": null,
+              "hexValue": "3134303030",
+              "id": 14044,
+              "isConstant": false,
+              "isLValue": false,
+              "isPure": true,
+              "kind": "number",
+              "lValueRequested": false,
+              "nodeType": "Literal",
+              "src": "444:5:22",
+              "subdenomination": null,
+              "typeDescriptions": {
+                "typeIdentifier": "t_rational_14000_by_1",
+                "typeString": "int_const 14000"
+              },
+              "value": "14000"
+            },
+            "visibility": "internal"
+          },
+          {
+            "constant": true,
+            "id": 14050,
+            "name": "ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_UNSUPPORTED_CONTRACT",
+            "nodeType": "VariableDeclaration",
+            "scope": 14098,
+            "src": "455:130:22",
+            "stateVariable": true,
+            "storageLocation": "default",
+            "typeDescriptions": {
+              "typeIdentifier": "t_uint256",
+              "typeString": "uint256"
+            },
+            "typeName": {
+              "id": 14046,
+              "name": "uint",
+              "nodeType": "ElementaryTypeName",
+              "src": "455:4:22",
+              "typeDescriptions": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              }
+            },
+            "value": {
+              "argumentTypes": null,
+              "commonType": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              },
+              "id": 14049,
+              "isConstant": false,
+              "isLValue": false,
+              "isPure": true,
+              "lValueRequested": false,
+              "leftExpression": {
+                "argumentTypes": null,
+                "id": 14047,
+                "name": "ROLES_2_LIBRARY_AND_ERC20_LIBRARY_ADAPTER_SCOPE",
+                "nodeType": "Identifier",
+                "overloadedDeclarations": [],
+                "referencedDeclaration": 14045,
+                "src": "534:47:22",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_uint256",
+                  "typeString": "uint256"
+                }
+              },
+              "nodeType": "BinaryOperation",
+              "operator": "+",
+              "rightExpression": {
+                "argumentTypes": null,
+                "hexValue": "31",
+                "id": 14048,
+                "isConstant": false,
+                "isLValue": false,
+                "isPure": true,
+                "kind": "number",
+                "lValueRequested": false,
+                "nodeType": "Literal",
+                "src": "584:1:22",
+                "subdenomination": null,
+                "typeDescriptions": {
+                  "typeIdentifier": "t_rational_1_by_1",
+                  "typeString": "int_const 1"
+                },
+                "value": "1"
+              },
+              "src": "534:51:22",
+              "typeDescriptions": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              }
+            },
+            "visibility": "internal"
+          },
+          {
+            "body": {
+              "id": 14063,
+              "nodeType": "Block",
+              "src": "642:243:22",
+              "statements": [
+                {
+                  "condition": {
+                    "argumentTypes": null,
+                    "id": 14058,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "lValueRequested": false,
+                    "nodeType": "UnaryOperation",
+                    "operator": "!",
+                    "prefix": true,
+                    "src": "656:33:22",
+                    "subExpression": {
+                      "argumentTypes": null,
+                      "arguments": [
+                        {
+                          "argumentTypes": null,
+                          "id": 14056,
+                          "name": "_contract",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 14052,
+                          "src": "679:9:22",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_address",
+                            "typeString": "address"
+                          }
+                        }
+                      ],
+                      "expression": {
+                        "argumentTypes": [
+                          {
+                            "typeIdentifier": "t_address",
+                            "typeString": "address"
+                          }
+                        ],
+                        "expression": {
+                          "argumentTypes": null,
+                          "id": 14054,
+                          "name": "erc20Library",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 14042,
+                          "src": "657:12:22",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                            "typeString": "contract ERC20LibraryInterface"
+                          }
+                        },
+                        "id": 14055,
+                        "isConstant": false,
+                        "isLValue": false,
+                        "isPure": false,
+                        "lValueRequested": false,
+                        "memberName": "includes",
+                        "nodeType": "MemberAccess",
+                        "referencedDeclaration": 14037,
+                        "src": "657:21:22",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_function_external_view$_t_address_$returns$_t_bool_$",
+                          "typeString": "function (address) view external returns (bool)"
+                        }
+                      },
+                      "id": 14057,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": false,
+                      "kind": "functionCall",
+                      "lValueRequested": false,
+                      "names": [],
+                      "nodeType": "FunctionCall",
+                      "src": "657:32:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bool",
+                        "typeString": "bool"
+                      }
+                    },
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    }
+                  },
+                  "falseBody": null,
+                  "id": 14061,
+                  "nodeType": "IfStatement",
+                  "src": "652:216:22",
+                  "trueBody": {
+                    "id": 14060,
+                    "nodeType": "Block",
+                    "src": "691:177:22",
+                    "statements": [
+                      {
+                        "externalReferences": [],
+                        "id": 14059,
+                        "nodeType": "InlineAssembly",
+                        "operations": "{\n    mstore(0, 14001)\n    return(0, 32)\n}",
+                        "src": "705:163:22"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": 14062,
+                  "nodeType": "PlaceholderStatement",
+                  "src": "877:1:22"
+                }
+              ]
+            },
+            "id": 14064,
+            "name": "onlySupportedContract",
+            "nodeType": "ModifierDefinition",
+            "parameters": {
+              "id": 14053,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 14052,
+                  "name": "_contract",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14064,
+                  "src": "623:17:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 14051,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "623:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "622:19:22"
+            },
+            "src": "592:293:22",
+            "visibility": "internal"
+          },
+          {
+            "body": {
+              "id": 14080,
+              "nodeType": "Block",
+              "src": "1061:68:22",
+              "statements": [
+                {
+                  "expression": {
+                    "argumentTypes": null,
+                    "id": 14078,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "lValueRequested": false,
+                    "leftHandSide": {
+                      "argumentTypes": null,
+                      "id": 14074,
+                      "name": "erc20Library",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 14042,
+                      "src": "1071:12:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                        "typeString": "contract ERC20LibraryInterface"
+                      }
+                    },
+                    "nodeType": "Assignment",
+                    "operator": "=",
+                    "rightHandSide": {
+                      "argumentTypes": null,
+                      "arguments": [
+                        {
+                          "argumentTypes": null,
+                          "id": 14076,
+                          "name": "_erc20Library",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 14068,
+                          "src": "1108:13:22",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_address",
+                            "typeString": "address"
+                          }
+                        }
+                      ],
+                      "expression": {
+                        "argumentTypes": [
+                          {
+                            "typeIdentifier": "t_address",
+                            "typeString": "address"
+                          }
+                        ],
+                        "id": 14075,
+                        "name": "ERC20LibraryInterface",
+                        "nodeType": "Identifier",
+                        "overloadedDeclarations": [],
+                        "referencedDeclaration": 14038,
+                        "src": "1086:21:22",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_type$_t_contract$_ERC20LibraryInterface_$14038_$",
+                          "typeString": "type(contract ERC20LibraryInterface)"
+                        }
+                      },
+                      "id": 14077,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": false,
+                      "kind": "typeConversion",
+                      "lValueRequested": false,
+                      "names": [],
+                      "nodeType": "FunctionCall",
+                      "src": "1086:36:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                        "typeString": "contract ERC20LibraryInterface"
+                      }
+                    },
+                    "src": "1071:51:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                      "typeString": "contract ERC20LibraryInterface"
+                    }
+                  },
+                  "id": 14079,
+                  "nodeType": "ExpressionStatement",
+                  "src": "1071:51:22"
+                }
+              ]
+            },
+            "id": 14081,
+            "implemented": true,
+            "isConstructor": true,
+            "isDeclaredConst": false,
+            "modifiers": [
+              {
+                "arguments": [
+                  {
+                    "argumentTypes": null,
+                    "id": 14071,
+                    "name": "_roles2Library",
+                    "nodeType": "Identifier",
+                    "overloadedDeclarations": [],
+                    "referencedDeclaration": 14066,
+                    "src": "1030:14:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  }
+                ],
+                "id": 14072,
+                "modifierName": {
+                  "argumentTypes": null,
+                  "id": 14070,
+                  "name": "Roles2LibraryAdapter",
+                  "nodeType": "Identifier",
+                  "overloadedDeclarations": [],
+                  "referencedDeclaration": 14027,
+                  "src": "1009:20:22",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$14027_$",
+                    "typeString": "type(contract Roles2LibraryAdapter)"
+                  }
+                },
+                "nodeType": "ModifierInvocation",
+                "src": "1009:36:22"
+              }
+            ],
+            "name": "Roles2LibraryAndERC20LibraryAdapter",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 14069,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 14066,
+                  "name": "_roles2Library",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14081,
+                  "src": "945:22:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 14065,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "945:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 14068,
+                  "name": "_erc20Library",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14081,
+                  "src": "977:21:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 14067,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "977:7:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "935:69:22"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 14073,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "1061:0:22"
+            },
+            "scope": 14098,
+            "src": "891:238:22",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "public"
+          },
+          {
+            "body": {
+              "id": 14096,
+              "nodeType": "Block",
+              "src": "1224:64:22",
+              "statements": [
+                {
+                  "expression": {
+                    "argumentTypes": null,
+                    "id": 14092,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "lValueRequested": false,
+                    "leftHandSide": {
+                      "argumentTypes": null,
+                      "id": 14090,
+                      "name": "erc20Library",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 14042,
+                      "src": "1234:12:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                        "typeString": "contract ERC20LibraryInterface"
+                      }
+                    },
+                    "nodeType": "Assignment",
+                    "operator": "=",
+                    "rightHandSide": {
+                      "argumentTypes": null,
+                      "id": 14091,
+                      "name": "_erc20Library",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 14083,
+                      "src": "1249:13:22",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                        "typeString": "contract ERC20LibraryInterface"
+                      }
+                    },
+                    "src": "1234:28:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                      "typeString": "contract ERC20LibraryInterface"
+                    }
+                  },
+                  "id": 14093,
+                  "nodeType": "ExpressionStatement",
+                  "src": "1234:28:22"
+                },
+                {
+                  "expression": {
+                    "argumentTypes": null,
+                    "id": 14094,
+                    "name": "OK",
+                    "nodeType": "Identifier",
+                    "overloadedDeclarations": [],
+                    "referencedDeclaration": 13931,
+                    "src": "1279:2:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "functionReturnParameters": 14089,
+                  "id": 14095,
+                  "nodeType": "Return",
+                  "src": "1272:9:22"
+                }
+              ]
+            },
+            "id": 14097,
+            "implemented": true,
+            "isConstructor": false,
+            "isDeclaredConst": false,
+            "modifiers": [
+              {
+                "arguments": [],
+                "id": 14086,
+                "modifierName": {
+                  "argumentTypes": null,
+                  "id": 14085,
+                  "name": "auth",
+                  "nodeType": "Identifier",
+                  "overloadedDeclarations": [],
+                  "referencedDeclaration": 13963,
+                  "src": "1204:4:22",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_modifier$__$",
+                    "typeString": "modifier ()"
+                  }
+                },
+                "nodeType": "ModifierInvocation",
+                "src": "1204:4:22"
+              }
+            ],
+            "name": "setERC20Library",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 14084,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 14083,
+                  "name": "_erc20Library",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14097,
+                  "src": "1160:35:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                    "typeString": "contract ERC20LibraryInterface"
+                  },
+                  "typeName": {
+                    "contractScope": null,
+                    "id": 14082,
+                    "name": "ERC20LibraryInterface",
+                    "nodeType": "UserDefinedTypeName",
+                    "referencedDeclaration": 14038,
+                    "src": "1160:21:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_contract$_ERC20LibraryInterface_$14038",
+                      "typeString": "contract ERC20LibraryInterface"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1159:37:22"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 14089,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 14088,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14097,
+                  "src": "1218:4:22",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 14087,
+                    "name": "uint",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1218:4:22",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1217:6:22"
+            },
+            "scope": 14098,
+            "src": "1135:153:22",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "public"
+          }
+        ],
+        "scope": 14099,
+        "src": "263:1028:22"
+      }
+    ],
+    "src": "92:1200:22"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.4.19+commit.c4cbbb05.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "2.0.0",
+  "updatedAt": "2018-05-10T14:25:44.355Z"
+}
