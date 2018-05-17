@@ -9,8 +9,8 @@ import './adapters/Roles2LibraryAdapter.sol';
 
 
 contract PaymentGatewayInterface {
-    function transferWithFee(address _from, address _to, uint _value, uint _feeFromValue, uint _additionalFee, address _contract) public returns (uint);
-    function transferAll(address _from, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee, address _contract) public returns (uint);
+    function transferWithFee(address _from, address _to, uint _feeFromValue, uint _additionalFee) public payable returns (uint);
+    function transferAll(address _from, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee) public returns (uint);
 }
 
 
@@ -68,15 +68,14 @@ contract PaymentProcessor is Roles2LibraryAdapter {
 
     function lockPayment(
         bytes32 _operationId,
-        address _from,
-        uint _value,
-        address _contract
+        address _from
     )
     auth  // Only job controller
     onlyApproved(_operationId)
     external
+    payable
     returns (uint) {
-        return paymentGateway.transferWithFee(_from, address(_operationId), _value, 0, 0, _contract);
+        return paymentGateway.transferWithFee.value(msg.value)(_from, address(_operationId), 0, 0);
     }
 
     function releasePayment(
@@ -85,21 +84,19 @@ contract PaymentProcessor is Roles2LibraryAdapter {
         uint _value,
         address _change,
         uint _feeFromValue,
-        uint _additionalFee,
-        address _contract
+        uint _additionalFee
     )
     auth  // Only job controller
     onlyApproved(_operationId)
     external
     returns (uint) {
         return paymentGateway.transferAll(
-            address(_operationId),
-            _to,
-            _value,
-            _change,
-            _feeFromValue,
-            _additionalFee,
-            _contract
-        );
+                address(_operationId),
+                _to,
+                _value,
+                _change,
+                _feeFromValue,
+                _additionalFee
+            );
     }
 }

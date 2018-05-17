@@ -8,11 +8,11 @@ pragma solidity ^0.4.18;
 
 import './adapters/StorageAdapter.sol';
 import './adapters/MultiEventsHistoryAdapter.sol';
-import './adapters/Roles2LibraryAndERC20LibraryAdapter.sol';
+import './adapters/Roles2LibraryAdapter.sol';
 import './base/BitOps.sol';
 
 
-contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAndERC20LibraryAdapter, BitOps {
+contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter, BitOps {
 
     uint constant BOARD_CONTROLLER_SCOPE = 11000;
     uint constant BOARD_CONTROLLER_JOB_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 1;
@@ -96,11 +96,10 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     function BoardController(
         Storage _store,
         bytes32 _crate,
-        address _roles2Library,
-        address _erc20Library
+        address _roles2Library
     )
     StorageAdapter(_store, _crate)
-    Roles2LibraryAndERC20LibraryAdapter(_roles2Library, _erc20Library)
+    Roles2LibraryAdapter(_roles2Library)
     public
     {
         boardsCount.init('boardsCount');

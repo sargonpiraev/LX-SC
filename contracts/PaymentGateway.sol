@@ -6,7 +6,7 @@
 pragma solidity ^0.4.18;
 
 import './adapters/MultiEventsHistoryAdapter.sol';
-import './adapters/Roles2LibraryAndERC20LibraryAdapter.sol';
+import './adapters/Roles2LibraryAdapter.sol';
 import './adapters/StorageAdapter.sol';
 import './libs/SafeMath.sol';
 
@@ -19,9 +19,10 @@ contract ERC20BalanceInterface {
 contract BalanceHolderInterface {
     function deposit(address _from, uint _value, address _contract) public returns (bool);
     function withdraw(address _to, uint _value, address _contract) public returns (bool);
+    function withdrawETH(address _to, uint _amount) external returns (bool);
 }
 
-contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAndERC20LibraryAdapter {
+contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter {
 
     using SafeMath for uint;
 
@@ -31,24 +32,23 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     uint constant PAYMENT_GATEWAY_NO_FEE_ADDRESS_DESTINATION = PAYMENT_GATEWAY_SCOPE + 3;
 
 
-    event FeeSet(address indexed self, address indexed contractAddress, uint feePercent);
-    event Deposited(address indexed self, address indexed contractAddress, address indexed by, uint value);
-    event Withdrawn(address indexed self, address indexed contractAddress, address indexed by, uint value);
-    event Transferred(address indexed self, address indexed contractAddress, address from, address indexed to, uint value);
+    event FeeSet(address indexed self, uint feePercent);
+    event Deposited(address indexed self, address indexed by, uint value);
+    event Withdrawn(address indexed self, address indexed by, uint value);
+    event Transferred(address indexed self, address from, address indexed to, uint value);
 
     StorageInterface.Address balanceHolder;
-    StorageInterface.AddressAddressUIntMapping balances; // contract => user => balance
+    StorageInterface.AddressUIntMapping balances; // contract => user => balance
     StorageInterface.Address feeAddress;
-    StorageInterface.AddressUIntMapping fees; // 10000 is 100%.
+    StorageInterface.UInt fees; // 10000 is 100%.
 
     function PaymentGateway(
         Storage _store,
         bytes32 _crate,
-        address _roles2Library,
-        address _erc20Library
+        address _roles2Library
     )
     StorageAdapter(_store, _crate)
-    Roles2LibraryAndERC20LibraryAdapter(_roles2Library, _erc20Library)
+    Roles2LibraryAdapter(_roles2Library)
     public
     {
         balanceHolder.init('balanceHolder');
@@ -69,102 +69,72 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         return OK;
     }
 
-    function setFeeAddress(address _feeAddress) auth external returns (uint) {  // only owner
+    function setFeeAddress(address _feeAddress)
+    external
+    auth
+    returns (uint)
+    {
         store.set(feeAddress, _feeAddress);
         return OK;
     }
 
-    function setFeePercent(
-        uint _feePercent,
-        address _contract
-    )
-    auth  // only owner
-    onlySupportedContract(_contract)
+    function setFeePercent(uint _feePercent)
     external
-    returns (uint) {
-        require(_feePercent < 10000);
-
-        store.set(fees, _contract, _feePercent);
-        _emitFeeSet(_feePercent, _contract);
-        return OK;
-    }
-
-    function getFeePercent(address _contract) public view returns (uint) {
-        return store.get(fees, _contract);
-    }
-
-    function deposit(
-        uint _value,
-        address _contract
-    )
-    onlySupportedContract(_contract)
-    public
+    auth
     returns (uint)
     {
+        require(_feePercent < 10000);
+
+        store.set(fees, _feePercent);
+        _emitFeeSet(_feePercent);
+        return OK;
+    }
+
+    function getFeePercent()
+    public
+    view
+    returns (uint)
+    {
+        return store.get(fees);
+    }
+
+    function withdraw(uint _value) public returns (uint) {
         require(_value > 0);
 
-        if (getBalanceOf(msg.sender, _contract) < _value) {
+        return _withdraw(msg.sender, _value);
+    }
+
+    function _withdraw(address _from, uint _value) internal returns (uint) {
+        if (getBalance(_from) < _value) {
             return _emitErrorCode(PAYMENT_GATEWAY_INSUFFICIENT_BALANCE);
         }
 
         BalanceHolderInterface _balanceHolder = getBalanceHolder();
-        uint balanceBefore = getBalanceOf(_balanceHolder, _contract);
-        if (!_balanceHolder.deposit(msg.sender, _value, _contract)) {
+        if (!_balanceHolder.withdrawETH(_from, _value)) {
             return _emitErrorCode(PAYMENT_GATEWAY_TRANSFER_FAILED);
         }
 
-        uint depositedAmount = getBalanceOf(_balanceHolder, _contract).sub(balanceBefore);
-        store.set(balances, _contract, msg.sender, getBalance(msg.sender, _contract).add(depositedAmount));
+        store.set(balances, _from, getBalance(_from).sub(_value));
 
-        _emitDeposited(msg.sender, depositedAmount, _contract);
+        _emitWithdrawn(_from, _value);
         return OK;
-    }
-
-    function withdraw(uint _value, address _contract) public returns (uint) {
-        require(_value > 0);
-
-        return _withdraw(msg.sender, _value, _contract);
-    }
-
-    function _withdraw(address _from, uint _value, address _contract) internal returns (uint) {
-        if (getBalance(_from, _contract) < _value) {
-            return _emitErrorCode(PAYMENT_GATEWAY_INSUFFICIENT_BALANCE);
-        }
-
-        BalanceHolderInterface _balanceHolder = getBalanceHolder();
-        uint balanceBefore = getBalanceOf(_balanceHolder, _contract);
-        if (!_balanceHolder.withdraw(_from, _value, _contract)) {
-            return _emitErrorCode(PAYMENT_GATEWAY_TRANSFER_FAILED);
-        }
-
-        uint withdrawnAmount = balanceBefore.sub(getBalanceOf(_balanceHolder, _contract));
-        store.set(balances, _contract, _from, getBalance(_from, _contract).sub(withdrawnAmount));
-
-        _emitWithdrawn(_from, _value, _contract);
-        return OK;
-    }
-
-    // Will be optimized later if used.
-    function transfer(address _from, address _to, uint _value, address _contract) public returns (uint) {
-        return transferWithFee(_from, _to, _value, _value, 0, _contract);
     }
 
     function transferWithFee(
         address _from,
         address _to,
-        uint _value,
         uint _feeFromValue,
-        uint _additionalFee,
-        address _contract
+        uint _additionalFee
     )
     public
+    payable
     returns (uint)
     {
         address[] memory toArray = new address[](1);
         toArray[0] = _to;
         uint[] memory valueArray = new uint[](1);
-        valueArray[0] = _value;
-        return transferToMany(_from, toArray, valueArray, _feeFromValue, _additionalFee, _contract);
+        valueArray[0] = msg.value;
+        return transferToMany(_from, toArray, valueArray, _feeFromValue, _additionalFee);
     }
 
     function transferToMany(
@@ -172,33 +142,35 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         address[] _to,
         uint[] _value,
         uint _feeFromValue,
-        uint _additionalFee,
-        address _contract
+        uint _additionalFee
     )
-    auth  // only payment processor
-    onlySupportedContract(_contract)
+    auth
     public
+    payable
     returns (uint)
     {
         require(_from != 0x0);
         require(_to.length == _value.length);
 
-        uint _total = 0;
+        _addBalance(_from, msg.value);
+        address(getBalanceHolder()).transfer(msg.value);
+
+         uint _total = 0;
         for (uint i = 0; i < _to.length; i++) {
-            _addBalance(_to[i], _value[i], _contract);
-            _emitTransferred(_from, _to[i], _value[i], _contract);
+            _addBalance(_to[i], _value[i]);
+            _emitTransferred(_from, _to[i], _value[i]);
             _total = _total.add(_value[i]);
         }
 
-        uint _fee = calculateFee(_feeFromValue, _contract).add(_additionalFee);
+        uint _fee = calculateFee(_feeFromValue).add(_additionalFee);
         address _feeAddress = getFeeAddress();
         if (_fee > 0 && _feeAddress != 0x0) {
-            _addBalance(_feeAddress, _fee, _contract);
-            _emitTransferred(_from, _feeAddress, _fee, _contract);
+            _addBalance(_feeAddress, _fee);
+            _emitTransferred(_from, _feeAddress, _fee);
             _total = _total.add(_fee);
         }
 
-        _subBalance(_from, _total, _contract);
+        _subBalance(_from, _total);
 
         return OK;
     }
@@ -209,48 +181,44 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         uint _value,
         address _change,
         uint _feeFromValue,
-        uint _additionalFee,
-        address _contract
+        uint _additionalFee
     )
-    auth  // only payment processor
-    onlySupportedContract(_contract)
+    auth
     external
     returns (uint)
     {
         require(_from != 0x0);
 
-        _addBalance(_to, _value, _contract);
-        _emitTransferred(_from, _to, _value, _contract);
+        _addBalance(_to, _value);
+        _emitTransferred(_from, _to, _value);
 
         uint _total = _value;
-        uint _fee = calculateFee(_feeFromValue, _contract).add(_additionalFee);
+        uint _fee = calculateFee(_feeFromValue).add(_additionalFee);
         address _feeAddress = getFeeAddress();
         if (_fee > 0 && _feeAddress != 0x0) {
-            _addBalance(_feeAddress, _fee, _contract);
-            _emitTransferred(_from, _feeAddress, _fee, _contract);
+            _addBalance(_feeAddress, _fee);
+            _emitTransferred(_from, _feeAddress, _fee);
             _total = _total.add(_fee);
         }
 
-        uint _changeAmount = getBalance(_from, _contract).sub(_total);
+        uint _changeAmount = getBalance(_from).sub(_total);
         if (_changeAmount != 0) {
-            _addBalance(_change, _changeAmount, _contract);
-            _emitTransferred(_from, _change, _changeAmount, _contract);
+            _addBalance(_change, _changeAmount);
+            _emitTransferred(_from, _change, _changeAmount);
             _total = _total.add(_changeAmount);
         }
 
-        _subBalance(_from, _total, _contract);
+        _subBalance(_from, _total);
 
         return OK;
     }
 
-    function transferFromMany(
+    /* function transferFromMany(
         address[] _from,
         address _to,
-        uint[] _value,
-        address _contract
+        uint[] _value
     )
-    auth  // only payment processor
-    onlySupportedContract(_contract)
+    auth
     external
     returns (uint)
     {
@@ -259,17 +227,21 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
 
         uint _total = 0;
         for (uint i = 0; i < _from.length; i++) {
-            _subBalance(_from[i], _value[i], _contract);
-            _emitTransferred(_from[i], _to, _value[i], _contract);
+            _subBalance(_from[i], _value[i]);
+            _emitTransferred(_from[i], _to, _value[i]);
             _total = _total.add(_value[i]);
         }
 
-        _addBalance(_to, _total, _contract);
+        _addBalance(_to, _total);
 
         return OK;
-    }
+    } */
 
-    function forwardFee(uint _value, address _contract) public returns (uint) {
+    // TODO
+    function forwardFee(uint _value)
+    public
+    returns (uint)
+    {
         require(_value > 0);
 
         address _feeAddress = getFeeAddress();
@@ -277,19 +249,31 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
             return _emitErrorCode(PAYMENT_GATEWAY_NO_FEE_ADDRESS_DESTINATION);
         }
 
-        return _withdraw(_feeAddress, _value, _contract);
+        return _withdraw(_feeAddress, _value);
     }
 
-    function getBalance(address _address, address _contract) public view returns(uint) {
-        return store.get(balances, _contract, _address);
+    function getBalance(address _address)
+    public
+    view
+    returns(uint)
+    {
+        return store.get(balances, _address);
     }
 
-    function getBalanceOf(address _address, address _contract) public view returns(uint) {
-        return ERC20BalanceInterface(_contract).balanceOf(_address);
+    function getBalanceOf(address _address)
+    public
+    view
+    returns(uint)
+    {
+        return address(_address).balance;
     }
 
-    function calculateFee(uint _value, address _contract) public view returns(uint) {
-        uint feeRaw = _value.mul(getFeePercent(_contract));
+    function calculateFee(uint _value)
+    public
+    view
+    returns (uint)
+    {
+        uint feeRaw = _value.mul(getFeePercent());
         return (feeRaw / 10000) + (feeRaw % 10000 == 0 ? 0 : 1);
     }
 
@@ -301,56 +285,54 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
         return BalanceHolderInterface(store.get(balanceHolder));
     }
 
-
     // HELPERS
 
-    function _addBalance(address _to, uint _value, address _contract) internal {
+    function _addBalance(address _to, uint _value) internal {
         require(_to != 0x0);
         require(_value > 0);
 
-        store.set(balances, _contract, _to, getBalance(_to, _contract).add(_value));
+        store.set(balances, _to, getBalance(_to).add(_value));
     }
 
-    function _subBalance(address _from, uint _value, address _contract) internal {
+    function _subBalance(address _from, uint _value) internal {
         require(_from != 0x0);
         require(_value > 0);
 
-        store.set(balances, _contract, _from, getBalance(_from, _contract).sub(_value));
+        store.set(balances, _from, getBalance(_from).sub(_value));
     }
-
 
     // EVENTS
 
-    function _emitFeeSet(uint _feePercent, address _contract) internal {
-        PaymentGateway(getEventsHistory()).emitFeeSet(_feePercent, _contract);
+    function _emitFeeSet(uint _feePercent) internal {
+        PaymentGateway(getEventsHistory()).emitFeeSet(_feePercent);
     }
 
-    function _emitDeposited(address _by, uint _value, address _contract) internal {
-        PaymentGateway(getEventsHistory()).emitDeposited(_by, _value, _contract);
+    function _emitDeposited(address _by, uint _value) internal {
+        PaymentGateway(getEventsHistory()).emitDeposited(_by, _value);
     }
 
-    function _emitWithdrawn(address _by, uint _value, address _contract) internal {
-        PaymentGateway(getEventsHistory()).emitWithdrawn(_by, _value, _contract);
+    function _emitWithdrawn(address _by, uint _value) internal {
+        PaymentGateway(getEventsHistory()).emitWithdrawn(_by, _value);
     }
 
-    function _emitTransferred(address _from, address _to, uint _value, address _contract) internal {
-        PaymentGateway(getEventsHistory()).emitTransferred(_from, _to, _value, _contract);
+    function _emitTransferred(address _from, address _to, uint _value) internal {
+        PaymentGateway(getEventsHistory()).emitTransferred(_from, _to, _value);
     }
 
-    function emitFeeSet(uint _feePercent, address _contract) public {
-        FeeSet(_self(), _contract, _feePercent);
+    function emitFeeSet(uint _feePercent) public {
+        FeeSet(_self(), _feePercent);
     }
 
-    function emitDeposited(address _by, uint _value, address _contract) public {
-        Deposited(_self(), _contract, _by, _value);
+    function emitDeposited(address _by, uint _value) public {
+        Deposited(_self(), _by, _value);
     }
 
-    function emitWithdrawn(address _by, uint _value, address _contract) public {
-        Withdrawn(_self(), _contract, _by, _value);
+    function emitWithdrawn(address _by, uint _value) public {
+        Withdrawn(_self(), _by, _value);
     }
 
-    function emitTransferred(address _from, address _to, uint _value, address _contract) public {
-        Transferred(_self(), _contract, _from, _to, _value);
+    function emitTransferred(address _from, address _to, uint _value) public {
+        Transferred(_self(), _from, _to, _value);
     }
 
 }
