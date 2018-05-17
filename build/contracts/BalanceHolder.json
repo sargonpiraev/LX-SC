@@ -108,10 +108,10 @@
       "type": "function"
     }
   ],
-  "bytecode": "0x6060604052341561000f57600080fd5b6040516020806104f68339810160405280805160008054600160a060020a03909216600160a060020a031990921691909117905550506104a2806100546000396000f30060606040526004361061003d5763ffffffff60e060020a6000350416632637cd7d811461004257806369328dec14610073578063f45346dc146100b0575b600080fd5b341561004d57600080fd5b610061600160a060020a03600435166100d9565b60405190815260200160405180910390f35b341561007e57600080fd5b61009c600160a060020a036004358116906024359060443516610197565b604051901515815260200160405180910390f35b34156100bb57600080fd5b61009c600160a060020a0360043581169060243590604435166102a5565b60006100f133600035600160e060020a03191661039c565b1515610166577f5133a133185f1023427a2e90f18506b27db994977ce0c0faafd514a7dd109ae03033600035600160e060020a031916604051600160a060020a039384168152919092166020820152600160e060020a03199091166040808301919091526060909101905180910390a1610192565b506000805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a03831617905560015b919050565b60006101af33600035600160e060020a03191661039c565b1515610224577f5133a133185f1023427a2e90f18506b27db994977ce0c0faafd514a7dd109ae03033600035600160e060020a031916604051600160a060020a039384168152919092166020820152600160e060020a03199091166040808301919091526060909101905180910390a161029e565b81600160a060020a031663a9059cbb858560006040516020015260405160e060020a63ffffffff8516028152600160a060020a0390921660048301526024820152604401602060405180830381600087803b151561028157600080fd5b6102c65a03f1151561029257600080fd5b50505060405180519150505b9392505050565b60006102bd33600035600160e060020a03191661039c565b1515610332577f5133a133185f1023427a2e90f18506b27db994977ce0c0faafd514a7dd109ae03033600035600160e060020a031916604051600160a060020a039384168152919092166020820152600160e060020a03199091166040808301919091526060909101905180910390a161029e565b81600160a060020a03166323b872dd85308660006040516020015260405160e060020a63ffffffff8616028152600160a060020a0393841660048201529190921660248201526044810191909152606401602060405180830381600087803b151561028157600080fd5b600030600160a060020a031683600160a060020a031614156103c057506001610470565b600054600160a060020a031615156103da57506000610470565b60008054600160a060020a03169063b7009613908590309086906040516020015260405160e060020a63ffffffff8616028152600160a060020a039384166004820152919092166024820152600160e060020a03199091166044820152606401602060405180830381600087803b151561045357600080fd5b6102c65a03f1151561046457600080fd5b50505060405180519150505b929150505600a165627a7a72305820c1ebd3846052ea9c362477b18b01ad333dc01ff478187393cfc4002b43317b820029",
-  "deployedBytecode": "0x60606040526004361061003d5763ffffffff60e060020a6000350416632637cd7d811461004257806369328dec14610073578063f45346dc146100b0575b600080fd5b341561004d57600080fd5b610061600160a060020a03600435166100d9565b60405190815260200160405180910390f35b341561007e57600080fd5b61009c600160a060020a036004358116906024359060443516610197565b604051901515815260200160405180910390f35b34156100bb57600080fd5b61009c600160a060020a0360043581169060243590604435166102a5565b60006100f133600035600160e060020a03191661039c565b1515610166577f5133a133185f1023427a2e90f18506b27db994977ce0c0faafd514a7dd109ae03033600035600160e060020a031916604051600160a060020a039384168152919092166020820152600160e060020a03199091166040808301919091526060909101905180910390a1610192565b506000805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a03831617905560015b919050565b60006101af33600035600160e060020a03191661039c565b1515610224577f5133a133185f1023427a2e90f18506b27db994977ce0c0faafd514a7dd109ae03033600035600160e060020a031916604051600160a060020a039384168152919092166020820152600160e060020a03199091166040808301919091526060909101905180910390a161029e565b81600160a060020a031663a9059cbb858560006040516020015260405160e060020a63ffffffff8516028152600160a060020a0390921660048301526024820152604401602060405180830381600087803b151561028157600080fd5b6102c65a03f1151561029257600080fd5b50505060405180519150505b9392505050565b60006102bd33600035600160e060020a03191661039c565b1515610332577f5133a133185f1023427a2e90f18506b27db994977ce0c0faafd514a7dd109ae03033600035600160e060020a031916604051600160a060020a039384168152919092166020820152600160e060020a03199091166040808301919091526060909101905180910390a161029e565b81600160a060020a03166323b872dd85308660006040516020015260405160e060020a63ffffffff8616028152600160a060020a0393841660048201529190921660248201526044810191909152606401602060405180830381600087803b151561028157600080fd5b600030600160a060020a031683600160a060020a031614156103c057506001610470565b600054600160a060020a031615156103da57506000610470565b60008054600160a060020a03169063b7009613908590309086906040516020015260405160e060020a63ffffffff8616028152600160a060020a039384166004820152919092166024820152600160e060020a03199091166044820152606401602060405180830381600087803b151561045357600080fd5b6102c65a03f1151561046457600080fd5b50505060405180519150505b929150505600a165627a7a72305820c1ebd3846052ea9c362477b18b01ad333dc01ff478187393cfc4002b43317b820029",
-  "sourceMap": "203:488:0:-;;;257:99;;;;;;;;;;;;;;;;;;;;;;783:13:21;:54;;-1:-1:-1;;;;;783:54:21;;;-1:-1:-1;;;;;;783:54:21;;;;;;;;;-1:-1:-1;;203:488:0;;;;;;",
-  "deployedSourceMap": "203:488:0:-;;;;;;;;;-1:-1:-1;;;203:488:0;;;;;;;;;;;;;;;;;;;;;;;850:160:21;;;;;;;;;;-1:-1:-1;;;;;850:160:21;;;;;;;;;;;;;;;;;;;;535:154:0;;;;;;;;;;-1:-1:-1;;;;;535:154:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;362:167;;;;;;;;;;-1:-1:-1;;;;;362:167:0;;;;;;;;;;;;;850:160:21;938:4;566:34;580:10;592:7;;-1:-1:-1;;;;;;592:7:21;566:13;:34::i;:::-;565:35;561:128;;;616:42;632:4;638:10;650:7;;-1:-1:-1;;;;;;650:7:21;616:42;;-1:-1:-1;;;;;616:42:21;;;;;;;;;;;;;-1:-1:-1;;;;;;616:42:21;;;;;;;;;;;;;;;;;;;;;;672:7;;561:128;-1:-1:-1;954:13:21;:30;;-1:-1:-1;;954:30:21;-1:-1:-1;;;;;954:30:21;;;;;-1:-1:-1;698:1:21;850:160;;;:::o;535:154:0:-;628:4;566:34:21;580:10;592:7;;-1:-1:-1;;;;;;592:7:21;566:13;:34::i;:::-;565:35;561:128;;;616:42;632:4;638:10;650:7;;-1:-1:-1;;;;;;650:7:21;616:42;;-1:-1:-1;;;;;616:42:21;;;;;;;;;;;;;-1:-1:-1;;;;;;616:42:21;;;;;;;;;;;;;;;;;;;;;;672:7;;561:128;651:9:0;-1:-1:-1;;;;;651:18:0;;670:3;675:6;651:31;;;;;;;;-1:-1:-1;;;651:31:0;;;;;;-1:-1:-1;;;;;651:31:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;;698:1:21;535:154:0;;;;;:::o;362:167::-;456:4;566:34:21;580:10;592:7;;-1:-1:-1;;;;;;592:7:21;566:13;:34::i;:::-;565:35;561:128;;;616:42;632:4;638:10;650:7;;-1:-1:-1;;;;;;650:7:21;616:42;;-1:-1:-1;;;;;616:42:21;;;;;;;;;;;;;-1:-1:-1;;;;;;616:42:21;;;;;;;;;;;;;;;;;;;;;;672:7;;561:128;479:9:0;-1:-1:-1;;;;;479:22:0;;502:5;509:4;515:6;479:43;;;;;;;;-1:-1:-1;;;479:43:0;;;;;;-1:-1:-1;;;;;479:43:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;1016:302:21;1089:4;1125;-1:-1:-1;;;;;1109:21:21;:4;-1:-1:-1;;;;;1109:21:21;;1105:63;;;-1:-1:-1;1153:4:21;1146:11;;1105:63;1189:13;;-1:-1:-1;;;;;1189:13:21;1181:27;1177:70;;;-1:-1:-1;1231:5:21;1224:12;;1177:70;1272:13;;;-1:-1:-1;;;;;1272:13:21;;:21;;1294:4;;1300;;1306;;1272:39;;;;;;;-1:-1:-1;;;1272:39:21;;;;;;-1:-1:-1;;;;;1272:39:21;;;;;;;;;;;;;;;-1:-1:-1;;;;;;1272:39:21;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;;1016:302:21;;;;;:::o",
+  "bytecode": "0x6060604052341561000f57600080fd5b6040516020806104f68339810160405280805160008054600160a060020a03909216600160a060020a031990921691909117905550506104a2806100546000396000f30060606040526004361061003d5763ffffffff60e060020a6000350416632637cd7d811461004257806369328dec14610073578063f45346dc146100b0575b600080fd5b341561004d57600080fd5b610061600160a060020a03600435166100d9565b60405190815260200160405180910390f35b341561007e57600080fd5b61009c600160a060020a036004358116906024359060443516610197565b604051901515815260200160405180910390f35b34156100bb57600080fd5b61009c600160a060020a0360043581169060243590604435166102a5565b60006100f133600035600160e060020a03191661039c565b1515610166577f5133a133185f1023427a2e90f18506b27db994977ce0c0faafd514a7dd109ae03033600035600160e060020a031916604051600160a060020a039384168152919092166020820152600160e060020a03199091166040808301919091526060909101905180910390a1610192565b506000805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a03831617905560015b919050565b60006101af33600035600160e060020a03191661039c565b1515610224577f5133a133185f1023427a2e90f18506b27db994977ce0c0faafd514a7dd109ae03033600035600160e060020a031916604051600160a060020a039384168152919092166020820152600160e060020a03199091166040808301919091526060909101905180910390a161029e565b81600160a060020a031663a9059cbb858560006040516020015260405160e060020a63ffffffff8516028152600160a060020a0390921660048301526024820152604401602060405180830381600087803b151561028157600080fd5b6102c65a03f1151561029257600080fd5b50505060405180519150505b9392505050565b60006102bd33600035600160e060020a03191661039c565b1515610332577f5133a133185f1023427a2e90f18506b27db994977ce0c0faafd514a7dd109ae03033600035600160e060020a031916604051600160a060020a039384168152919092166020820152600160e060020a03199091166040808301919091526060909101905180910390a161029e565b81600160a060020a03166323b872dd85308660006040516020015260405160e060020a63ffffffff8616028152600160a060020a0393841660048201529190921660248201526044810191909152606401602060405180830381600087803b151561028157600080fd5b600030600160a060020a031683600160a060020a031614156103c057506001610470565b600054600160a060020a031615156103da57506000610470565b60008054600160a060020a03169063b7009613908590309086906040516020015260405160e060020a63ffffffff8616028152600160a060020a039384166004820152919092166024820152600160e060020a03199091166044820152606401602060405180830381600087803b151561045357600080fd5b6102c65a03f1151561046457600080fd5b50505060405180519150505b929150505600a165627a7a72305820697a24ee542f6f25d4f1d807c21f9efc136aae0c9ee3fb319f80795724145b8b0029",
+  "deployedBytecode": "0x60606040526004361061003d5763ffffffff60e060020a6000350416632637cd7d811461004257806369328dec14610073578063f45346dc146100b0575b600080fd5b341561004d57600080fd5b610061600160a060020a03600435166100d9565b60405190815260200160405180910390f35b341561007e57600080fd5b61009c600160a060020a036004358116906024359060443516610197565b604051901515815260200160405180910390f35b34156100bb57600080fd5b61009c600160a060020a0360043581169060243590604435166102a5565b60006100f133600035600160e060020a03191661039c565b1515610166577f5133a133185f1023427a2e90f18506b27db994977ce0c0faafd514a7dd109ae03033600035600160e060020a031916604051600160a060020a039384168152919092166020820152600160e060020a03199091166040808301919091526060909101905180910390a1610192565b506000805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a03831617905560015b919050565b60006101af33600035600160e060020a03191661039c565b1515610224577f5133a133185f1023427a2e90f18506b27db994977ce0c0faafd514a7dd109ae03033600035600160e060020a031916604051600160a060020a039384168152919092166020820152600160e060020a03199091166040808301919091526060909101905180910390a161029e565b81600160a060020a031663a9059cbb858560006040516020015260405160e060020a63ffffffff8516028152600160a060020a0390921660048301526024820152604401602060405180830381600087803b151561028157600080fd5b6102c65a03f1151561029257600080fd5b50505060405180519150505b9392505050565b60006102bd33600035600160e060020a03191661039c565b1515610332577f5133a133185f1023427a2e90f18506b27db994977ce0c0faafd514a7dd109ae03033600035600160e060020a031916604051600160a060020a039384168152919092166020820152600160e060020a03199091166040808301919091526060909101905180910390a161029e565b81600160a060020a03166323b872dd85308660006040516020015260405160e060020a63ffffffff8616028152600160a060020a0393841660048201529190921660248201526044810191909152606401602060405180830381600087803b151561028157600080fd5b600030600160a060020a031683600160a060020a031614156103c057506001610470565b600054600160a060020a031615156103da57506000610470565b60008054600160a060020a03169063b7009613908590309086906040516020015260405160e060020a63ffffffff8616028152600160a060020a039384166004820152919092166024820152600160e060020a03199091166044820152606401602060405180830381600087803b151561045357600080fd5b6102c65a03f1151561046457600080fd5b50505060405180519150505b929150505600a165627a7a72305820697a24ee542f6f25d4f1d807c21f9efc136aae0c9ee3fb319f80795724145b8b0029",
+  "sourceMap": "203:488:0:-;;;257:99;;;;;;;;;;;;;;;;;;;;;;783:13:22;:54;;-1:-1:-1;;;;;783:54:22;;;-1:-1:-1;;;;;;783:54:22;;;;;;;;;-1:-1:-1;;203:488:0;;;;;;",
+  "deployedSourceMap": "203:488:0:-;;;;;;;;;-1:-1:-1;;;203:488:0;;;;;;;;;;;;;;;;;;;;;;;850:160:22;;;;;;;;;;-1:-1:-1;;;;;850:160:22;;;;;;;;;;;;;;;;;;;;535:154:0;;;;;;;;;;-1:-1:-1;;;;;535:154:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;362:167;;;;;;;;;;-1:-1:-1;;;;;362:167:0;;;;;;;;;;;;;850:160:22;938:4;566:34;580:10;592:7;;-1:-1:-1;;;;;;592:7:22;566:13;:34::i;:::-;565:35;561:128;;;616:42;632:4;638:10;650:7;;-1:-1:-1;;;;;;650:7:22;616:42;;-1:-1:-1;;;;;616:42:22;;;;;;;;;;;;;-1:-1:-1;;;;;;616:42:22;;;;;;;;;;;;;;;;;;;;;;672:7;;561:128;-1:-1:-1;954:13:22;:30;;-1:-1:-1;;954:30:22;-1:-1:-1;;;;;954:30:22;;;;;-1:-1:-1;698:1:22;850:160;;;:::o;535:154:0:-;628:4;566:34:22;580:10;592:7;;-1:-1:-1;;;;;;592:7:22;566:13;:34::i;:::-;565:35;561:128;;;616:42;632:4;638:10;650:7;;-1:-1:-1;;;;;;650:7:22;616:42;;-1:-1:-1;;;;;616:42:22;;;;;;;;;;;;;-1:-1:-1;;;;;;616:42:22;;;;;;;;;;;;;;;;;;;;;;672:7;;561:128;651:9:0;-1:-1:-1;;;;;651:18:0;;670:3;675:6;651:31;;;;;;;;-1:-1:-1;;;651:31:0;;;;;;-1:-1:-1;;;;;651:31:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;;698:1:22;535:154:0;;;;;:::o;362:167::-;456:4;566:34:22;580:10;592:7;;-1:-1:-1;;;;;;592:7:22;566:13;:34::i;:::-;565:35;561:128;;;616:42;632:4;638:10;650:7;;-1:-1:-1;;;;;;650:7:22;616:42;;-1:-1:-1;;;;;616:42:22;;;;;;;;;;;;;-1:-1:-1;;;;;;616:42:22;;;;;;;;;;;;;;;;;;;;;;672:7;;561:128;479:9:0;-1:-1:-1;;;;;479:22:0;;502:5;509:4;515:6;479:43;;;;;;;;-1:-1:-1;;;479:43:0;;;;;;-1:-1:-1;;;;;479:43:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;1016:302:22;1089:4;1125;-1:-1:-1;;;;;1109:21:22;:4;-1:-1:-1;;;;;1109:21:22;;1105:63;;;-1:-1:-1;1153:4:22;1146:11;;1105:63;1189:13;;-1:-1:-1;;;;;1189:13:22;1181:27;1177:70;;;-1:-1:-1;1231:5:22;1224:12;;1177:70;1272:13;;;-1:-1:-1;;;;;1272:13:22;;:21;;1294:4;;1300;;1306;;1272:39;;;;;;;-1:-1:-1;;;1272:39:22;;;;;;-1:-1:-1;;;;;1272:39:22;;;;;;;;;;;;;;;-1:-1:-1;;;;;;1272:39:22;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;;1016:302:22;;;;;:::o",
   "source": "/**\n * Copyright 2017–2018, LaborX PTY\n * Licensed under the AGPL Version 3 license.\n */\n\npragma solidity ^0.4.18;\n\n\nimport './adapters/Roles2LibraryAdapter.sol';\nimport './base/ERC20Interface.sol';\n\n\ncontract BalanceHolder is Roles2LibraryAdapter {\n\n    function BalanceHolder(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {\n\n    }\n\n    function deposit(address _from, uint _value, ERC20Interface _contract) auth external returns (bool) {\n        return _contract.transferFrom(_from, this, _value);\n    }\n\n    function withdraw(address _to, uint _value, ERC20Interface _contract) auth external returns (bool) {\n        return _contract.transfer(_to, _value);\n    }\n}\n",
   "sourcePath": "/Users/ahiatsevich/Development/chronobank/LX-SC/contracts/BalanceHolder.sol",
   "ast": {
@@ -141,7 +141,7 @@
         "id": 2,
         "nodeType": "ImportDirective",
         "scope": 57,
-        "sourceUnit": 14028,
+        "sourceUnit": 14414,
         "src": "119:45:0",
         "symbolAliases": [],
         "unitAlias": ""
@@ -152,7 +152,7 @@
         "id": 3,
         "nodeType": "ImportDirective",
         "scope": 57,
-        "sourceUnit": 14367,
+        "sourceUnit": 14758,
         "src": "165:35:0",
         "symbolAliases": [],
         "unitAlias": ""
@@ -166,10 +166,10 @@
               "id": 4,
               "name": "Roles2LibraryAdapter",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 14027,
+              "referencedDeclaration": 14413,
               "src": "229:20:0",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$14027",
+                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$14413",
                 "typeString": "contract Roles2LibraryAdapter"
               }
             },
@@ -179,7 +179,7 @@
           }
         ],
         "contractDependencies": [
-          14027
+          14413
         ],
         "contractKind": "contract",
         "documentation": null,
@@ -187,7 +187,7 @@
         "id": 56,
         "linearizedBaseContracts": [
           56,
-          14027
+          14413
         ],
         "name": "BalanceHolder",
         "nodeType": "ContractDefinition",
@@ -227,10 +227,10 @@
                   "name": "Roles2LibraryAdapter",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 14027,
+                  "referencedDeclaration": 14413,
                   "src": "304:20:0",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$14027_$",
+                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$14413_$",
                     "typeString": "type(contract Roles2LibraryAdapter)"
                   }
                 },
@@ -315,7 +315,7 @@
                         "name": "this",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 15676,
+                        "referencedDeclaration": 16994,
                         "src": "509:4:0",
                         "typeDescriptions": {
                           "typeIdentifier": "t_contract$_BalanceHolder_$56",
@@ -360,7 +360,7 @@
                         "referencedDeclaration": 20,
                         "src": "479:9:0",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_contract$_ERC20Interface_$14366",
+                          "typeIdentifier": "t_contract$_ERC20Interface_$14757",
                           "typeString": "contract ERC20Interface"
                         }
                       },
@@ -371,7 +371,7 @@
                       "lValueRequested": false,
                       "memberName": "transferFrom",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 14347,
+                      "referencedDeclaration": 14738,
                       "src": "479:22:0",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_external_nonpayable$_t_address_$_t_address_$_t_uint256_$returns$_t_bool_$",
@@ -413,7 +413,7 @@
                   "name": "auth",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13963,
+                  "referencedDeclaration": 14349,
                   "src": "433:4:0",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -492,7 +492,7 @@
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_contract$_ERC20Interface_$14366",
+                    "typeIdentifier": "t_contract$_ERC20Interface_$14757",
                     "typeString": "contract ERC20Interface"
                   },
                   "typeName": {
@@ -500,10 +500,10 @@
                     "id": 19,
                     "name": "ERC20Interface",
                     "nodeType": "UserDefinedTypeName",
-                    "referencedDeclaration": 14366,
+                    "referencedDeclaration": 14757,
                     "src": "407:14:0",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_contract$_ERC20Interface_$14366",
+                      "typeIdentifier": "t_contract$_ERC20Interface_$14757",
                       "typeString": "contract ERC20Interface"
                     }
                   },
@@ -610,7 +610,7 @@
                         "referencedDeclaration": 41,
                         "src": "651:9:0",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_contract$_ERC20Interface_$14366",
+                          "typeIdentifier": "t_contract$_ERC20Interface_$14757",
                           "typeString": "contract ERC20Interface"
                         }
                       },
@@ -621,7 +621,7 @@
                       "lValueRequested": false,
                       "memberName": "transfer",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 14336,
+                      "referencedDeclaration": 14727,
                       "src": "651:18:0",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_external_nonpayable$_t_address_$_t_uint256_$returns$_t_bool_$",
@@ -663,7 +663,7 @@
                   "name": "auth",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13963,
+                  "referencedDeclaration": 14349,
                   "src": "605:4:0",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -742,7 +742,7 @@
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_contract$_ERC20Interface_$14366",
+                    "typeIdentifier": "t_contract$_ERC20Interface_$14757",
                     "typeString": "contract ERC20Interface"
                   },
                   "typeName": {
@@ -750,10 +750,10 @@
                     "id": 40,
                     "name": "ERC20Interface",
                     "nodeType": "UserDefinedTypeName",
-                    "referencedDeclaration": 14366,
+                    "referencedDeclaration": 14757,
                     "src": "579:14:0",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_contract$_ERC20Interface_$14366",
+                      "typeIdentifier": "t_contract$_ERC20Interface_$14757",
                       "typeString": "contract ERC20Interface"
                     }
                   },
@@ -837,7 +837,7 @@
         "id": 2,
         "nodeType": "ImportDirective",
         "scope": 57,
-        "sourceUnit": 14028,
+        "sourceUnit": 14414,
         "src": "119:45:0",
         "symbolAliases": [],
         "unitAlias": ""
@@ -848,7 +848,7 @@
         "id": 3,
         "nodeType": "ImportDirective",
         "scope": 57,
-        "sourceUnit": 14367,
+        "sourceUnit": 14758,
         "src": "165:35:0",
         "symbolAliases": [],
         "unitAlias": ""
@@ -862,10 +862,10 @@
               "id": 4,
               "name": "Roles2LibraryAdapter",
               "nodeType": "UserDefinedTypeName",
-              "referencedDeclaration": 14027,
+              "referencedDeclaration": 14413,
               "src": "229:20:0",
               "typeDescriptions": {
-                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$14027",
+                "typeIdentifier": "t_contract$_Roles2LibraryAdapter_$14413",
                 "typeString": "contract Roles2LibraryAdapter"
               }
             },
@@ -875,7 +875,7 @@
           }
         ],
         "contractDependencies": [
-          14027
+          14413
         ],
         "contractKind": "contract",
         "documentation": null,
@@ -883,7 +883,7 @@
         "id": 56,
         "linearizedBaseContracts": [
           56,
-          14027
+          14413
         ],
         "name": "BalanceHolder",
         "nodeType": "ContractDefinition",
@@ -923,10 +923,10 @@
                   "name": "Roles2LibraryAdapter",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 14027,
+                  "referencedDeclaration": 14413,
                   "src": "304:20:0",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$14027_$",
+                    "typeIdentifier": "t_type$_t_contract$_Roles2LibraryAdapter_$14413_$",
                     "typeString": "type(contract Roles2LibraryAdapter)"
                   }
                 },
@@ -1011,7 +1011,7 @@
                         "name": "this",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [],
-                        "referencedDeclaration": 15676,
+                        "referencedDeclaration": 16994,
                         "src": "509:4:0",
                         "typeDescriptions": {
                           "typeIdentifier": "t_contract$_BalanceHolder_$56",
@@ -1056,7 +1056,7 @@
                         "referencedDeclaration": 20,
                         "src": "479:9:0",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_contract$_ERC20Interface_$14366",
+                          "typeIdentifier": "t_contract$_ERC20Interface_$14757",
                           "typeString": "contract ERC20Interface"
                         }
                       },
@@ -1067,7 +1067,7 @@
                       "lValueRequested": false,
                       "memberName": "transferFrom",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 14347,
+                      "referencedDeclaration": 14738,
                       "src": "479:22:0",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_external_nonpayable$_t_address_$_t_address_$_t_uint256_$returns$_t_bool_$",
@@ -1109,7 +1109,7 @@
                   "name": "auth",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13963,
+                  "referencedDeclaration": 14349,
                   "src": "433:4:0",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -1188,7 +1188,7 @@
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_contract$_ERC20Interface_$14366",
+                    "typeIdentifier": "t_contract$_ERC20Interface_$14757",
                     "typeString": "contract ERC20Interface"
                   },
                   "typeName": {
@@ -1196,10 +1196,10 @@
                     "id": 19,
                     "name": "ERC20Interface",
                     "nodeType": "UserDefinedTypeName",
-                    "referencedDeclaration": 14366,
+                    "referencedDeclaration": 14757,
                     "src": "407:14:0",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_contract$_ERC20Interface_$14366",
+                      "typeIdentifier": "t_contract$_ERC20Interface_$14757",
                       "typeString": "contract ERC20Interface"
                     }
                   },
@@ -1306,7 +1306,7 @@
                         "referencedDeclaration": 41,
                         "src": "651:9:0",
                         "typeDescriptions": {
-                          "typeIdentifier": "t_contract$_ERC20Interface_$14366",
+                          "typeIdentifier": "t_contract$_ERC20Interface_$14757",
                           "typeString": "contract ERC20Interface"
                         }
                       },
@@ -1317,7 +1317,7 @@
                       "lValueRequested": false,
                       "memberName": "transfer",
                       "nodeType": "MemberAccess",
-                      "referencedDeclaration": 14336,
+                      "referencedDeclaration": 14727,
                       "src": "651:18:0",
                       "typeDescriptions": {
                         "typeIdentifier": "t_function_external_nonpayable$_t_address_$_t_uint256_$returns$_t_bool_$",
@@ -1359,7 +1359,7 @@
                   "name": "auth",
                   "nodeType": "Identifier",
                   "overloadedDeclarations": [],
-                  "referencedDeclaration": 13963,
+                  "referencedDeclaration": 14349,
                   "src": "605:4:0",
                   "typeDescriptions": {
                     "typeIdentifier": "t_modifier$__$",
@@ -1438,7 +1438,7 @@
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
-                    "typeIdentifier": "t_contract$_ERC20Interface_$14366",
+                    "typeIdentifier": "t_contract$_ERC20Interface_$14757",
                     "typeString": "contract ERC20Interface"
                   },
                   "typeName": {
@@ -1446,10 +1446,10 @@
                     "id": 40,
                     "name": "ERC20Interface",
                     "nodeType": "UserDefinedTypeName",
-                    "referencedDeclaration": 14366,
+                    "referencedDeclaration": 14757,
                     "src": "579:14:0",
                     "typeDescriptions": {
-                      "typeIdentifier": "t_contract$_ERC20Interface_$14366",
+                      "typeIdentifier": "t_contract$_ERC20Interface_$14757",
                       "typeString": "contract ERC20Interface"
                     }
                   },
@@ -1519,5 +1519,5 @@
     }
   },
   "schemaVersion": "2.0.0",
-  "updatedAt": "2018-05-10T14:36:15.301Z"
+  "updatedAt": "2018-05-16T09:14:41.682Z"
 }

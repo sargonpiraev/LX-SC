@@ -19,6 +19,17 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     uint constant BOARD_CONTROLLER_USER_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 2;
     uint constant BOARD_CONTROLLER_BOARD_IS_CLOSED = BOARD_CONTROLLER_SCOPE + 3;
 
+    /* struct Board {
+        uint boardId;
+        bytes32 name;
+        bytes32 boardDescription;
+        address creator;
+        uint boardTags;
+        uint boardTagsArea;
+        uint boardTagsCategory;
+        bool status;
+    } */
+
     event BoardCreated(
         address indexed self,
         uint indexed boardId,
@@ -133,6 +144,61 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
 
     function getJobsBoard(uint _jobId) public view returns (uint) {
         return store.get(jobsBoard, _jobId);
+    }
+
+    /* function getBoards(uint _fromId, uint _maxLen, address _bindedUser)
+    public
+    view
+    returns (Board[] boards)
+    {
+        boards = new Board[](_maxLen);
+        for (uint _idx = _fromId; _idx < _fromId + _maxLen; ++_idx) {
+            if (_bindedUser == address(0) || getUserStatus(_idx, _bindedUser)) {
+                uint boardId = _idx;
+                boards[_idx] = Board(boardId,
+                                     store.get(boardName, boardId),
+                                     store.get(boardDescription, boardId),
+                                     store.get(boardCreator, boardId),
+                                     store.get(boardTags, boardId),
+                                     store.get(boardTagsArea, boardId),
+                                     store.get(boardTagsCategory, boardId),
+                                     getBoardStatus(boardId));
+            }
+        }
+    } */
+
+    function getBoards(uint _fromId, uint _maxLen, address _bindedUser)
+    public
+    view
+    returns (uint[] ids,
+        bytes32[] names,
+        bytes32[] descriptions,
+        uint[] tags,
+        uint[] tagsAreas,
+        uint[] tagsCategories,
+        bool[] status)
+    {
+        ids = new uint[](_maxLen);
+        names = new bytes32[](_maxLen);
+        descriptions = new bytes32[](_maxLen);
+        tags = new uint[](_maxLen);
+        tagsAreas = new uint[](_maxLen);
+        tagsCategories = new uint[](_maxLen);
+        status = new bool[](_maxLen);
+
+        uint idx = 0;
+        for (uint _id = _fromId; _id < _fromId + _maxLen; ++_id) {
+            if (_bindedUser == address(0) || getUserStatus(_id, _bindedUser)) {
+                ids[idx] = _id;
+                names[idx] = store.get(boardName, _id);
+                descriptions[idx] = store.get(boardDescription, _id);
+                tags[idx] = store.get(boardTags, _id);
+                tagsAreas[idx] = store.get(boardTagsArea, _id);
+                tagsCategories[idx] = store.get(boardTagsCategory, _id);
+                status[idx] = getBoardStatus(_id);
+                idx++;
+            }
+        }
     }
 
     function createBoard(

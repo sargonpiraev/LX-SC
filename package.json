@@ -1,6 +1,6 @@
 {
-  "name": "lx-sc",
-  "version": "0.0.2",
+  "name": "@laborx/sc",
+  "version": "0.0.3",
   "description": "ChronoBank Labor-X Smart Contracts",
   "scripts": {
     "test:all": "./node_modules/truffle/build/cli.bundled.js test",
@@ -31,6 +31,10 @@
     "ethereumjs-testrpc": "^6.0.3",
     "truffle": "4.1.0",
     "abi-decoder": "^1.0.9",
-    "truffle-hdwallet-provider": "mikefluff/truffle-hdwallet-provider#7a2eccca1ba17c235a3ef258914ca74ea5f13014"
-  }
+    "truffle-hdwallet-provider": "mikefluff/truffle-hdwallet-provider#7a2eccca1ba17c235a3ef258914ca74ea5f13014",
+    "openzeppelin-solidity": "1.8.0"
+   },
+  "devDependencies": {
+    "standard-version": "^4.0.0"
+   }
 }
