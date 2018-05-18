@@ -3,7 +3,6 @@ const ContractsManager = artifacts.require('./ContractsManager.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const Recovery = artifacts.require('./Recovery.sol');
-const ERC20Library = artifacts.require('./ERC20Library.sol');
 const RatingsAndReputationLibrary = artifacts.require('./RatingsAndReputationLibrary.sol');
 const IPFSLibrary = artifacts.require('./IPFSLibrary.sol');
 const SkillsLibrary = artifacts.require('./SkillsLibrary.sol');
@@ -33,10 +32,6 @@ contract('Contracts Manager', function(accounts) {
 
         it("can provide Recovery address.", async () => {
             assert.equal(await contractsManager.getContractAddressByType("Recovery"), Recovery.address);
-        });
-
-        it("can provide ERC20Library address.", async () => {
-            assert.equal(await contractsManager.getContractAddressByType("ERC20Library"), ERC20Library.address);
         });
 
         it("can provide RatingsAndReputationLibrary address.", async () => {

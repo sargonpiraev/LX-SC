@@ -1,6 +1,5 @@
 const BoardController = artifacts.require('BoardController')
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
-const ERC20Library = artifacts.require('./ERC20Library.sol');
 const FakeCoin = artifacts.require('./FakeCoin.sol');
 const Mock = artifacts.require('./Mock.sol');
 const JobController = artifacts.require('./JobController.sol');
@@ -46,7 +45,7 @@ contract('Integration tests (user stories)', (accounts) => {
     }
 
 
-    
+
     const users = {
         default: accounts[0],
         contractOwner: accounts[0],
@@ -185,14 +184,11 @@ contract('Integration tests (user stories)', (accounts) => {
         contracts.jobController = await JobController.deployed()
         contracts.coin = await FakeCoin.deployed()
         contracts.mock = await Mock.deployed()
-        contracts.erc20Manager = await ERC20Library.deployed()
         contracts.paymentGateway = await PaymentGateway.deployed()
 
         await contracts.ratingLibrary.setBoardController(contracts.boardController.address, { from: users.default })
         await contracts.ratingLibrary.setJobController(contracts.jobController.address, { from: users.default })
         await contracts.ratingLibrary.setUserLibrary(contracts.userLibrary.address, { from: users.default })
-
-        await contracts.erc20Manager.addContract(contracts.coin.address, { from: users.default })
 
         await contracts.rolesLibrary.setRootUser(users.root, true, { from: users.contractOwner })
         await contracts.rolesLibrary.setRootUser(users.default, false, { from: users.contractOwner })
@@ -281,70 +277,6 @@ contract('Integration tests (user stories)', (accounts) => {
                 const tx = await contracts.boardController.closeBoard(boardId, { from: users.root, })
                 const closeBoardEvent = (await eventsHelper.findEvent([contracts.boardController,], tx, 'BoardClosed'))[0]
                 assert.isDefined(closeBoardEvent)
-            })
-        })
-
-        describe("I want to be able to add/remove token contracts to ERC20 library", () => {
-
-            describe("add", () => {
-                let otherContract
-
-                before(async () => {
-                    otherContract = await FakeCoin.new()
-                })
-
-                after(async () => {
-                    await reverter.revert()
-                })
-
-                it("`root` user should be root user", async () => {
-                    assert.isTrue(await contracts.rolesLibrary.isUserRoot.call(users.root))
-                })
-
-                it("should not contain other token in ERC20 library", async () => {
-                    assert.isFalse(await contracts.erc20Manager.includes.call(otherContract.address))
-                })
-
-                it("root user should be able to add token to ERC20 library with OK code", async () => {
-                    assert.equal((await contracts.erc20Manager.addContract.call(otherContract.address, { from: users.root, })).toNumber(), ErrorsScope.OK)
-                })
-
-                it("root user should be able to add token to ERC20 library", async () => {
-                    const tx = await contracts.erc20Manager.addContract(otherContract.address, { from: users.root, })
-                    const contractAddedEvent = (await eventsHelper.findEvent([contracts.erc20Manager,], tx, 'ContractAdded'))[0]
-                    assert.isDefined(contractAddedEvent)
-                })
-            })
-
-            describe("remove", () => {
-                let otherContract
-
-                before(async () => {
-                    otherContract = await FakeCoin.new()
-                    await contracts.erc20Manager.addContract(otherContract.address, { from: users.root, })
-                })
-
-                after(async () => {
-                    await reverter.revert()
-                })
-
-                it("`root` user should be root user", async () => {
-                    assert.isTrue(await contracts.rolesLibrary.isUserRoot.call(users.root))
-                })
-
-                it("should contain other token in ERC20 library", async () => {
-                    assert.isTrue(await contracts.erc20Manager.includes.call(otherContract.address))
-                })
-
-                it("root user should be able to remove token to ERC20 library with OK code", async () => {
-                    assert.equal((await contracts.erc20Manager.removeContract.call(otherContract.address, { from: users.root, })).toNumber(), ErrorsScope.OK)
-                })
-
-                it("root user should be able to remove token to ERC20 library", async () => {
-                    const tx = await contracts.erc20Manager.removeContract(otherContract.address, { from: users.root, })
-                    const contractRemovedEvent = (await eventsHelper.findEvent([contracts.erc20Manager,], tx, 'ContractRemoved'))[0]
-                    assert.isDefined(contractRemovedEvent)
-                })
             })
         })
 
@@ -494,7 +426,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             before(async () => {
                 erc20NonStandartToken = await FakeCoin.new()
-                await contracts.erc20Manager.addContract(erc20NonStandartToken.address, { from: users.root })
+                //await contracts.erc20Manager.addContract(erc20NonStandartToken.address, { from: users.root })
 
                 await erc20NonStandartToken.mint(users.client, depositBalance)
                 await contracts.paymentGateway.deposit(depositBalance, erc20NonStandartToken.address, { from: users.client })

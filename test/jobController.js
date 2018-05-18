@@ -1,8 +1,6 @@
 "use strict";
 
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
-const ERC20Library = artifacts.require('./ERC20Library.sol');
-const FakeCoin = artifacts.require('./FakeCoin.sol');
 const JobController = artifacts.require('./JobController.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
@@ -29,12 +27,10 @@ contract('JobController', function(accounts) {
   const asserts = Asserts(assert);
   const roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
   const userLibraryInterface = web3.eth.contract(UserLibrary.abi).at('0x0');
-  let fakeCoin;
   let storage;
   let jobController;
   let multiEventsHistory;
   let paymentProcessor;
-  let erc20Library;
   let userLibrary;
   let paymentGateway;
   let balanceHolder;
@@ -195,16 +191,12 @@ contract('JobController', function(accounts) {
     .then(instance => mock = instance)
     .then(() => ignoreAuth())
     .then(() => ignoreSkillsCheck())
-    .then(() => FakeCoin.deployed())
-    .then(instance => fakeCoin = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
     .then(() => Storage.deployed())
     .then(instance => storage = instance)
     .then(() => BalanceHolder.deployed())
     .then(instance => balanceHolder = instance)
-    .then(() => ERC20Library.deployed())
-    .then(instance => erc20Library = instance)
     .then(() => UserLibrary.deployed())
     .then(instance => userLibrary = instance)
     .then(() => PaymentGateway.deployed())
@@ -213,13 +205,11 @@ contract('JobController', function(accounts) {
     .then(instance => paymentProcessor = instance)
     .then(() => JobController.deployed())
     .then(instance => jobController = instance)
-    .then(() => erc20Library.addContract(fakeCoin.address))
     .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
     .then(() => jobController.setUserLibrary(mock.address))
-    .then(() => fakeCoin.mint(client, '0xfffffffffffffffffff'))
     .then(() => paymentGateway.deposit('0xfffffffffffffffffff', fakeCoin.address, {from: client}))
     .then(reverter.snapshot);
   });
@@ -278,24 +268,6 @@ contract('JobController', function(accounts) {
           ), 0)
         )
         .then(() => jobController.setUserLibrary(newAddress, {from: caller}))
-        .then(assertExpectations());
-    });
-
-    it('should check auth on setting ERC20 library', () => {
-      const caller = accounts[1];
-      const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
-      return Promise.resolve()
-        .then(() => ignoreAuth(false))
-        .then(() => mock.expect(
-          jobController.address,
-          0,
-          roles2LibraryInterface.canCall.getData(
-            caller,
-            jobController.address,
-            jobController.contract.setERC20Library.getData(newAddress).slice(0, 10)
-          ), 0)
-        )
-        .then(() => jobController.setERC20Library(newAddress, {from: caller}))
         .then(assertExpectations());
     });
 

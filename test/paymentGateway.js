@@ -2,7 +2,6 @@
 
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const FakeCoin = artifacts.require('./FakeCoin.sol');
-const ERC20Library = artifacts.require('./ERC20Library.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
@@ -26,7 +25,6 @@ contract('PaymentGateway', function(accounts) {
   const PaymentProcessorRole = 34;
   let storage;
   let multiEventsHistory;
-  let erc20Library;
   let fakeCoin;
   let paymentGateway;
   let balanceHolder;
@@ -313,7 +311,6 @@ contract('PaymentGateway', function(accounts) {
       const feePercent2 = 1;
       const supported2 = '0x00000000000000000000000000000000000000ff';
       return Promise.resolve()
-      .then(() => erc20Library.addContract(supported2))
       .then(() => paymentGateway.setFeePercent(feePercent, fakeCoin.address))
       .then(() => paymentGateway.setFeePercent(feePercent2, supported2))
       .then(() => paymentGateway.getFeePercent(fakeCoin.address))
@@ -359,7 +356,6 @@ contract('PaymentGateway', function(accounts) {
       const value = 1000;
       return Promise.resolve()
         .then(() => fakeCoin.mint(sender, value))
-        .then(() => erc20Library.removeContract(fakeCoin.address))
         .then(() => paymentGateway.deposit(value, fakeCoin.address, {from: sender}))
         .then(assertInternalBalance(sender, fakeCoin.address, 0))
         .then(assertExternalBalance(balanceHolder.address, fakeCoin.address, 0))

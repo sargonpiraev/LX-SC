@@ -1,8 +1,6 @@
 "use strict";
 
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
-const ERC20Library = artifacts.require('./ERC20Library.sol');
-const FakeCoin = artifacts.require('./FakeCoin.sol');
 const JobController = artifacts.require('./JobController.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
@@ -45,13 +43,11 @@ contract('BoardController', function(accounts) {
     };
   };
 
-  let fakeCoin;
   let storage;
   let boardController;
   let jobController;
   let multiEventsHistory;
   let paymentProcessor;
-  let erc20Library;
   let userLibrary;
   let paymentGateway;
   let balanceHolder;
@@ -81,16 +77,12 @@ contract('BoardController', function(accounts) {
   before('setup', () => {
     return Mock.deployed()
     .then(instance => mock = instance)
-    .then(() => FakeCoin.deployed())
-    .then(instance => fakeCoin = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
     .then(() => Storage.deployed())
     .then(instance => storage = instance)
     .then(() => BalanceHolder.deployed())
     .then(instance => balanceHolder = instance)
-    .then(() => ERC20Library.deployed())
-    .then(instance => erc20Library = instance)
     .then(() => UserLibrary.deployed())
     .then(instance => userLibrary = instance)
     .then(() => Roles2Library.deployed())
@@ -104,14 +96,10 @@ contract('BoardController', function(accounts) {
     .then(() => BoardController.deployed())
     .then(instance => boardController = instance)
 
-    .then(() => erc20Library.addContract(fakeCoin.address))
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
-    .then(() => jobController.setUserLibrary(mock.address))
-
-    .then(() => fakeCoin.mint(client, '0xfffffffffffffffffff'))
-    .then(() => paymentGateway.deposit('0xfffffffffffffffffff', fakeCoin.address, {from: client}))
+    .then(() => jobController.setUserLibrary(mock.address))    
     .then(() => createBoard = boardController.contract.createBoard.getData(0,0,0,0,0).slice(0,10))
     .then(() => closeBoard = boardController.contract.closeBoard.getData(0).slice(0,10))
     .then(() => roles2Library.setRootUser(root, true))

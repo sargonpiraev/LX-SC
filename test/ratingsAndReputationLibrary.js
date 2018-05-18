@@ -1,6 +1,5 @@
 "use strict";
 
-const FakeCoin = artifacts.require('./FakeCoin.sol');
 const JobController = artifacts.require('./JobController.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
@@ -15,7 +14,6 @@ const UserFactory = artifacts.require('./UserFactory.sol');
 const BoardController = artifacts.require('./BoardController.sol');
 
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
-const ERC20Library = artifacts.require('./ERC20Library.sol');
 const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
 
 
@@ -29,22 +27,21 @@ const ErrorsNamespace = require('../common/errors')
 contract('RatingsAndReputationLibrary', function(accounts) {
   const reverter = new Reverter(web3);
   afterEach('revert', reverter.revert);
-  
+
   const asserts = Asserts(assert);
-  
+
   const client = accounts[1];
   const worker = accounts[2];
-  
+
   const boardId = 1;
   const boardName = 'Name';
   const boardDescription = 'Description';
   const boardTags = 1;
   const boardArea = 1;
   const boardCategory = 1;
-  
+
   const SENDER = accounts[1];
   const RolesLibraryEvaluatorRole = 22;
-  let fakeCoin;
   let storage;
   let mock;
   let jobController;
@@ -57,9 +54,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
   let boardController;
   let balanceHolder;
   let paymentProcessor;
-  let erc20Library;
   const evaluator = accounts[6];
-  
+
   const JOB_STATES = {
     NOT_SET: 0,
     CREATED: 1,
@@ -70,32 +66,28 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     FINISHED: 6,
     FINALIZED: 7,
   }
-  
+
   let FINALIZED_JOB;
   let NOT_FINALIZED_JOB;
-  
+
   const equal = (a, b) => {
     return a.valueOf() === b.valueOf();
   };
-  
+
   const p = (...data) => {
     console.log(...data);
   }
-  
+
   const setupJob = (_jobArea, _jobCategory, _jobSkills, _client=client, _worker=worker) => {
     let jobId;
     const jobArea = helpers.getFlag(_jobArea);
     const jobCategory = helpers.getFlag(_jobCategory);
     const jobSkills = _jobSkills;  // uint
-    
+
     const roles = [];
     const recovery = "0xffffffffffffffffffffffffffffffffffffffff";
-    
+
     return Promise.resolve()
-    .then(() => fakeCoin.mint(_client, '0xfffffffffffffffffff'))
-    .then(() => paymentGateway.deposit(
-      '0xfffffffffffffffffff', fakeCoin.address, {from: _client})
-    )
     .then(() => userFactory.createUserWithProxyAndRecovery(
       _worker, recovery, roles, jobArea, [jobCategory], [jobSkills]
     ))
@@ -104,12 +96,12 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     ))
     .then(tx => jobId = tx.logs[0].args.jobId)
     .then(() => jobController.postJobOffer(
-      jobId, fakeCoin.address, 100, 100, 100, {from: _worker}
+      jobId, 100, 100, 100, {from: _worker}
     ))
     .then(() => jobController.acceptOffer(jobId, _worker, {from: _client}))
     .then(() => jobId);
   }
-  
+
   const finishJob = (jobId, _client=client, _worker=worker) => {
     return Promise.resolve()
     .then(() => jobController.startWork(jobId, {from: _worker}))
@@ -121,17 +113,13 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(events => assert.equal(events.length, 1))
     .then(() => jobId);
   }
-  
-  
+
+
   before('setup', () => {
     return Mock.deployed()
     .then(instance => mock = instance)
-    .then(() => FakeCoin.deployed())
-    .then(instance => fakeCoin = instance)
     .then(() => Storage.deployed())
     .then(instance => storage = instance)
-    .then(() => ERC20Library.deployed())
-    .then(instance => erc20Library = instance)
     .then(() => MultiEventsHistory.deployed())
     .then(instance => multiEventsHistory = instance)
     .then(() => JobController.deployed())
@@ -148,32 +136,31 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(instance => ratingsLibrary = instance)
     .then(() => BoardController.deployed())
     .then(instance => boardController = instance)
-    
-    .then(() => erc20Library.addContract(fakeCoin.address))
+
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
-    
+
     .then(() => userFactory.setUserLibrary(UserLibraryMock.address))
     .then(() => jobController.setUserLibrary(mock.address))
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
-    
+
     .then(() => ratingsLibrary.setJobController(jobController.address))
     .then(() => ratingsLibrary.setUserLibrary(mock.address))
     .then(() => ratingsLibrary.setBoardController(boardController.address))
-    
+
     .then(() => setupJob(0, 0, JOB_STATES.FINALIZED))
     .then(jobId => finishJob(jobId))  // jobId#1, to test finished jobs
     .then(jobId => FINALIZED_JOB = jobId.toNumber())
-    
+
     .then(() => setupJob(0, 0, JOB_STATES.FINALIZED))  // jobId#2, to test canceled jobs
     .then(jobId => NOT_FINALIZED_JOB = jobId.toNumber())
-    
+
     .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardArea, boardCategory))
-    
+
     .then(() => boardController.bindUserWithBoard(boardId, SENDER))
     .then(() => boardController.bindUserWithBoard(boardId, client))
     .then(() => boardController.bindUserWithBoard(boardId, worker))
-    
+
     .then(() => boardController.bindJobWithBoard(boardId, FINALIZED_JOB))
     .then(() => boardController.bindJobWithBoard(boardId, NOT_FINALIZED_JOB))
     .then(() => Roles2Library.deployed())
@@ -181,10 +168,10 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(() => mock.resetCallsCount())
     .then(reverter.snapshot);
   });
-  
-  
+
+
   describe('Contract setup', () => {
-    
+
     it('should check auth on setup events history', () => {
       const caller = accounts[1];
       const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
@@ -202,7 +189,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.setupEventsHistory(newAddress, {from: caller}))
       .then(helpers.assertExpectations(mock));
     });
-    
+
     it('should check auth on setup user library', () => {
       const caller = accounts[1];
       const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
@@ -220,7 +207,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.setUserLibrary(newAddress, {from: caller}))
       .then(helpers.assertExpectations(mock));
     });
-    
+
     it('should check auth on setup job controller', () => {
       const caller = accounts[1];
       const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
@@ -238,12 +225,12 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.setJobController(newAddress, {from: caller}))
       .then(helpers.assertExpectations(mock));
     });
-    
+
   });
-  
-  
+
+
   describe('User rating', () => {
-    
+
     it('should NOT be able to set invalid user rating', () => {
       const ratings = [-1, 0, 11, 100500];
       const address = '0xffffffffffffffffffffffffffffffffffffffff';
@@ -253,7 +240,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(asserts.equal(0));
       });
     });
-    
+
     it('should have "RATING_AND_REPUTATION_INVALID_RATING" code when invalid user rating set', () => {
       const rating = 55;
       const address = '0xffffffffffffffffffffffffffffffffffffffff';
@@ -266,7 +253,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         assert.equal(tx.logs[0].event, "ErrorCode")
       })
     });
-    
+
     it('should NOT rewrite to invalid user rating', () => {
       const rating1 = 5;
       const rating2 = 11;
@@ -276,7 +263,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.getUserRating(SENDER, address))
       .then(asserts.equal(rating1));
     });
-    
+
     it('should NOT rewrite to invalid user rating after rewriting', () => {
       const rating1 = 5;
       const rating2 = 3;
@@ -288,7 +275,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.getUserRating(SENDER, address))
       .then(asserts.equal(rating2));
     });
-    
+
     it('should rewrite user rating after failed rewriting attempt', () => {
       const rating1 = 5;
       const rating2 = 11;
@@ -300,7 +287,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.getUserRating(SENDER, address))
       .then(asserts.equal(rating3));
     });
-    
+
     it('should rewrite user rating', () => {
       const rating1 = 5;
       const rating2 = 6;
@@ -310,7 +297,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.getUserRating(SENDER, address))
       .then(asserts.equal(rating2));
     });
-    
+
     it('should store user rating for different addresses', () => {
       const rating1 = 5;
       const rating2 = 6;
@@ -323,7 +310,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.getUserRating(SENDER, address2))
       .then(asserts.equal(rating2));
     });
-    
+
     it('should store user rating from different raters', () => {
       const sender2 = accounts[3];
       const rating1 = 5;
@@ -336,7 +323,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.getUserRating(sender2, address))
       .then(asserts.equal(rating2));
     });
-    
+
     it('should emit "UserRatingGiven" event when user rating set', () => {
       const rating = 5;
       const address = '0xffffffffffffffffffffffffffffffffffffffff';
@@ -352,7 +339,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         assert.equal(events[0].args.rating, rating);
       });
     });
-    
+
     it('should set user rating from multiple accounts', () => {
       const raters = accounts.slice(1, 4);
       const rating = 5;
@@ -363,11 +350,11 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(asserts.equal(5));
       });
     });
-    
+
   });
-  
+
   describe('Board rating', () => {
-    
+
     it('should NOT be able to set invalid board rating', () => {
       const ratings = [-1, 0, 11, 100500];
       return Promise.each(ratings, rating => {
@@ -376,7 +363,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(asserts.equal(0));
       });
     });
-    
+
     it('should have "BoardRatingGiven" event when invalid board rating set', () => {
       const rating = 55;
       return Promise.resolve()
@@ -386,9 +373,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => {
         assert.equal(tx.logs.length, 1)
         assert.equal(tx.logs[0].event, "ErrorCode")
-      }) 
+      })
     });
-    
+
     it('should NOT rewrite to invalid board rating', () => {
       const rating1 = 5;
       const rating2 = 11;
@@ -397,7 +384,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.getBoardRating(SENDER, boardId))
       .then(asserts.equal(rating1));
     });
-    
+
     it('should NOT rewrite to invalid board rating after rewriting', () => {
       const rating1 = 5;
       const rating2 = 3;
@@ -408,7 +395,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.getBoardRating(SENDER, boardId))
       .then(asserts.equal(rating2));
     });
-    
+
     it('should rewrite board rating after failed rewriting attempt', () => {
       const rating1 = 5;
       const rating2 = 11;
@@ -419,7 +406,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.getBoardRating(SENDER, boardId))
       .then(asserts.equal(rating3));
     });
-    
+
     it('should rewrite board rating', () => {
       const rating1 = 5;
       const rating2 = 6;
@@ -428,7 +415,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.getBoardRating(SENDER, boardId))
       .then(asserts.equal(rating2));
     });
-    
+
     it('should store board rating for different boardIdes', () => {
       const boardId2 = 2;
       const rating1 = 5;
@@ -442,7 +429,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.getBoardRating(SENDER, boardId2))
       .then(asserts.equal(rating2));
     });
-    
+
     it('should NOT allow to rate board not by board member', () => {
       const stranger = accounts[8];
       const rating = 5;
@@ -450,7 +437,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.getBoardRating(stranger, boardId))
       .then(asserts.equal(0))
     });
-    
+
     it('should store board rating from different raters', () => {
       const sender2 = accounts[3];
       const rating1 = 5;
@@ -463,7 +450,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.getBoardRating(sender2, boardId))
       .then(asserts.equal(rating2));
     });
-    
+
     it('should emit "BoardRatingGiven" event when board rating set', () => {
       const rating = 5;
       return ratingsLibrary.setBoardRating(boardId, rating, {from: SENDER})
@@ -477,7 +464,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         assert.equal(events[0].args.rating, rating);
       });
     });
-    
+
     it('should set board rating from multiple accounts', () => {
       const raters = accounts.slice(1, 4);
       const rating = 5;
@@ -488,11 +475,11 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(asserts.equal(5));
       });
     });
-    
+
   });
-  
+
   describe('Job rating', () => {
-    
+
     it('should NOT set invalid job rating', () => {
       const ratings = [-1, 0, 11, 100500];
       const jobId = FINALIZED_JOB;
@@ -504,7 +491,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(tx => {
           assert.equal(tx.logs.length, 1)
           assert.equal(tx.logs[0].event, "ErrorCode")
-        }) 
+        })
         .then(() => ratingsLibrary.getJobRating(worker, jobId))
         .then(tx => {
           assert.equal(tx[1], 0);
@@ -513,7 +500,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         .then(() => helpers.assertExpectations(mock));
       })
     });
-    
+
     it("should NOT allow to rate a job if it's not at FINALIZED state", () => {
       const jobId = NOT_FINALIZED_JOB;
       const rating = 5;
@@ -523,7 +510,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       ))
       .then(code => assert.equal(code.toNumber(), ErrorsNamespace.RATING_AND_REPUTATION_CANNOT_SET_RATING))
     });
-    
+
     it("should NOT allow to rate a job if already rated", () => {
       const jobId = FINALIZED_JOB;
       const rating = 5;
@@ -536,7 +523,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       ))
       .then(code => assert.equal(code.toNumber(), ErrorsNamespace.RATING_AND_REPUTATION_RATING_IS_ALREADY_SET))
     });
-    
+
     it("should allow to rate a job after failed attempt", () => {
       const jobId = FINALIZED_JOB;
       const rating = 5;
@@ -550,7 +537,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       ))
       .then(code => assert.equal(code.toNumber(), ErrorsNamespace.OK))
     });
-    
+
     it("should NOT rate non-existent job", () => {
       const jobId = 3;
       const rating = 5;
@@ -560,7 +547,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       ))
       .then(code => assert.equal(code.toNumber(), ErrorsNamespace.RATING_AND_REPUTATION_CANNOT_SET_RATING))
     });
-    
+
     it('should NOT allow to rate a job with worker not by client', () => {
       const jobId = FINALIZED_JOB;
       const rating = 5;
@@ -570,7 +557,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       ))
       .then(code => assert.equal(code.toNumber(), ErrorsNamespace.RATING_AND_REPUTATION_CANNOT_SET_RATING))
     });
-    
+
     it('should NOT allow to rate a job with client not by worker', () => {
       const jobId = FINALIZED_JOB;
       const rating = 5;
@@ -580,7 +567,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       ))
       .then(code => assert.equal(code.toNumber(), ErrorsNamespace.RATING_AND_REPUTATION_CANNOT_SET_RATING))
     });
-    
+
     it('should allow to rate a job with worker by client', () => {
       const jobId = FINALIZED_JOB;
       const rating = 1;
@@ -590,7 +577,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       ))
       .then(code => assert.equal(code.toNumber(), ErrorsNamespace.OK))
     });
-    
+
     it('should allow to rate a job with client by worker', () => {
       const jobId = FINALIZED_JOB;
       const rating = 3;
@@ -600,7 +587,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       ))
       .then(code => assert.equal(code.toNumber(), ErrorsNamespace.OK))
     });
-    
+
     it('should set valid job rating, emitting "JobRatingGiven" event', () => {
       const rating = 2;
       const jobId = 1;
@@ -623,7 +610,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       })
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should allow to rate a canceled job', () => {
       const jobId = NOT_FINALIZED_JOB;
       const rating = 5;
@@ -634,7 +621,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       ))
       .then(code => assert.equal(code.toNumber(), ErrorsNamespace.OK))
     });
-    
+
     it('should store different job ratings', () => {
       const clientRating1 = 3;
       const clientRating2 = 4;
@@ -655,17 +642,17 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => jobId2 = tx.toNumber())
       .then(() => boardController.bindJobWithBoard(boardId, jobId2))
       .then(() => finishJob(jobId2, client2, worker2))
-      
+
       .then(() => boardController.bindUserWithBoard(boardId, client1))
       .then(() => boardController.bindUserWithBoard(boardId, client2))
       .then(() => boardController.bindUserWithBoard(boardId, worker1))
       .then(() => boardController.bindUserWithBoard(boardId, worker2))
-      
+
       .then(() => ratingsLibrary.setJobRating(worker1, workerRating1, jobId1, {from: client1}))
       .then(() => ratingsLibrary.setJobRating(worker2, workerRating2, jobId2, {from: client2}))
       .then(() => ratingsLibrary.setJobRating(client1, clientRating1, jobId1, {from: worker1}))
       .then(() => ratingsLibrary.setJobRating(client2, clientRating2, jobId2, {from: worker2}))
-      
+
       .then(() => ratingsLibrary.getJobRating(worker1, jobId1))
       .then(tx => {
         assert.equal(tx[1], workerRating1);
@@ -687,12 +674,12 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         assert.equal(tx[0], worker2);
       });
     });
-    
+
   });
-  
-  
+
+
   describe('Skill rating', () => {
-    
+
     it('should NOT allow to rate worker skills for non-existent job', () => {
       return Promise.resolve()
       .then(() => ratingsLibrary.rateWorkerSkills.call(
@@ -700,7 +687,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       ))
       .then(code => assert.equal(code.toNumber(), ErrorsNamespace.RATING_AND_REPUTATION_CANNOT_SET_RATING))
     });
-    
+
     it("should NOT allow to rate worker skills if a job is not at FINALIZED state", () => {
       const jobId = NOT_FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -731,7 +718,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT allow to rate worker skills not from job client', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -754,7 +741,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         }));
       }));
     });
-    
+
     it('should NOT allow to rate worker skills not for job worker', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -787,7 +774,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT allow to rate worker skills if a job was canceled on ACCEPTED state', () => {
       const jobId = NOT_FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -813,7 +800,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT allow to rate worker skills if a job was canceled on PENDING START state', () => {
       const jobId = NOT_FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -840,7 +827,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT allow to set skills if they are already set', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -865,7 +852,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       ))
       .then(code => assert.equal(code.toNumber(), ErrorsNamespace.RATING_AND_REPUTATION_CANNOT_SET_RATING))
     });
-    
+
     it('should allow to set skills after failed attempt', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -890,7 +877,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT rate worker skills with even flag job area', () => {
       const jobId = FINALIZED_JOB;
       const area = 2;
@@ -911,7 +898,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT rate worker skills with multi-flag job area', () => {
       const jobId = FINALIZED_JOB;
       const area = 3;
@@ -932,7 +919,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT rate worker skills with area that is unrelated to the given job', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(1);
@@ -953,7 +940,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT rate worker skills with even flag job category', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -974,7 +961,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT rate worker skills with multi-flag job category', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -995,7 +982,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT rate worker skills with category that is unrelated to the given job', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -1016,7 +1003,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT rate worker skills with multi-flag skill', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -1037,7 +1024,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT rate worker skills with skill that is not unrelated to the given job', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -1058,7 +1045,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT set skill ratings that are more than 10', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -1079,7 +1066,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should NOT set skill ratings that are less than 1', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -1100,8 +1087,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
-    
+
+
     it('should allow to rate worker skills with valid parameters on successfully finished job', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -1122,7 +1109,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should allow to rate worker skills on canceled job if it ended up with STARTED state', () => {
       const jobId = NOT_FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -1150,7 +1137,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should allow to rate worker skills on canceled job if it ended up with PENDING_FINISH state', () => {
       const jobId = NOT_FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -1179,7 +1166,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       }));
     });
-    
+
     it('should emit "SkillRatingGiven" event on rate worker skills with valid parameters', () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
@@ -1205,7 +1192,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         });
       });
     });
-    
+
     it('should store different skill ratings', () => {
       const area1 = helpers.getFlag(1);
       const category1 = helpers.getFlag(1);
@@ -1234,7 +1221,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId2, worker2, area2, category2, [skill2], [rating2], {from: client2}
       ))
-      
+
       .then(() => ratingsLibrary.getSkillRating(worker1, area1, category1, skill1, jobId1))
       .then(tx => {
         assert.equal(tx[0], client1);
@@ -1246,12 +1233,12 @@ contract('RatingsAndReputationLibrary', function(accounts) {
         assert.equal(tx[1], rating2);
       });
     });
-    
+
   });
-  
-  
+
+
   describe('Skill evaluation', () => {
-    
+
     it('should check auth on area evaluation', () => {
       const area = helpers.getFlag(4);
       const rating = 7;
@@ -1271,7 +1258,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.evaluateArea(user, rating, area, {from: evaluator}))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should check auth on category evaluation', () => {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(4);
@@ -1292,7 +1279,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.evaluateCategory(user, rating, area, category, {from: evaluator}))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should check auth on skill evaluation', () => {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(4);
@@ -1314,7 +1301,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.evaluateCategory(user, rating, area, category, {from: evaluator}))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should check auth on multiple evaluation', () => {
       const areas = helpers.getFlag(4);
       const categories = [helpers.getFlag(4)];
@@ -1339,7 +1326,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.evaluateMany(user, areas, categories, skills, ratings, {from: evaluator}))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should not set invalid worker area evaluation', () => {
       const area = helpers.getFlag(4);
       const rating = 823847;
@@ -1354,7 +1341,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should not set invalid worker category evaluation', () => {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(7);
@@ -1370,7 +1357,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should not set invalid worker skill evaluation', () => {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(7);
@@ -1387,7 +1374,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should not set worker area evaluation if worker doesn\'t have that area', () => {
       const area = helpers.getFlag(4);
       const rating = 3;
@@ -1402,7 +1389,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should not set worker category evaluation if worker doesn\'t have that category', () => {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(7);
@@ -1418,7 +1405,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should not set worker skill evaluation if worker doesn\'t have that skill', () => {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(7);
@@ -1435,8 +1422,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
     });
-    
-    
+
+
     it('should set valid worker area evaluation ', () => {
       const area = helpers.getFlag(3);
       const rating = 8;
@@ -1460,7 +1447,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), rating))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should set valid worker category evaluation ', () => {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(7);
@@ -1486,7 +1473,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), rating))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should set valid worker skill evaluation ', () => {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(7);
@@ -1514,8 +1501,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), rating))
       .then(() => helpers.assertExpectations(mock));
     });
-    
-    
+
+
     it('should store different area evaluations', () => {
       const area1 = helpers.getFlag(1);
       const area2 = helpers.getFlag(2);
@@ -1537,7 +1524,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), rating2))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should store different category evaluations', () => {
       const area1 = helpers.getFlag(1);
       const category1 = helpers.getFlag(1);
@@ -1561,7 +1548,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), rating2))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it('should store different skill evaluations', () => {
       const area1 = helpers.getFlag(1);
       const category1 = helpers.getFlag(1);
@@ -1587,8 +1574,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), rating2))
       .then(() => helpers.assertExpectations(mock));
     });
-    
-    
+
+
     it('should not have area evaluation set when category evaluation set', () => {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(7);
@@ -1604,7 +1591,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
     })
-    
+
     it('should not have category and area evaluation set when skill evaluation set', () => {
       const area = helpers.getFlag(4);
       const category = helpers.getFlag(7);
@@ -1623,8 +1610,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), 0))
       .then(() => helpers.assertExpectations(mock));
     })
-    
-    
+
+
     it('should set many evaluations', () => {
       const areas = helpers.getFlag(4).add(helpers.getEvenFlag(5)).add(helpers.getFlag(5));
       const categories = [helpers.getFlag(7).add(helpers.getEvenFlag(9)).add(helpers.getFlag(9)).add(helpers.getFlag(10)).add(helpers.getFlag(25))];
@@ -1650,7 +1637,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => assert.equal(tx.valueOf(), ratings[4]))
       .then(() => helpers.assertExpectations(mock));
     });
-    
+
     it("should not set many evaluations if doesn't have at least one of listed areas/categories/skills", () => {
       const areas = helpers.getFlag(4).add(helpers.getEvenFlag(5)).add(helpers.getFlag(5));
       const categories = [helpers.getFlag(7).add(helpers.getEvenFlag(9)).add(helpers.getFlag(9)).add(helpers.getFlag(10)).add(helpers.getFlag(25))];
@@ -1666,7 +1653,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => asserts.throws(ratingsLibrary.evaluateMany(worker, areas, categories, skills, ratings, {from: client})))
       .then(() => helpers.assertExpectations(mock));
     })
-    
+
   });
-  
+
 });
