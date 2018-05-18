@@ -3,7 +3,6 @@ const PaymentGateway = artifacts.require('./PaymentGateway.sol');
 const Roles2Library = artifacts.require('./Roles2Library.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const StorageManager = artifacts.require('./StorageManager.sol');
-const ERC20Library = artifacts.require('./ERC20Library.sol');
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 
 module.exports = deployer => {
@@ -31,6 +30,10 @@ module.exports = deployer => {
     })
     .then(() => {
         let sig = balanceHolder.contract.withdraw.getData(0,0,0).slice(0, 10);
+        return rolesLibrary.addRoleCapability(PaymentGatewayRole, BalanceHolder.address, sig);
+    })
+    .then(() => {
+        let sig = balanceHolder.contract.withdrawETH.getData(0,0).slice(0, 10);
         return rolesLibrary.addRoleCapability(PaymentGatewayRole, BalanceHolder.address, sig);
     })
     .then(() => rolesLibrary.addUserRole(PaymentGateway.address, PaymentGatewayRole))

@@ -1,7 +1,6 @@
 "use strict";
 const JobController = artifacts.require('./JobController.sol');
 
-const ERC20Library = artifacts.require('./ERC20Library.sol');
 const Roles2Library = artifacts.require('./Roles2Library.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
 const StorageManager = artifacts.require('./StorageManager.sol');
@@ -29,11 +28,11 @@ module.exports = deployer => {
     .then(() => PaymentProcessor.deployed())
     .then(_paymentProcessor => paymentProcessor = _paymentProcessor)
     .then(() => {
-        let sig = paymentProcessor.contract.lockPayment.getData(0, 0, 0, 0).slice(0, 10);
+        let sig = paymentProcessor.contract.lockPayment.getData(0, 0).slice(0, 10);
         return rolesLibrary.addRoleCapability(JobControllerRole, PaymentProcessor.address, sig)
     })
     .then(() => {
-        let sig = paymentProcessor.contract.releasePayment.getData(0, 0, 0, 0, 0, 0, 0).slice(0, 10);
+        let sig = paymentProcessor.contract.releasePayment.getData(0, 0, 0, 0, 0, 0).slice(0, 10);
         return rolesLibrary.addRoleCapability(JobControllerRole, PaymentProcessor.address, sig)
     })
     .then(() => rolesLibrary.addUserRole(JobController.address, JobControllerRole))
