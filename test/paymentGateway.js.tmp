@@ -1,7 +1,6 @@
 "use strict";
 
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
-const FakeCoin = artifacts.require('./FakeCoin.sol');
 const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
@@ -25,7 +24,6 @@ contract('PaymentGateway', function(accounts) {
   const PaymentProcessorRole = 34;
   let storage;
   let multiEventsHistory;
-  let fakeCoin;
   let paymentGateway;
   let balanceHolder;
   let paymentProcessor = accounts[5];
