@@ -63,7 +63,8 @@ contract('Integration tests (user stories)', (accounts) => {
         description: 'Board desription from the bottom of a heart',
         tags: 1,
         tagsArea: 1,
-        tagsCategory: 1
+        tagsCategory: 1,
+        ipfsHash: "ipfsHash"
     }
 
     var jobs = [
@@ -124,7 +125,7 @@ contract('Integration tests (user stories)', (accounts) => {
     }
 
     const setupBoard = async (_board) => {
-        const boardTx = await contracts.boardController.createBoard(board.name, board.description, board.tags, board.tagsArea, board.tagsCategory, { from: users.moderator })
+        const boardTx = await contracts.boardController.createBoard(board.name, board.description, board.tags, board.tagsArea, board.tagsCategory, board.ipfsHash, { from: users.moderator })
         const boardEmitter = contracts.boardController
         const createBoardEvent = (await eventsHelper.findEvent([boardEmitter], boardTx, 'BoardCreated'))[0]
         assert.isDefined(createBoardEvent)
@@ -188,7 +189,7 @@ contract('Integration tests (user stories)', (accounts) => {
         await contracts.rolesLibrary.setRootUser(users.root, true, { from: users.contractOwner })
         await contracts.rolesLibrary.setRootUser(users.default, false, { from: users.contractOwner })
 
-        const createBoardData = contracts.boardController.contract.createBoard.getData(0,0,0,0,0).slice(0,10)
+        const createBoardData = contracts.boardController.contract.createBoard.getData(0,0,0,0,0,0).slice(0,10)
         const closeBoardData = contracts.boardController.contract.closeBoard.getData(0).slice(0,10)
         await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.boardController.address, createBoardData, { from: users.contractOwner })
         await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.boardController.address, closeBoardData, { from: users.contractOwner })
@@ -229,7 +230,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("root user should have no role capabilities for `createBoard` method", async () => {
-                const createBoardData = contracts.boardController.contract.createBoard.getData(0,0,0,0,0).slice(0,10)
+                const createBoardData = contracts.boardController.contract.createBoard.getData(0,0,0,0,0,0).slice(0,10)
                 const roles = await contracts.rolesLibrary.getUserRoles.call(users.root)
                 const capabilities = await contracts.rolesLibrary.getCapabilityRoles.call(contracts.boardController.address, createBoardData)
 
@@ -237,11 +238,11 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("should be able to create a board with OK code", async () => {
-                assert.equal((await contracts.boardController.createBoard.call(board.name, board.description, board.tags, board.tagsArea, board.tagsCategory, { from: users.root, })).toNumber(), ErrorsScope.OK)
+                assert.equal((await contracts.boardController.createBoard.call(board.name, board.description, board.tags, board.tagsArea, board.tagsCategory, board.ipfsHash, { from: users.root, })).toNumber(), ErrorsScope.OK)
             })
 
             it("should be able to create a board", async () => {
-                const tx = await contracts.boardController.createBoard(board.name, board.description, board.tags, board.tagsArea, board.tagsCategory, { from: users.root, })
+                const tx = await contracts.boardController.createBoard(board.name, board.description, board.tags, board.tagsArea, board.tagsCategory, board.ipfsHash, { from: users.root, })
                 const createBoardEvent = (await eventsHelper.findEvent([contracts.boardController,], tx, 'BoardCreated'))[0]
                 assert.isDefined(createBoardEvent)
             })
@@ -251,7 +252,7 @@ contract('Integration tests (user stories)', (accounts) => {
             let boardId
 
             before(async () => {
-                const tx = await contracts.boardController.createBoard(board.name, board.description, board.tags, board.tagsArea, board.tagsCategory, { from: users.root, })
+                const tx = await contracts.boardController.createBoard(board.name, board.description, board.tags, board.tagsArea, board.tagsCategory, board.ipfsHash, { from: users.root, })
                 const createBoardEvent = (await eventsHelper.findEvent([contracts.boardController,], tx, 'BoardCreated'))[0]
                 boardId = createBoardEvent.args.boardId
             })
