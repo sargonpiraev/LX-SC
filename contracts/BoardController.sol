@@ -8,11 +8,11 @@ pragma solidity ^0.4.18;
 
 import './adapters/StorageAdapter.sol';
 import './adapters/MultiEventsHistoryAdapter.sol';
-import './adapters/Roles2LibraryAndERC20LibraryAdapter.sol';
+import './adapters/Roles2LibraryAdapter.sol';
 import './base/BitOps.sol';
 
 
-contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAndERC20LibraryAdapter, BitOps {
+contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter, BitOps {
 
     uint constant BOARD_CONTROLLER_SCOPE = 11000;
     uint constant BOARD_CONTROLLER_JOB_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 1;
@@ -39,6 +39,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         uint boardTags,
         uint boardTagsArea,
         uint boardTagsCategory,
+        bytes32 boardIpfsHash,
         bool status
     );
     event JobBinded(address indexed self, uint indexed boardId, uint jobId, bool status);
@@ -49,6 +50,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
 
     StorageInterface.UIntAddressMapping boardCreator;
     StorageInterface.UIntBytes32Mapping boardDescription;
+    StorageInterface.UIntBytes32Mapping boardIpfsHash;
     StorageInterface.UIntBytes32Mapping boardName;
 
     StorageInterface.UIntUIntMapping boardTagsArea;
@@ -96,11 +98,10 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     function BoardController(
         Storage _store,
         bytes32 _crate,
-        address _roles2Library,
-        address _erc20Library
+        address _roles2Library
     )
     StorageAdapter(_store, _crate)
-    Roles2LibraryAndERC20LibraryAdapter(_roles2Library, _erc20Library)
+    Roles2LibraryAdapter(_roles2Library)
     public
     {
         boardsCount.init('boardsCount');
@@ -117,6 +118,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         jobsBoard.init('jobsBoard');
         userBinding.init('userBinding');
         boardStatus.init('boardStatus');
+        boardIpfsHash.init("boardIpfsHash");
     }
 
     function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
@@ -144,6 +146,10 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
 
     function getJobsBoard(uint _jobId) public view returns (uint) {
         return store.get(jobsBoard, _jobId);
+    }
+
+    function getJobsIpfsHash(uint _jobId) public view returns (bytes32) {
+        return store.get(boardIpfsHash, _jobId);
     }
 
     /* function getBoards(uint _fromId, uint _maxLen, address _bindedUser)
@@ -180,7 +186,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     {
         ids = new uint[](_maxLen);
         names = new bytes32[](_maxLen);
-        descriptions = new bytes32[](_maxLen);
+        descriptions = new bytes32[](_maxLen * 2);
         tags = new uint[](_maxLen);
         tagsAreas = new uint[](_maxLen);
         tagsCategories = new uint[](_maxLen);
@@ -191,7 +197,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
             if (_bindedUser == address(0) || getUserStatus(_id, _bindedUser)) {
                 ids[idx] = _id;
                 names[idx] = store.get(boardName, _id);
-                descriptions[idx] = store.get(boardDescription, _id);
+                descriptions[idx * 2] = store.get(boardDescription, _id);
+                descriptions[idx * 2 + 1] = store.get(boardIpfsHash, _id);
                 tags[idx] = store.get(boardTags, _id);
                 tagsAreas[idx] = store.get(boardTagsArea, _id);
                 tagsCategories[idx] = store.get(boardTagsCategory, _id);
@@ -206,7 +213,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         bytes32 _boardDescription,
         uint _tags,
         uint _tagsArea,
-        uint _tagsCategory
+        uint _tagsCategory,
+        bytes32 _ipfsHash
     )
     auth
     singleOddFlag(_tagsArea)
@@ -224,7 +232,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         store.set(boardTags, boardId, _tags);
         store.set(boardStatus, boardId, true);
         store.set(boardDescription, boardId, _boardDescription);
-        _emitBoardCreated(boardId, _name, _boardDescription, msg.sender, _tags, _tagsArea, _tagsCategory, true);
+        store.set(boardIpfsHash, boardId, _ipfsHash);
+        _emitBoardCreated(boardId, _name, _boardDescription, msg.sender, _tags, _tagsArea, _tagsCategory, _ipfsHash, true);
         return OK;
     }
 
@@ -278,6 +287,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         uint _tags,
         uint _tagsArea,
         uint _tagsCategory,
+        bytes32 _ipfsHash,
         bool _boardStatus
     )
     internal
@@ -290,6 +300,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
             _tags,
             _tagsArea,
             _tagsCategory,
+            _ipfsHash,
             _boardStatus
         );
     }
@@ -302,6 +313,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         uint _tags,
         uint _tagsArea,
         uint _tagsCategory,
+        bytes32 _ipfsHash,
         bool _boardStatus
     )
     public
@@ -315,6 +327,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
             _tags,
             _tagsArea,
             _tagsCategory,
+            _ipfsHash,
             _boardStatus
         );
     }

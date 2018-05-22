@@ -7,7 +7,7 @@ pragma solidity ^0.4.18;
 
 
 import './adapters/MultiEventsHistoryAdapter.sol';
-import './adapters/Roles2LibraryAndERC20LibraryAdapter.sol';
+import './adapters/Roles2LibraryAdapter.sol';
 import './adapters/StorageAdapter.sol';
 import './base/BitOps.sol';
 
@@ -18,12 +18,12 @@ contract UserLibraryInterface {
 
 
 contract PaymentProcessorInterface {
-    function lockPayment(bytes32 _operationId, address _from, uint _value, address _contract) public returns (uint);
-    function releasePayment(bytes32 _operationId, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee, address _contract) public returns (uint);
+    function lockPayment(bytes32 _operationId, address _from) public payable returns (uint);
+    function releasePayment(bytes32 _operationId, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee) public returns (uint);
 }
 
 
-contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAndERC20LibraryAdapter, BitOps {
+contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter, BitOps {
 
     uint constant JOB_CONTROLLER_SCOPE = 13000;
     uint constant JOB_CONTROLLER_INVALID_ESTIMATE = JOB_CONTROLLER_SCOPE + 1;
@@ -66,7 +66,6 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     StorageInterface.UIntUIntMapping jobPausedAt;
     StorageInterface.UIntUIntMapping jobPausedFor;
 
-    StorageInterface.UIntAddressAddressMapping jobOfferERC20Contract; // Paid with.
     StorageInterface.UIntAddressUIntMapping jobOfferRate; // Per minute.
     StorageInterface.UIntAddressUIntMapping jobOfferEstimate; // In minutes.
     StorageInterface.UIntAddressUIntMapping jobOfferOntop; // Getting to the workplace, etc.
@@ -111,11 +110,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     function JobController(
         Storage _store,
         bytes32 _crate,
-        address _roles2Library,
-        address _erc20Library
+        address _roles2Library
     )
     StorageAdapter(_store, _crate)
-    Roles2LibraryAndERC20LibraryAdapter(_roles2Library, _erc20Library)
+    Roles2LibraryAdapter(_roles2Library)
     public
     {
         jobsCount.init('jobsCount');
@@ -135,7 +133,6 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         jobPausedAt.init('jobPausedAt');
         jobPausedFor.init('jobPausedFor');
 
-        jobOfferERC20Contract.init('jobOfferERC20Contract');
         jobOfferRate.init('jobOfferRate');
         jobOfferEstimate.init('jobOfferEstimate');
         jobOfferOntop.init('jobOfferOntop');
@@ -162,15 +159,21 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return OK;
     }
 
+    function calculateLock(address worker, uint _jobId, uint _time, uint _onTop) public view returns (uint) {
+        // Lock additional working hour + 10% of resulting amount
+        uint rate = store.get(jobOfferRate, _jobId, worker);
+        return ((rate * (_time) + _onTop) * 11) / 10;
+    }
+
     function calculateLockAmount(uint _jobId) public view returns (uint) {
         address worker = store.get(jobWorker, _jobId);
         // Lock additional working hour + 10% of resulting amount
-        return (
-                   (
-                       store.get(jobOfferRate, _jobId, worker) * (60 + store.get(jobOfferEstimate, _jobId, worker)) +
-                       store.get(jobOfferOntop, _jobId, worker)
-                   ) / 10
-               ) * 11;
+        return calculateLockAmountFor(worker, _jobId);
+    }
+
+    function calculateLockAmountFor(address worker, uint _jobId) public view returns (uint) {
+        uint onTop = store.get(jobOfferOntop, _jobId, worker);
+        return calculateLock(worker, _jobId, store.get(jobOfferEstimate, _jobId, worker) + 60, onTop);
     }
 
     function calculatePaycheck(uint _jobId) public view returns (uint) {
@@ -250,14 +253,12 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
 
     function postJobOffer(
         uint _jobId,
-        address _erc20Contract,
         uint _rate,
         uint _estimate,
         uint _ontop
     )
     onlyNotClient(_jobId)
     onlyJobState(_jobId, JobState.CREATED)
-    onlySupportedContract(_erc20Contract)
     public
     returns (uint)
     {
@@ -269,7 +270,6 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             return _emitErrorCode(JOB_CONTROLLER_INVALID_SKILLS);
         }
 
-        store.set(jobOfferERC20Contract, _jobId, msg.sender, _erc20Contract);
         store.set(jobOfferRate, _jobId, msg.sender, _rate);
         store.set(jobOfferEstimate, _jobId, msg.sender, _estimate);
         store.set(jobOfferOntop, _jobId, msg.sender, _ontop);
@@ -309,6 +309,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     onlyClient(_jobId)
     onlyJobState(_jobId, JobState.CREATED)
     external
+    payable
     returns (uint _resultCode)
     {
         if (store.get(jobOfferRate, _jobId, _worker) == 0) {
@@ -318,12 +319,9 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         // Maybe incentivize by locking some money from worker?
         store.set(jobWorker, _jobId, _worker);
 
-        _resultCode = paymentProcessor.lockPayment(
-            bytes32(_jobId),
-            msg.sender,
-            calculateLockAmount(_jobId),
-            store.get(jobOfferERC20Contract, _jobId, _worker)
-        );
+        require(msg.value == calculateLockAmount(_jobId));
+
+        _resultCode = paymentProcessor.lockPayment.value(msg.value)(bytes32(_jobId), msg.sender);
         if (_resultCode != OK) {
             revert();
         }
@@ -412,6 +410,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     onlyClient(_jobId)
     onlyJobState(_jobId, JobState.STARTED)
     external
+    payable
     returns (uint)
     {
         require(_additionalTime != 0);
@@ -423,7 +422,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return OK;
     }
 
-    function _setNewEstimate(uint _jobId, uint16 _additionalTime) internal returns (bool) {
+    function _setNewEstimate(uint _jobId, uint16 _additionalTime)
+    internal
+    returns (bool)
+    {
         uint jobPaymentLocked = calculateLockAmount(_jobId);
         store.set(
             jobOfferEstimate,
@@ -431,12 +433,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             store.get(jobWorker, _jobId),
             store.get(jobOfferEstimate, _jobId, store.get(jobWorker, _jobId)) + _additionalTime
         );
-        return OK == paymentProcessor.lockPayment(
-            bytes32(_jobId),
-            msg.sender,
-            calculateLockAmount(_jobId) - jobPaymentLocked,
-            store.get(jobOfferERC20Contract, _jobId, store.get(jobWorker, _jobId))
-        );
+
+        require(calculateLockAmount(_jobId) - jobPaymentLocked == msg.value);
+
+        return OK == paymentProcessor.lockPayment.value(msg.value)(bytes32(_jobId), msg.sender);
     }
 
     function endWork(
@@ -493,8 +493,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             payCheck,
             store.get(jobClient, _jobId),
             payCheck,
-            0,
-            store.get(jobOfferERC20Contract, _jobId, worker)
+            0
         );
         if (_resultCode != OK) {
             return _emitErrorCode(_resultCode);
@@ -523,8 +522,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             payCheck,
             store.get(jobClient, _jobId),
             payCheck,
-            0,
-            store.get(jobOfferERC20Contract, _jobId, worker)
+            0
         );
         if (_resultCode != OK) {
             return _emitErrorCode(_resultCode);
