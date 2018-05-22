@@ -351,7 +351,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         uint _offersCount = store.count(jobOffers, bytes32(_jobId));
         for (uint _offerIdx = 0; _offerIdx < _offersCount; ++_offerIdx) {
             address _offer = store.get(jobOffers, bytes32(_jobId), _offerIdx);
-            if (_offer == _acceptedOffer) {
+            if (_offer != _acceptedOffer) {
                 store.remove(workerJobs, bytes32(_offer), _jobId);
             }
         }
