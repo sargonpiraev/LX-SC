@@ -101,7 +101,7 @@ contract('BoardController', function(accounts) {
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
     .then(() => jobController.setUserLibrary(mock.address))
-    .then(() => createBoard = boardController.contract.createBoard.getData(0,0,0,0,0,0).slice(0,10))
+    .then(() => createBoard = boardController.contract.createBoard.getData(0,0,0,0).slice(0,10))
     .then(() => closeBoard = boardController.contract.closeBoard.getData(0).slice(0,10))
     .then(() => roles2Library.setRootUser(root, true))
     .then(() => roles2Library.addRoleCapability(role, boardController.address, createBoard))
@@ -114,14 +114,14 @@ contract('BoardController', function(accounts) {
   describe('Board creating', () => {
     it('should allow to create a board by moderator', () => {
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.getBoardsCount())
         .then(asserts.equal(1));
     });
 
     it('should allow to create a board by root', () => {
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: root}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: root}))
         .then(() => boardController.getBoardsCount())
         .then(asserts.equal(1));
     });
@@ -129,30 +129,30 @@ contract('BoardController', function(accounts) {
     it('should allow to create a board several times by different moderators', () => {
       return Promise.resolve()
         .then(() => roles2Library.addUserRole(moderator2, role, {from: root}))
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
-        .then(() => boardController.createBoard('Name2', boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator2}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator2}))
         .then(() => boardController.getBoardsCount())
         .then(asserts.equal(2));
     });
 
     it('should allow to create a board several times by root and moderator', () => {
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
-        .then(() => boardController.createBoard('Name2', boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: root}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: root}))
         .then(() => boardController.getBoardsCount())
         .then(asserts.equal(2));
     });
 
     it.skip('should NOT allow to create a board by strangers', () => {
       return Promise.resolve()
-        .then(() => boardController.createBoard.call(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: stranger}))
+        .then(() => boardController.createBoard.call(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: stranger}))
         .then(asserts.equal(0));
     });
 
     it.skip('should NOT allow to create a board with negative tags', () => {
       const negativeTags = -1;
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, negativeTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(negativeTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.getBoardsCount())
         .then(asserts.equal(0));
     });
@@ -160,7 +160,7 @@ contract('BoardController', function(accounts) {
     it('should NOT allow to create a board with negative area', () => {
       const negativeArea = -1;
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, negativeArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, negativeArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.getBoardsCount())
         .then(asserts.equal(0));
     });
@@ -168,7 +168,7 @@ contract('BoardController', function(accounts) {
     it('should NOT allow to create a board with negative category', () => {
       const negativeCategory = -1;
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, negativeCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, negativeCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.getBoardsCount())
         .then(asserts.equal(0));
     });
@@ -176,7 +176,7 @@ contract('BoardController', function(accounts) {
     it('should NOT allow to create a board without tags', () => {
       const zeroTag = 0;
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, zeroTag, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(zeroTag, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.getBoardsCount())
         .then(asserts.equal(0));
     });
@@ -184,15 +184,15 @@ contract('BoardController', function(accounts) {
     it('should allow to create a board after failed trying', () => {
       const zeroTag = 0;
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, zeroTag, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(zeroTag, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.getBoardsCount())
         .then(asserts.equal(1));
     });
 
     it('should emit "BoardCreated" event', () => {
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(tx => eventsHelper.extractEvents(tx, "BoardCreated"))
         .then(events => {
             assert.equal(events.length, 1);
@@ -216,7 +216,7 @@ contract('BoardController', function(accounts) {
 
     it('should allow to bind job on board', () => {
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
         .then(() => boardController.bindJobWithBoard(boardId, jobId))
         .then(() => boardController.getJobStatus(boardId, jobId))
@@ -225,7 +225,7 @@ contract('BoardController', function(accounts) {
 
     it('should NOT allow to bind job on closed board', () => {
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
         .then(() => boardController.closeBoard(boardId, {from: moderator}))
         .then(() => boardController.bindJobWithBoard.call(boardId, jobId))
@@ -235,8 +235,8 @@ contract('BoardController', function(accounts) {
     it('should NOT allow to bind binded job on other board', () => {
       const boardId2 = 2;
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
-        .then(() => boardController.createBoard('Name2', boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
         .then(() => boardController.bindJobWithBoard(boardId, jobId))
         .then(() => boardController.bindJobWithBoard.call(boardId2, jobId))
@@ -245,7 +245,7 @@ contract('BoardController', function(accounts) {
 
     it('should NOT allow to bind binded job on same board twice', () => {
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
         .then(() => boardController.bindJobWithBoard(boardId, jobId))
         .then(() => boardController.bindJobWithBoard.call(boardId, jobId))
@@ -254,7 +254,7 @@ contract('BoardController', function(accounts) {
 
     it('should emit "Job Binded" event', () => {
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDetails, {from: client}))
         .then(() => boardController.bindJobWithBoard(boardId, jobId))
         .then(tx => {
@@ -268,14 +268,13 @@ contract('BoardController', function(accounts) {
           assert.equal(log.status, true);
         })
     });
-
   });
 
   describe('User binding', () => {
 
     it('should allow to bind user on board', () => {
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.bindUserWithBoard(boardId, client))
         .then(() => boardController.getUserStatus(boardId, client))
         .then(asserts.equal(true));
@@ -284,8 +283,8 @@ contract('BoardController', function(accounts) {
     it('should allow to bind user not only on one board', () => {
       const boardId2 = 2;
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
-        .then(() => boardController.createBoard('Name2', boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.bindUserWithBoard(boardId, client))
         .then(() => boardController.bindUserWithBoard(boardId2, client))
         .then(() => boardController.getUserStatus(boardId, client))
@@ -296,7 +295,7 @@ contract('BoardController', function(accounts) {
 
     it('should NOT allow to bind user on closed board', () => {
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.closeBoard(boardId, {from: moderator}))
         .then(() => boardController.bindUserWithBoard.call(boardId, client))
         .then((code) => assert.equal(code, ErrorsNamespace.BOARD_CONTROLLER_BOARD_IS_CLOSED))
@@ -304,7 +303,7 @@ contract('BoardController', function(accounts) {
 
     it('should NOT allow to bind binded user on same board twice', () => {
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.bindUserWithBoard(boardId, client))
         .then(() => boardController.bindUserWithBoard.call(boardId, client))
         .then((code) => assert.equal(code, ErrorsNamespace.BOARD_CONTROLLER_USER_IS_ALREADY_BINDED))
@@ -312,7 +311,7 @@ contract('BoardController', function(accounts) {
 
     it('should emit "User Binded" event', () => {
       return Promise.resolve()
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.bindUserWithBoard(boardId, client))
         .then(tx => {
           assert.equal(tx.logs.length, 1);
@@ -333,7 +332,7 @@ contract('BoardController', function(accounts) {
     it('should allow to close board', () => {
       return Promise.resolve()
         .then(() => roles2Library.setRootUser(root, true))
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.closeBoard(boardId, {from: root}))
         .then(() => boardController.getBoardStatus(boardId))
         .then(asserts.equal(false));
@@ -342,7 +341,7 @@ contract('BoardController', function(accounts) {
     it.skip('should NOT allow to close board not by root', () => {
       return Promise.resolve()
         .then(() => roles2Library.setRootUser(root, true))
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.closeBoard(boardId, {from: moderator}))
         .then(() => boardController.getBoardStatus.call(boardId))
         .then(asserts.equal(true));
@@ -351,7 +350,7 @@ contract('BoardController', function(accounts) {
     it('should NOT allow to close board twice', () => {
       return Promise.resolve()
         .then(() => roles2Library.setRootUser(root, true))
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.closeBoard(boardId, {from: root}))
         .then(() => boardController.closeBoard.call(boardId, {from: root}))
         .then((code) => assert.equal(code, ErrorsNamespace.BOARD_CONTROLLER_BOARD_IS_CLOSED))
@@ -360,7 +359,7 @@ contract('BoardController', function(accounts) {
     it('should emit "Boaed Closed" event', () => {
       return Promise.resolve()
         .then(() => roles2Library.setRootUser(root, true))
-        .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
         .then(() => boardController.closeBoard(boardId, {from: root}))
         .then(tx => eventsHelper.extractEvents(tx, "BoardClosed"))
         .then(events => {
@@ -377,5 +376,81 @@ contract('BoardController', function(accounts) {
     });
 
   });
+
+  describe("board filters", () => {
+
+    context("get all boards", () => {
+      it("should return no boards before their creation", async () => {
+        assert.equal((await boardController.getBoardsCount.call()).toNumber(), 0)
+
+        const emptyBoardsList = await boardController.getBoards(boardTags, boardTagsArea, boardTagsCategory, 1, 10)
+        assert.lengthOf(emptyBoardsList.removeZeros(), 0)
+      })
+
+      const otherBoardTag = 5;
+
+      it("should return created boards only if filter conditions are fulfilled", async () => {
+        await roles2Library.setRootUser(root, true)
+        
+        await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, })
+
+        assert.lengthOf((await boardController.getBoards.call(boardTags, boardTagsArea, boardTagsCategory, 1, 10)).removeZeros(), 1)
+        assert.lengthOf((await boardController.getBoards.call(0, boardTagsArea, boardTagsCategory, 1, 10)).removeZeros(), 0)
+
+        await boardController.createBoard(otherBoardTag, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, })
+
+        assert.lengthOf((await boardController.getBoards.call(boardTags, boardTagsArea, boardTagsCategory, 1, 10)).removeZeros(), 2)
+      
+        const filteredBoardTag = 4
+        const otherBoardsList = (await boardController.getBoards.call(filteredBoardTag, boardTagsArea, boardTagsCategory, 1, 10)).removeZeros()        
+        assert.lengthOf(otherBoardsList, 1)
+      })
+    })
+
+    context("get only bound users's boards", () => {
+
+      it("should allow to get users's boards", async () => {
+        await roles2Library.setRootUser(root, true)
+        
+        await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, })
+        await boardController.bindUserWithBoard(1, moderator)
+
+        assert.lengthOf((await boardController.getBoardsForUser.call(moderator, boardTags, boardTagsArea, boardTagsCategory)).removeZeros(), 1)
+        assert.lengthOf((await boardController.getBoardsForUser.call(root, boardTags, boardTagsArea, boardTagsCategory)).removeZeros(), 0)      
+      })
+      
+      it("should allow to get boards for different clients", async () => {
+        await roles2Library.setRootUser(root, true)
+        
+        await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, })
+        await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, })
+
+        assert.equal((await boardController.getBoardsCount.call()).toNumber(), 2)
+
+        await boardController.bindUserWithBoard(1, moderator)
+        await boardController.bindUserWithBoard(1, client)
+  
+        assert.lengthOf((await boardController.getBoardsForUser.call(moderator, boardTags, boardTagsArea, boardTagsCategory)).removeZeros(), 1)
+        assert.lengthOf((await boardController.getBoardsForUser.call(client, boardTags, boardTagsArea, boardTagsCategory)).removeZeros(), 1)
+      })
+
+      it("should allow to get board details by id", async () => {
+        const otherBoardTags = 7
+        const otherBoardName = "Second board"
+        await roles2Library.setRootUser(root, true)
+
+        await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, })
+        await boardController.createBoard(otherBoardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash2", { from: moderator, })
+
+        const [ ids,, ipfsHashes, tags, ] = await boardController.getBoardsByIds.call([ 1,2, ])
+        assert.lengthOf(ids, 2)
+        assert.lengthOf(ipfsHashes, 2)
+        assert.equal(ids[0], 1)
+        assert.equal(ids[1], 2)
+        assert.equal(tags[0], boardTags)
+        assert.equal(tags[1], otherBoardTags)
+      })
+    })
+  })
 
 });

@@ -23,7 +23,7 @@ web3.eth.getBalance("0x002abe91a1a77ea4c2529f9a3498dae735adac33", (e,b) => conso
 Roles2Library.deployed().then(r => r.setRootUser("0x00bd07e19ff6257156ce71368c315e61f900142d", true));
 
 const ModeratorRole = 10;
-BoardController.deployed().then(b => console.log(b.contract.createBoard.getData(0,0,0,0,0).slice(0,10)))
+BoardController.deployed().then(b => console.log(b.contract.createBoard.getData(0,0,0,0).slice(0,10)))
 BoardController.deployed().then(b => console.log(b.contract.closeBoard.getData(0).slice(0,10)))
 
 Roles2Library.deployed().then(r => r.addRoleCapability(ModeratorRole, BoardController.address, "0x210c1f29"));
@@ -45,8 +45,10 @@ Roles2Library.deployed().then(r => r.addUserRole("0x005bd4cb3cb08f92a3f34fc5a970
 
 ## Moderator (0x005bd4cb3cb08f92a3f34fc5a970f133405188af)
 
-BoardController.deployed().then(b => b.createBoard("Developers", "Developers Board Description", 1, 1, 1))
-BoardController.deployed().then(b => b.createBoard("Tech Writers", "Tech Writers Board Description", 1, 1, 1))
+// "Developers", "Developers Board Description"
+BoardController.deployed().then(b => b.createBoard(1, 1, 1))
+// "Tech Writers", "Tech Writers Board Description"
+BoardController.deployed().then(b => b.createBoard(1, 1, 1))
 
 BoardController.deployed().then(b => b.bindJobWithBoard(1, 5))
 BoardController.deployed().then(b => b.bindJobWithBoard(1, 6))
