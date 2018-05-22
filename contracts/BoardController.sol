@@ -10,6 +10,7 @@ import './adapters/StorageAdapter.sol';
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './adapters/Roles2LibraryAdapter.sol';
 import './base/BitOps.sol';
+import "./JobController.sol";
 
 
 contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter, BitOps {
@@ -19,22 +20,9 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     uint constant BOARD_CONTROLLER_USER_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 2;
     uint constant BOARD_CONTROLLER_BOARD_IS_CLOSED = BOARD_CONTROLLER_SCOPE + 3;
 
-    /* struct Board {
-        uint boardId;
-        bytes32 name;
-        bytes32 boardDescription;
-        address creator;
-        uint boardTags;
-        uint boardTagsArea;
-        uint boardTagsCategory;
-        bool status;
-    } */
-
     event BoardCreated(
         address indexed self,
         uint indexed boardId,
-        bytes32 name,
-        bytes32 boardDescription,
         address creator,
         uint boardTags,
         uint boardTagsArea,
@@ -46,21 +34,24 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     event UserBinded(address indexed self, uint indexed boardId, address user, bool status);
     event BoardClosed(address indexed self, uint indexed boardId, bool status);
 
+    /// @dev JobController address. Read-only!
+    StorageInterface.Address jobController;
     StorageInterface.UInt boardsCount;
 
     StorageInterface.UIntAddressMapping boardCreator;
-    StorageInterface.UIntBytes32Mapping boardDescription;
     StorageInterface.UIntBytes32Mapping boardIpfsHash;
-    StorageInterface.UIntBytes32Mapping boardName;
 
     StorageInterface.UIntUIntMapping boardTagsArea;
     StorageInterface.UIntUIntMapping boardTagsCategory;
     StorageInterface.UIntUIntMapping boardTags;
 
     StorageInterface.UIntBoolMapping boardStatus;
-    StorageInterface.UIntUIntBoolMapping jobBinding;
     StorageInterface.UIntUIntMapping jobsBoard;
-    StorageInterface.UintAddressBoolMapping userBinding;
+    
+    /// @dev mapping(user address => set(board ids))
+    StorageInterface.UIntSetMapping userBoards;
+    /// @dev mapping(board id => set(job ids))
+    StorageInterface.UIntSetMapping boundJobsInBoard;
 
     modifier notBindedJobYet(uint _boardId, uint _jobId) {
         if (store.get(jobsBoard, _jobId) != 0) {
@@ -74,7 +65,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     }
 
     modifier notBindedUserYet(uint _boardId, address _user) {
-        if (store.get(userBinding, _boardId, _user) == true) {
+        if (getUserStatus(_boardId, _user) == true) {
             uint _resultCode = _emitErrorCode(BOARD_CONTROLLER_USER_IS_ALREADY_BINDED);
             assembly {
                 mstore(0, _resultCode)
@@ -104,21 +95,26 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     Roles2LibraryAdapter(_roles2Library)
     public
     {
-        boardsCount.init('boardsCount');
+        boardsCount.init("boardsCount");
 
-        boardDescription.init('boardDescription');
-        boardCreator.init('boardCreator');
-        boardName.init('boardName');
+        boardCreator.init("boardCreator");
 
-        boardTagsArea.init('boardTagsArea');
-        boardTagsCategory.init('boardTagsCategory');
-        boardTags.init('boardTags');
+        boardTagsArea.init("boardTagsArea");
+        boardTagsCategory.init("boardTagsCategory");
+        boardTags.init("boardTags");
 
-        jobBinding.init('jobBinding');
-        jobsBoard.init('jobsBoard');
-        userBinding.init('userBinding');
-        boardStatus.init('boardStatus');
+        jobsBoard.init("jobsBoard");
+        boardStatus.init("boardStatus");
+
         boardIpfsHash.init("boardIpfsHash");
+        
+        userBoards.init("userBoards");
+        boundJobsInBoard.init("boundJobsInBoard");
+    }
+
+    function setJobController(address _jobController) auth external returns (uint) {
+        store.set(jobController, _jobController);
+        return OK;
     }
 
     function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
@@ -137,80 +133,147 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     }
 
     function getJobStatus(uint _boardId, uint _jobId) public view returns (bool) {
-        return store.get(jobBinding, _boardId, _jobId);
+        return store.includes(boundJobsInBoard, bytes32(_boardId), _jobId);
     }
 
     function getUserStatus(uint _boardId, address _user) public view returns (bool) {
-        return store.get(userBinding, _boardId, _user);
+        return store.includes(userBoards, bytes32(_user), _boardId);
     }
 
     function getJobsBoard(uint _jobId) public view returns (uint) {
         return store.get(jobsBoard, _jobId);
     }
 
-    function getJobsIpfsHash(uint _jobId) public view returns (bytes32) {
+    function getBoardIpfsHash(uint _jobId) public view returns (bytes32) {
         return store.get(boardIpfsHash, _jobId);
     }
 
-    /* function getBoards(uint _fromId, uint _maxLen, address _bindedUser)
+    function getBoardsByIds(uint[] _ids)
     public
-    view
-    returns (Board[] boards)
+    view 
+    returns (
+        uint[] _gotIds,
+        address[] _creators,
+        bytes32[] _ipfs,
+        uint[] _tags,
+        uint[] _tagsAreas,
+        uint[] _tagsCategories,
+        bool[] _status
+    ) {
+        _gotIds = _ids;
+        _creators = new address[](_ids.length);
+        _ipfs = new bytes32[](_ids.length);
+        _tags = new uint[](_ids.length);
+        _tagsAreas = new uint[](_ids.length);
+        _tagsCategories = new uint[](_ids.length);
+        _status = new bool[](_ids.length);
+
+        for (uint _idIdx = 0; _idIdx < _ids.length; ++_idIdx) {
+            uint _id = _ids[_idIdx];
+            _creators[_idIdx] = store.get(boardCreator, _id);
+            _ipfs[_idIdx] = store.get(boardIpfsHash, _id);
+            _tags[_idIdx] = store.get(boardTags, _id);
+            _tagsAreas[_idIdx] = store.get(boardTagsArea, _id);
+            _tagsCategories[_idIdx] = store.get(boardTagsCategory, _id);
+            _status[_idIdx] = getBoardStatus(_id);
+        }
+    }
+
+    /// @notice Gets filtered list of boards' ids in paginated way across all created boards
+    function getBoards(
+        uint _tags, 
+        uint _tagsArea, 
+        uint _tagsCategory, 
+        uint _fromId, 
+        uint _maxLen
+    ) 
+    public 
+    view 
+    returns (uint[] _ids) 
     {
-        boards = new Board[](_maxLen);
-        for (uint _idx = _fromId; _idx < _fromId + _maxLen; ++_idx) {
-            if (_bindedUser == address(0) || getUserStatus(_idx, _bindedUser)) {
-                uint boardId = _idx;
-                boards[_idx] = Board(boardId,
-                                     store.get(boardName, boardId),
-                                     store.get(boardDescription, boardId),
-                                     store.get(boardCreator, boardId),
-                                     store.get(boardTags, boardId),
-                                     store.get(boardTagsArea, boardId),
-                                     store.get(boardTagsCategory, boardId),
-                                     getBoardStatus(boardId));
+        _ids = new uint[](_maxLen);
+        uint _pointer = 0;
+        for (uint _id = _fromId; _id < _fromId + _maxLen; ++_id) {
+            if (_filterBoard(_id, _tags, _tagsArea, _tagsCategory)) {
+                _ids[_pointer] = _id;
+                _pointer += 1;
             }
         }
-    } */
+    }
 
-    function getBoards(uint _fromId, uint _maxLen, address _bindedUser)
+    /// @notice Gets filtered boards for bound user 
+    /// where boards have provided properties (tags, 
+    /// tags area, tags category)
+    function getBoardsForUser(
+        address _user, 
+        uint _tags, 
+        uint _tagsArea, 
+        uint _tagsCategory
+    )  
+    public 
+    view 
+    returns (uint[] _ids) 
+    {
+        uint _count = store.count(userBoards, bytes32(_user));
+        _ids = new uint[](_count);
+        uint _pointer = 0;
+        for (uint _boardIdx = 0; _boardIdx <= _count; ++_boardIdx) {
+            uint _boardId = store.get(userBoards, bytes32(_user), _boardIdx);
+            if (_filterBoard(_boardId, _tags, _tagsArea, _tagsCategory)) {
+                _ids[_pointer] = _boardId;
+                _pointer += 1;
+            }
+        }
+    }
+
+    function _filterBoard(
+        uint _boardId,
+        uint _tags, 
+        uint _tagsArea, 
+        uint _tagsCategory 
+    ) 
+    private 
+    view 
+    returns (bool) 
+    {
+        return _hasFlag(store.get(boardTags, _boardId), _tags) &&
+            _hasFlag(store.get(boardTagsArea, _boardId), _tagsArea) &&
+            _hasFlag(store.get(boardTagsCategory, _boardId), _tagsCategory);   
+    }
+    
+    function getJobsInBoardCount(uint _boardId) public view returns (uint) {
+        return store.count(boundJobsInBoard, bytes32(_boardId));
+    }
+
+    /// @notice Gets jobs ids that a binded with a provided board
+    /// in a paginated way
+    function getJobsInBoard(
+        uint _boardId, 
+        uint _jobState, 
+        uint _fromIdx, 
+        uint _maxLen
+    )
     public
     view
-    returns (uint[] ids,
-        bytes32[] names,
-        bytes32[] descriptions,
-        uint[] tags,
-        uint[] tagsAreas,
-        uint[] tagsCategories,
-        bool[] status)
-    {
-        ids = new uint[](_maxLen);
-        names = new bytes32[](_maxLen);
-        descriptions = new bytes32[](_maxLen * 2);
-        tags = new uint[](_maxLen);
-        tagsAreas = new uint[](_maxLen);
-        tagsCategories = new uint[](_maxLen);
-        status = new bool[](_maxLen);
-
-        uint idx = 0;
-        for (uint _id = _fromId; _id < _fromId + _maxLen; ++_id) {
-            if (_bindedUser == address(0) || getUserStatus(_id, _bindedUser)) {
-                ids[idx] = _id;
-                names[idx] = store.get(boardName, _id);
-                descriptions[idx * 2] = store.get(boardDescription, _id);
-                descriptions[idx * 2 + 1] = store.get(boardIpfsHash, _id);
-                tags[idx] = store.get(boardTags, _id);
-                tagsAreas[idx] = store.get(boardTagsArea, _id);
-                tagsCategories[idx] = store.get(boardTagsCategory, _id);
-                status[idx] = getBoardStatus(_id);
-                idx++;
+    returns (uint[] _ids) {
+        uint _count = store.count(boundJobsInBoard, bytes32(_boardId));
+        require(_fromIdx < _count);
+        _maxLen = (_fromIdx + _maxLen < _count) ? _maxLen : (_count - _fromIdx);
+        JobController _jobController = JobController(store.get(jobController));
+        _ids = new uint[](_maxLen);
+        uint _pointer = 0;
+        for (uint _jobIdx = _fromIdx; _jobIdx <= _fromIdx + _maxLen; ++_jobIdx) {
+            uint _jobId = store.get(boundJobsInBoard, bytes32(_boardId), _jobIdx);
+            if (address(_jobController) == 0x0 || 
+                _jobController.getJobState(_jobId) == _jobState
+            ) {
+                _ids[_pointer] = _jobId;
+                _pointer += 1;
             }
         }
     }
 
     function createBoard(
-        bytes32 _name,
-        bytes32 _boardDescription,
         uint _tags,
         uint _tagsArea,
         uint _tagsCategory,
@@ -225,15 +288,13 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     {
         uint boardId = store.get(boardsCount) + 1;
         store.set(boardsCount, boardId);
-        store.set(boardName, boardId, _name);
         store.set(boardCreator, boardId, msg.sender);
         store.set(boardTagsArea, boardId, _tagsArea);
         store.set(boardTagsCategory, boardId, _tagsCategory);
         store.set(boardTags, boardId, _tags);
         store.set(boardStatus, boardId, true);
-        store.set(boardDescription, boardId, _boardDescription);
         store.set(boardIpfsHash, boardId, _ipfsHash);
-        _emitBoardCreated(boardId, _name, _boardDescription, msg.sender, _tags, _tagsArea, _tagsCategory, _ipfsHash, true);
+        _emitBoardCreated(boardId, msg.sender, _tags, _tagsArea, _tagsCategory, _ipfsHash, true);
         return OK;
     }
 
@@ -247,7 +308,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     returns (uint)
     {
         store.set(jobsBoard, _jobId, _boardId);
-        store.set(jobBinding, _boardId, _jobId, true);
+        store.add(boundJobsInBoard, bytes32(_boardId), _jobId);
         _emitJobBinded(_boardId, _jobId, true);
         return OK;
     }
@@ -261,8 +322,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     public
     returns (uint)
     {
-        store.set(userBinding, _boardId, _user, true);
-        _emitUserBinded( _boardId, _user, true);
+        store.add(userBoards, bytes32(_user), _boardId);
+        _emitUserBinded(_boardId, _user, true);
         return OK;
     }
 
@@ -275,14 +336,12 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     returns (uint)
     {
         store.set(boardStatus, _boardId, false);
-        _emitBoardClosed( _boardId, false);
+        _emitBoardClosed(_boardId, false);
         return OK;
     }
 
     function _emitBoardCreated(
         uint _boardId,
-        bytes32 _name,
-        bytes32 _boardDescription,
         address _creator,
         uint _tags,
         uint _tagsArea,
@@ -294,8 +353,6 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     {
         BoardController(getEventsHistory()).emitBoardCreated(
             _boardId,
-            _name,
-            _boardDescription,
             _creator,
             _tags,
             _tagsArea,
@@ -307,8 +364,6 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
 
     function emitBoardCreated(
         uint _boardId,
-        bytes32 _name,
-        bytes32 _boardDescription,
         address _creator,
         uint _tags,
         uint _tagsArea,
@@ -321,8 +376,6 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         BoardCreated(
             _self(),
             _boardId,
-            _name,
-            _boardDescription,
             _creator,
             _tags,
             _tagsArea,

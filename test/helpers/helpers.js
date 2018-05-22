@@ -6,6 +6,18 @@ const roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at(
 const asserts = Asserts(assert);
 const eventsHelper = require('./eventsHelper');
 
+Array.prototype.unique = function() {
+  return this.filter(function (value, index, self) {
+      return self.indexOf(value) === index;
+  });
+}
+
+Array.prototype.removeZeros = function() {
+  return this.filter(function (value, index, self) {
+      return value != 0x0 && value != 0 && value.valueOf() != '0'
+  });
+}
+
 
 module.exports = {
   getSig: (callData) => web3.sha3(callData).slice(0, 10),

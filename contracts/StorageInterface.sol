@@ -5,7 +5,9 @@
 
 pragma solidity ^0.4.11;
 
-import './Storage.sol';
+
+import "./Storage.sol";
+
 
 library StorageInterface {
 
@@ -166,6 +168,8 @@ library StorageInterface {
         Mapping innerMapping;
     }
 
+    bytes32 constant SET_IDENTIFIER = "set";
+
     struct Set {
         UInt count;
         Mapping indexes;
@@ -174,6 +178,18 @@ library StorageInterface {
 
     struct AddressesSet {
         Set innerSet;
+    }
+
+    struct Bytes32SetMapping {
+        Set innerMapping;
+    }
+
+    struct AddressesSetMapping {
+        Bytes32SetMapping innerMapping;
+    }
+
+    struct UIntSetMapping {
+        Bytes32SetMapping innerMapping;
     }
 
     // Can't use modifier due to a Solidity bug.
@@ -346,9 +362,9 @@ library StorageInterface {
     }
 
     function init(Set storage self, bytes32 _id) internal {
-        init(self.count, keccak256(_id, 'count'));
-        init(self.indexes, keccak256(_id, 'indexes'));
-        init(self.values, keccak256(_id, 'values'));
+        init(self.count, keccak256(_id, "count"));
+        init(self.indexes, keccak256(_id, "indexes"));
+        init(self.values, keccak256(_id, "values"));
     }
 
     function init(AddressesSet storage self, bytes32 _id) internal {
@@ -359,37 +375,64 @@ library StorageInterface {
         init(self.innerMapping, _id);
     }
 
+    function init(Bytes32SetMapping storage self, bytes32 _id) internal {
+        init(self.innerMapping, _id);
+    }
+
+    function init(AddressesSetMapping storage self, bytes32 _id) internal {
+        init(self.innerMapping, _id);
+    }
+
+    function init(UIntSetMapping storage self, bytes32 _id) internal {
+        init(self.innerMapping, _id);
+    }
+
     function set(Config storage self, UInt storage item, uint _value) internal {
         self.store.setUInt(self.crate, item.id, _value);
     }
 
-
-    function set(Config storage self, UInt8 storage item, uint8 _value) internal {
-        self.store.setUInt8(self.crate, item.id, _value);
+    function set(Config storage self, UInt storage item, bytes32 _salt, uint _value) internal {
+        self.store.setUInt(self.crate, keccak256(item.id, _salt), _value);
     }
 
     function set(Config storage self, Int storage item, int _value) internal {
         self.store.setInt(self.crate, item.id, _value);
     }
 
+    function set(Config storage self, Int storage item, bytes32 _salt, int _value) internal {
+        self.store.setInt(self.crate, keccak256(item.id, _salt), _value);
+    }
+
     function set(Config storage self, Address storage item, address _value) internal {
         self.store.setAddress(self.crate, item.id, _value);
+    }
+
+    function set(Config storage self, Address storage item, bytes32 _salt, address _value) internal {
+        self.store.setAddress(self.crate, keccak256(item.id, _salt), _value);
     }
 
     function set(Config storage self, Bool storage item, bool _value) internal {
         self.store.setBool(self.crate, item.id, _value);
     }
 
+    function set(Config storage self, Bool storage item, bytes32 _salt, bool _value) internal {
+        self.store.setBool(self.crate, keccak256(item.id, _salt), _value);
+    }
+
     function set(Config storage self, Bytes32 storage item, bytes32 _value) internal {
         self.store.setBytes32(self.crate, item.id, _value);
     }
 
-    function set(Config storage self, Mapping storage item, bytes32 _key, bytes32 _value) internal {
-        self.store.setBytes32(self.crate, keccak256(item.id, _key), _value);
+    function set(Config storage self, Bytes32 storage item, bytes32 _salt, bytes32 _value) internal {
+        self.store.setBytes32(self.crate, keccak256(item.id, _salt), _value);
     }
 
-    function set(Config storage self, AddressUInt8Mapping storage item, bytes32 _key, address _value1, uint8 _value2) internal {
-        self.store.setAddressUInt8(self.crate, keccak256(item.id, _key), _value1, _value2);
+    function set(Config storage self, Mapping storage item, uint _key, uint _value) internal {
+        self.store.setUInt(self.crate, keccak256(item.id, _key), _value);
+    }
+
+    function set(Config storage self, Mapping storage item, bytes32 _key, bytes32 _value) internal {
+        self.store.setBytes32(self.crate, keccak256(item.id, _key), _value);
     }
 
     function set(Config storage self, Mapping storage item, bytes32 _key, bytes32 _key2, bytes32 _value) internal {
@@ -398,6 +441,10 @@ library StorageInterface {
 
     function set(Config storage self, Mapping storage item, bytes32 _key, bytes32 _key2, bytes32 _key3, bytes32 _value) internal {
         set(self, item, keccak256(_key, _key2, _key3), _value);
+    }
+
+    function set(Config storage self, AddressUInt8Mapping storage item, bytes32 _key, address _value1, uint8 _value2) internal {
+        self.store.setAddressUInt8(self.crate, keccak256(item.id, _key), _value1, _value2);
     }
 
     function set(Config storage self, AddressBoolMapping storage item, address _key, bool _value) internal {
@@ -521,69 +568,119 @@ library StorageInterface {
     }
 
     function add(Config storage self, Set storage item, bytes32 _value) internal {
-        if (includes(self, item, _value)) {
+        add(self, item, SET_IDENTIFIER, _value);
+    }
+
+    function add(Config storage self, Set storage item, bytes32 _salt, bytes32 _value) private {
+        if (includes(self, item, _salt, _value)) {
             return;
         }
-        uint newCount = count(self, item) + 1;
-        set(self, item.values, bytes32(newCount), _value);
-        set(self, item.indexes, _value, bytes32(newCount));
-        set(self, item.count, newCount);
+        uint newCount = count(self, item, _salt) + 1;
+        set(self, item.values, _salt, bytes32(newCount), _value);
+        set(self, item.indexes, _salt, _value, bytes32(newCount));
+        set(self, item.count, _salt, newCount);
     }
 
     function add(Config storage self, AddressesSet storage item, address _value) internal {
         add(self, item.innerSet, bytes32(_value));
     }
 
+    function add(Config storage self, Bytes32SetMapping storage item, bytes32 _key, bytes32 _value) internal {
+        add(self, item.innerMapping, _key, _value);
+    }
+
+    function add(Config storage self, AddressesSetMapping storage item, bytes32 _key, address _value) internal {
+        add(self, item.innerMapping, _key, bytes32(_value));
+    }
+
+    function add(Config storage self, UIntSetMapping storage item, bytes32 _key, uint _value) internal {
+        add(self, item.innerMapping, _key, bytes32(_value));
+    }
+
     function remove(Config storage self, Set storage item, bytes32 _value) internal {
-        if (!includes(self, item, _value)) {
+        remove(self, item, SET_IDENTIFIER, _value);
+    }
+
+    function remove(Config storage self, Set storage item, bytes32 _salt, bytes32 _value) private {
+        if (!includes(self, item, _salt, _value)) {
             return;
         }
-        uint lastIndex = count(self, item);
-        bytes32 lastValue = get(self, item.values, bytes32(lastIndex));
-        uint index = uint(get(self, item.indexes, _value));
+        uint lastIndex = count(self, item, _salt);
+        bytes32 lastValue = get(self, item.values, _salt, bytes32(lastIndex));
+        uint index = uint(get(self, item.indexes, _salt, _value));
         if (index < lastIndex) {
-            set(self, item.indexes, lastValue, bytes32(index));
-            set(self, item.values, bytes32(index), lastValue);
+            set(self, item.indexes, _salt, lastValue, bytes32(index));
+            set(self, item.values, _salt, bytes32(index), lastValue);
         }
-        set(self, item.indexes, _value, bytes32(0));
-        set(self, item.values, bytes32(lastIndex), bytes32(0));
-        set(self, item.count, lastIndex - 1);
+        set(self, item.indexes, _salt, _value, bytes32(0));
+        set(self, item.values, _salt, bytes32(lastIndex), bytes32(0));
+        set(self, item.count, _salt, lastIndex - 1);
     }
 
     function remove(Config storage self, AddressesSet storage item, address _value) internal {
         remove(self, item.innerSet, bytes32(_value));
     }
 
+    function remove(Config storage self, Bytes32SetMapping storage item, bytes32 _key, bytes32 _value) internal {
+        remove(self, item.innerMapping, _key, _value);
+    }
+
+    function remove(Config storage self, AddressesSetMapping storage item, bytes32 _key, address _value) internal {
+        remove(self, item.innerMapping, _key, bytes32(_value));
+    }
+
+    function remove(Config storage self, UIntSetMapping storage item, bytes32 _key, uint _value) internal {
+        remove(self, item.innerMapping, _key, bytes32(_value));
+    }
+
+    /** `get` operation */
+
     function get(Config storage self, UInt storage item) internal view returns (uint) {
         return self.store.getUInt(self.crate, item.id);
     }
 
-    function get(Config storage self, UInt8 storage item) internal view returns (uint8) {
-        return self.store.getUInt8(self.crate, item.id);
+    function get(Config storage self, UInt storage item, bytes32 salt) internal view returns (uint) {
+        return self.store.getUInt(self.crate, keccak256(item.id, salt));
     }
 
     function get(Config storage self, Int storage item) internal view returns (int) {
         return self.store.getInt(self.crate, item.id);
     }
 
+    function get(Config storage self, Int storage item, bytes32 salt) internal view returns (int) {
+        return self.store.getInt(self.crate, keccak256(item.id, salt));
+    }
+
     function get(Config storage self, Address storage item) internal view returns (address) {
         return self.store.getAddress(self.crate, item.id);
+    }
+
+    function get(Config storage self, Address storage item, bytes32 salt) internal view returns (address) {
+        return self.store.getAddress(self.crate, keccak256(item.id, salt));
     }
 
     function get(Config storage self, Bool storage item) internal view returns (bool) {
         return self.store.getBool(self.crate, item.id);
     }
 
+    function get(Config storage self, Bool storage item, bytes32 salt) internal view returns (bool) {
+        return self.store.getBool(self.crate, keccak256(item.id, salt));
+    }
+
     function get(Config storage self, Bytes32 storage item) internal view returns (bytes32) {
         return self.store.getBytes32(self.crate, item.id);
     }
 
-    function get(Config storage self, Mapping storage item, bytes32 _key) internal view returns (bytes32) {
-        return self.store.getBytes32(self.crate, keccak256(item.id, _key));
+    function get(Config storage self, Bytes32 storage item, bytes32 salt) internal view returns (bytes32) {
+        return self.store.getBytes32(self.crate, keccak256(item.id, salt));
     }
 
-    function get(Config storage self, AddressUInt8Mapping storage item, bytes32 _key) internal view returns (address, uint8) {
-        return self.store.getAddressUInt8(self.crate, keccak256(item.id, _key));
+    function get(Config storage self, Mapping storage item, uint _key) internal view returns (uint) {
+        return self.store.getUInt(self.crate, keccak256(item.id, _key));
+    }
+
+    function get(Config storage self, Mapping storage item, bytes32 _key) internal view returns (bytes32) {
+        return self.store.getBytes32(self.crate, keccak256(item.id, _key));
     }
 
     function get(Config storage self, Mapping storage item, bytes32 _key, bytes32 _key2) internal view returns (bytes32) {
@@ -592,6 +689,10 @@ library StorageInterface {
 
     function get(Config storage self, Mapping storage item, bytes32 _key, bytes32 _key2, bytes32 _key3) internal view returns (bytes32) {
         return get(self, item, keccak256(_key, _key2, _key3));
+    }
+
+    function get(Config storage self, AddressUInt8Mapping storage item, bytes32 _key) internal view returns (address, uint8) {
+        return self.store.getAddressUInt8(self.crate, keccak256(item.id, _key));
     }
 
     function get(Config storage self, AddressBoolMapping storage item, address _key) internal view returns (bool) {
@@ -714,41 +815,128 @@ library StorageInterface {
         return get(self, item.innerMapping, bytes32(_key), bytes32(_key2), bytes32(_key3));
     }
 
+    /** `includes` operation */
+
     function includes(Config storage self, Set storage item, bytes32 _value) internal view returns (bool) {
-        return get(self, item.indexes, _value) != 0;
+        return includes(self, item, SET_IDENTIFIER, _value);
+    }
+
+    function includes(Config storage self, Set storage item, bytes32 _salt, bytes32 _value) internal view returns (bool) {
+        return get(self, item.indexes, _salt, _value) != 0;
     }
 
     function includes(Config storage self, AddressesSet storage item, address _value) internal view returns (bool) {
         return includes(self, item.innerSet, bytes32(_value));
     }
 
+    function includes(Config storage self, Bytes32SetMapping storage item, bytes32 _key, bytes32 _value) internal view returns (bool) {
+        return includes(self, item.innerMapping, _key, _value);
+    }
+
+    function includes(Config storage self, AddressesSetMapping storage item, bytes32 _key, address _value) internal view returns (bool) {
+        return includes(self, item.innerMapping, _key, bytes32(_value));
+    }
+
+    function includes(Config storage self, UIntSetMapping storage item, bytes32 _key, uint _value) internal view returns (bool) {
+        return includes(self, item.innerMapping, _key, bytes32(_value));
+    }
+
+    function getIndex(Config storage self, Set storage item, bytes32 _value) internal view returns (uint) {
+        return getIndex(self, item, SET_IDENTIFIER, _value);
+    }
+
+    function getIndex(Config storage self, Set storage item, bytes32 _salt, bytes32 _value) private view returns (uint) {
+        return uint(get(self, item.indexes, _salt, _value));
+    }
+
+    function getIndex(Config storage self, Bytes32SetMapping storage item, bytes32 _key, bytes32 _value) internal view returns (uint) {
+        return getIndex(self, item.innerMapping, _key, _value);
+    }
+
+    function getIndex(Config storage self, AddressesSetMapping storage item, bytes32 _key, address _value) internal view returns (uint) {
+        return getIndex(self, item.innerMapping, _key, bytes32(_value));
+    }
+
+    function getIndex(Config storage self, UIntSetMapping storage item, bytes32 _key, uint _value) internal view returns (uint) {
+        return getIndex(self, item.innerMapping, _key, bytes32(_value));
+    }
+
+    /** `count` operation */
+
     function count(Config storage self, Set storage item) internal view returns (uint) {
-        return get(self, item.count);
+        return count(self, item, SET_IDENTIFIER);
+    }
+
+    function count(Config storage self, Set storage item, bytes32 _salt) internal view returns (uint) {
+        return get(self, item.count, _salt);
     }
 
     function count(Config storage self, AddressesSet storage item) internal view returns (uint) {
         return count(self, item.innerSet);
     }
 
-    function get(Config storage self, Set storage item) internal view returns (bytes32[]) {
-        uint valuesCount = count(self, item);
-        bytes32[] memory result = new bytes32[](valuesCount);
+    function count(Config storage self, Bytes32SetMapping storage item, bytes32 _key) internal view returns (uint) {
+        return count(self, item.innerMapping, _key);
+    }
+
+    function count(Config storage self, AddressesSetMapping storage item, bytes32 _key) internal view returns (uint) {
+        return count(self, item.innerMapping, _key);
+    }
+
+    function count(Config storage self, UIntSetMapping storage item, bytes32 _key) internal view returns (uint) {
+        return count(self, item.innerMapping, _key);
+    }
+
+    function get(Config storage self, Set storage item) internal view returns (bytes32[] result) {
+        result = get(self, item, SET_IDENTIFIER);
+    }
+
+    function get(Config storage self, Set storage item, bytes32 _salt) private view returns (bytes32[] result) {
+        uint valuesCount = count(self, item, _salt);
+        result = new bytes32[](valuesCount);
         for (uint i = 0; i < valuesCount; i++) {
-            result[i] = get(self, item, i);
+            result[i] = get(self, item, _salt, i);
         }
-        return result;
+    }
+
+    function get(Config storage self, Set storage item, uint _index) internal view returns (bytes32) {
+        return get(self, item, SET_IDENTIFIER, _index);
+    }
+
+    function get(Config storage self, Set storage item, bytes32 _salt, uint _index) private view returns (bytes32) {
+        return get(self, item.values, _salt, bytes32(_index + 1));
     }
 
     function get(Config storage self, AddressesSet storage item) internal view returns (address[]) {
         return toAddresses(get(self, item.innerSet));
     }
 
-    function get(Config storage self, Set storage item, uint _index) internal view returns (bytes32) {
-        return get(self, item.values, bytes32(_index + 1));
-    }
-
     function get(Config storage self, AddressesSet storage item, uint _index) internal view returns (address) {
         return address(get(self, item.innerSet, _index));
+    }
+
+    function get(Config storage self, Bytes32SetMapping storage item, bytes32 _key) internal view returns (bytes32[]) {
+        return get(self, item.innerMapping, _key);
+    }
+
+    function get(Config storage self, AddressesSetMapping storage item, bytes32 _key) internal view returns (address[]) {
+        return toAddresses(get(self, item.innerMapping, _key));
+    }
+
+    function get(Config storage self, UIntSetMapping storage item, bytes32 _key) internal view returns (uint[]) {
+        return toUInt(get(self, item.innerMapping, _key));
+    }
+
+    function get(Config storage self, Bytes32SetMapping storage item, bytes32 _key, uint _index) internal view returns (bytes32) {
+        return get(self, item.innerMapping, _key, _index);
+    }
+
+    function get(Config storage self, AddressesSetMapping storage item, bytes32 _key, uint _index) internal view returns (address) {
+        return address(get(self, item.innerMapping, _key, _index));
+    }
+
+    function get(Config storage self, UIntSetMapping storage item, bytes32 _key, uint _index) internal view returns (uint) {
+        return uint(get(self, item.innerMapping, _key, _index));
     }
 
     function toBool(bytes32 self) public pure returns (bool) {
@@ -763,6 +951,14 @@ library StorageInterface {
         address[] memory result = new address[](self.length);
         for (uint i = 0; i < self.length; i++) {
             result[i] = address(self[i]);
+        }
+        return result;
+    }
+
+    function toUInt(bytes32[] memory self) public pure returns (uint[]) {
+        uint[] memory result = new uint[](self.length);
+        for (uint i = 0; i < self.length; i++) {
+            result[i] = uint(self[i]);
         }
         return result;
     }

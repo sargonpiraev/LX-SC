@@ -155,7 +155,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(() => setupJob(0, 0, JOB_STATES.FINALIZED))  // jobId#2, to test canceled jobs
     .then(jobId => NOT_FINALIZED_JOB = jobId.toNumber())
 
-    .then(() => boardController.createBoard(boardName, boardDescription, boardTags, boardArea, boardCategory))
+    .then(() => boardController.createBoard(boardTags, boardArea, boardCategory, "ipfsHash"))
 
     .then(() => boardController.bindUserWithBoard(boardId, SENDER))
     .then(() => boardController.bindUserWithBoard(boardId, client))
@@ -420,7 +420,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const boardId2 = 2;
       const rating1 = 5;
       const rating2 = 6;
-      return boardController.createBoard('Name2', boardDescription, boardTags, boardArea, boardCategory)
+      return boardController.createBoard(boardTags, boardArea, boardCategory, "ipfsHash")
       .then(() => boardController.bindUserWithBoard(boardId2, SENDER))
       .then(() => ratingsLibrary.setBoardRating(boardId, rating1, {from: SENDER}))
       .then(() => ratingsLibrary.setBoardRating(boardId2, rating2, {from: SENDER}))
