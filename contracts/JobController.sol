@@ -12,6 +12,11 @@ import './adapters/StorageAdapter.sol';
 import './base/BitOps.sol';
 
 
+interface BoardControllerAccessor {
+    function getJobsBoard(uint _jobId) external view returns (uint);
+}
+
+
 contract UserLibraryInterface {
     function hasSkills(address _user, uint _area, uint _category, uint _skills) public view returns (bool);
 }
@@ -49,6 +54,8 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     PaymentProcessorInterface public paymentProcessor;
     UserLibraryInterface public userLibrary;
 
+    StorageInterface.Address boardController;
+    
     StorageInterface.UInt jobsCount;
 
     StorageInterface.UIntUIntMapping jobState;
@@ -60,7 +67,11 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     StorageInterface.UIntUIntMapping jobSkillsCategory;  // jobId => jobSkillsCategory
     StorageInterface.UIntUIntMapping jobSkills;  // jobId => jobSkills
 
+    StorageInterface.UIntUIntMapping jobCreatedAt;
+    StorageInterface.UIntUIntMapping jobAcceptedAt;
+    StorageInterface.UIntUIntMapping jobPendingStartAt;
     StorageInterface.UIntUIntMapping jobStartTime;
+    StorageInterface.UIntUIntMapping jobPendingFinishAt;
     StorageInterface.UIntUIntMapping jobFinishTime;
     StorageInterface.UIntBoolMapping jobPaused;
     StorageInterface.UIntUIntMapping jobPausedAt;
@@ -134,7 +145,12 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         jobSkillsCategory.init("jobSkillsCategory");
         jobSkills.init("jobSkills");
 
+
+        jobCreatedAt.init("jobCreatedAt");
+        jobAcceptedAt.init("jobAcceptedAt");
+        jobPendingStartAt.init("jobPendingStartAt");
         jobStartTime.init("jobStartTime");
+        jobPendingFinishAt.init("jobPendingFinishAt");
         jobFinishTime.init("jobFinishTime");
         jobPaused.init("jobPaused");
         jobPausedAt.init("jobPausedAt");
@@ -157,6 +173,12 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         require(_eventsHistory != 0x0);
 
         _setEventsHistory(_eventsHistory);
+        return OK;
+    }
+
+    /// @notice Sets contract address that satisfies BoardControllerAccessor interface
+    function setBoardController(address _boardController) auth external returns (uint) {
+        store.set(boardController, _boardController);
         return OK;
     }
 
@@ -251,6 +273,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         uint jobId = store.get(jobsCount) + 1;
         store.set(bindStatus, jobId, false);
         store.set(jobsCount, jobId);
+        store.set(jobCreatedAt, jobId, now);
         store.set(jobState, jobId, uint(JobState.CREATED));
         store.set(jobClient, jobId, msg.sender);
         store.set(jobSkillsArea, jobId, _area);
@@ -340,6 +363,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             revert();
         }
 
+        store.set(jobAcceptedAt, _jobId, now);
         store.set(jobState, _jobId, uint(JobState.ACCEPTED));
         _cleanupJobOffers(_jobId, _worker);
 
@@ -365,6 +389,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     external
     returns (uint)
     {
+        store.set(jobPendingStartAt, _jobId, now);
         store.set(jobState, _jobId, uint(JobState.PENDING_START));
         return OK;
     }
@@ -421,8 +446,8 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         if (!store.get(jobPaused, _jobId)) {
             return JOB_CONTROLLER_WORK_IS_NOT_PAUSED;
         }
-        store.set(jobPausedFor, _jobId, store.get(jobPausedFor, _jobId) + (now - store.get(jobPausedAt, _jobId)));
         store.set(jobPaused, _jobId, false);
+        store.set(jobPausedFor, _jobId, store.get(jobPausedFor, _jobId) + (now - store.get(jobPausedAt, _jobId)));
 
         _emitWorkResumed(_jobId, now);
         return OK;
@@ -473,6 +498,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     returns (uint)
     {
         _resumeWork(_jobId);  // In case worker have forgotten about paused timer
+        store.set(jobPendingFinishAt, _jobId, now);
         store.set(jobState, _jobId, uint(JobState.PENDING_FINISH));
         return OK;
     }
@@ -485,8 +511,8 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     external
     returns (uint)
     {
-        store.set(jobState, _jobId, uint(JobState.FINISHED));
         store.set(jobFinishTime, _jobId, now);
+        store.set(jobState, _jobId, uint(JobState.FINISHED));
 
         _emitWorkFinished(_jobId, now);
         return OK;
@@ -677,12 +703,13 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return store.get(jobsCount);
     }
 
-    uint8 constant JOBS_RESULT_OFFSET = 9;
+    uint8 constant JOBS_RESULT_OFFSET = 16;
 
     /// @notice Gets jobs details in a archived way (too little stack size
     /// for such amount of return values)
     /// @return {
     ///     "_gotIds": "`uint` identifier",
+    ///     "_boardId": "`uint` board identifier where job was pinned, '0' if no such board",
     ///     "_client": "client's address",
     ///     "_worker": "worker's address",
     ///     "_skillsArea": "`uint` skills area mask",
@@ -690,22 +717,39 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     ///     "_skills": "`uint` skills mask",
     ///     "_detailsIpfs": "`bytes32` details hash",
     ///     "_state": "`uint` job's state, see JobState",
-    ///     "_finalizedAt": "`uint` finalization timestamp"
+    ///     "_createdAt": "`uint` publishing (creation) timestamp"
+    ///     "_acceptedAt": "`uint` an offer has been accepted timestamp"
+    ///     "_pendingStartAt": "`uint` pending started timestamp"
+    ///     "_startedAt": "`uint` work started timestamp"
+    ///     "_pendingFinishAt": "`uint` pending finish timestamp"
+    ///     "_finishedAt": "`uint` work finished timestamp"
+    ///     "_finalizedAt": "`uint` paycheck finalized timestamp"
     /// }
     function getJobsByIds(uint[] _jobIds) public view returns (
         bytes32[] _results
     ) {
+        BoardControllerAccessor _boardController = BoardControllerAccessor(store.get(boardController));
         _results = new bytes32[](_jobIds.length * JOBS_RESULT_OFFSET);
         for (uint _idx = 0; _idx < _jobIds.length; ++_idx) {
             _results[_idx * JOBS_RESULT_OFFSET + 0] = bytes32(_jobIds[_idx]);
-            _results[_idx * JOBS_RESULT_OFFSET + 1] = bytes32(store.get(jobClient, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 2] = bytes32(store.get(jobWorker, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 3] = bytes32(store.get(jobSkillsArea, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 4] = bytes32(store.get(jobSkillsCategory, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 5] = bytes32(store.get(jobSkills, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 6] = store.get(jobDetailsIPFSHash, _jobIds[_idx]);
-            _results[_idx * JOBS_RESULT_OFFSET + 7] = bytes32(store.get(jobState, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 8] = bytes32(store.get(jobFinalizedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 2] = bytes32(store.get(jobClient, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 3] = bytes32(store.get(jobWorker, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 4] = bytes32(store.get(jobSkillsArea, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 5] = bytes32(store.get(jobSkillsCategory, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 6] = bytes32(store.get(jobSkills, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 7] = store.get(jobDetailsIPFSHash, _jobIds[_idx]);
+            _results[_idx * JOBS_RESULT_OFFSET + 8] = bytes32(store.get(jobState, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 9] = bytes32(store.get(jobCreatedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 10] = bytes32(store.get(jobAcceptedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 11] = bytes32(store.get(jobPendingStartAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 12] = bytes32(store.get(jobStartTime, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 13] = bytes32(store.get(jobPendingFinishAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 14] = bytes32(store.get(jobFinishTime, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 15] = bytes32(store.get(jobFinalizedAt, _jobIds[_idx]));
+
+            if (address(_boardController) != 0x0) {
+                _results[_idx * JOBS_RESULT_OFFSET + 1] = bytes32(_boardController.getJobsBoard(_jobIds[_idx]));
+            }
         }
     }
 
