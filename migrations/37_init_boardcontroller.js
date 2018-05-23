@@ -15,5 +15,7 @@ module.exports = deployer => {
     .then(storageManager => storageManager.giveAccess(BoardController.address, 'BoardController'))
     .then(() => BoardController.deployed())
     .then(boardController => boardController.setJobController(JobController.address))
+    .then(() => JobController.deployed())
+    .then(jobController => jobController.setBoardController(BoardController.address)) // setup board controller accessor
     .then(() => console.log("[Migration] BoardController #initialized"))
 };
