@@ -325,6 +325,43 @@ contract('BoardController', function(accounts) {
         })
     });
 
+    it("should allow to unbind user from bound board", async () => {
+      return Promise.resolve()
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.bindUserWithBoard(boardId, client))
+        .then(() => boardController.getUserStatus(boardId, client))
+        .then(asserts.equal(true))
+        .then(() => boardController.unbindUserFromBoard(boardId, client))
+        .then(() => boardController.getUserStatus(boardId, client))
+        .then(asserts.equal(false))
+    })
+
+    it("should not be able to unbind user from not bound board", async () => {
+      return Promise.resolve()
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.getUserStatus(boardId, client))
+        .then(asserts.equal(false))
+        .then(() => boardController.unbindUserFromBoard(boardId, client))
+        .then(() => boardController.getUserStatus(boardId, client))
+        .then(asserts.equal(false))
+    })
+
+    it('should emit "UserBinded(status=false)" event with when unbind user', () => {
+      return Promise.resolve()
+        .then(() => boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator}))
+        .then(() => boardController.bindUserWithBoard(boardId, client))
+        .then(() => boardController.unbindUserFromBoard(boardId, client))
+        .then(tx => {
+          assert.equal(tx.logs.length, 1);
+          assert.equal(tx.logs[0].address, multiEventsHistory.address);
+          assert.equal(tx.logs[0].event, 'UserBinded');
+          const log = tx.logs[0].args;
+          assert.equal(log.self, boardController.address);
+          assert.equal(log.user.toString(), client);
+          assert.equal(log.boardId.toString(), boardId.toString());
+          assert.equal(log.status, false);
+        })
+    });
   });
 
   describe('Board closing', () => {
