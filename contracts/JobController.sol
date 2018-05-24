@@ -633,7 +633,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     {
         uint _count = store.count(clientJobs, bytes32(_client));
         require(_fromIdx < _count);
-        _maxLen = (_fromIdx + _maxLen < _count) ? _maxLen : (_count - _fromIdx);
+        _maxLen = (_fromIdx + _maxLen <= _count) ? _maxLen : (_count - _fromIdx);
         _ids = new uint[](_maxLen);
         uint _pointer;
         for (uint _idx = _fromIdx; _idx < _fromIdx + _maxLen; ++_idx) {
@@ -668,7 +668,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     {
         uint _count = store.count(workerJobs, bytes32(_worker));
         require(_fromIdx < _count);
-        _maxLen = (_fromIdx + _maxLen < _count) ? _maxLen : (_count - _fromIdx);
+        _maxLen = (_fromIdx + _maxLen <= _count) ? _maxLen : (_count - _fromIdx);
         _ids = new uint[](_maxLen);
         uint _pointer;
         for (uint _idx = _fromIdx; _idx < _fromIdx + _maxLen; ++_idx) {
