@@ -753,6 +753,40 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         }
     }
 
+    function getJobOffersCount(uint _jobId) public view returns (uint) {
+        return store.count(jobOffers, bytes32(_jobId));
+    }
+
+    function getJobOffers(uint _jobId, uint _fromIdx, uint _maxLen) public view returns (
+        uint _id,
+        address[] _workers,
+        uint[] _rates,
+        uint[] _estimates,
+        uint[] _onTops
+    ) {
+        uint _offersCount = getJobOffersCount(_jobId);
+        if (_fromIdx < _offersCount) {
+            return;
+        }
+        
+        _maxLen = (_fromIdx + _maxLen <= _offersCount) ? _maxLen : (_offersCount - _fromIdx);
+        
+        _id = _jobId;
+        _workers = new address[](_maxLen);
+        _rates = new uint[](_maxLen);
+        _estimates = new uint[](_maxLen);
+        _onTops = new uint[](_maxLen);
+        uint _pointer = 0;
+
+        for (uint _offerIdx = _fromIdx; _offerIdx < _fromIdx + _maxLen; ++_offerIdx) {
+            _workers[_pointer] = store.get(jobOffers, bytes32(_jobId), _offerIdx);
+            _rates[_pointer] = store.get(jobOfferRate, _jobId, _workers[_pointer]);
+            _estimates[_pointer] = store.get(jobOfferEstimate, _jobId, _workers[_pointer]);
+            _onTops[_pointer] = store.get(jobOfferOntop, _jobId, _workers[_pointer]);
+            _pointer += 1;
+        }
+    }
+
     function getJobClient(uint _jobId) public view returns (address) {
         return store.get(jobClient, _jobId);
     }
