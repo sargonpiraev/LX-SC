@@ -1,6 +1,6 @@
 {
   "name": "@laborx/sc",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "ChronoBank Labor-X Smart Contracts",
   "scripts": {
     "test:all": "./node_modules/truffle/build/cli.bundled.js test",
