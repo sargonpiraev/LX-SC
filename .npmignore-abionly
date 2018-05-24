@@ -4,6 +4,7 @@ test/
 migrations/
 docs/
 contracts/
+scripts/
 truffle.js
 .git
 *.log

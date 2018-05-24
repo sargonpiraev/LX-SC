@@ -12,6 +12,11 @@ import './adapters/StorageAdapter.sol';
 import './base/BitOps.sol';
 
 
+interface BoardControllerAccessor {
+    function getJobsBoard(uint _jobId) external view returns (uint);
+}
+
+
 contract UserLibraryInterface {
     function hasSkills(address _user, uint _area, uint _category, uint _skills) public view returns (bool);
 }
@@ -49,6 +54,8 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     PaymentProcessorInterface public paymentProcessor;
     UserLibraryInterface public userLibrary;
 
+    StorageInterface.Address boardController;
+
     StorageInterface.UInt jobsCount;
 
     StorageInterface.UIntUIntMapping jobState;
@@ -60,7 +67,11 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     StorageInterface.UIntUIntMapping jobSkillsCategory;  // jobId => jobSkillsCategory
     StorageInterface.UIntUIntMapping jobSkills;  // jobId => jobSkills
 
+    StorageInterface.UIntUIntMapping jobCreatedAt;
+    StorageInterface.UIntUIntMapping jobAcceptedAt;
+    StorageInterface.UIntUIntMapping jobPendingStartAt;
     StorageInterface.UIntUIntMapping jobStartTime;
+    StorageInterface.UIntUIntMapping jobPendingFinishAt;
     StorageInterface.UIntUIntMapping jobFinishTime;
     StorageInterface.UIntBoolMapping jobPaused;
     StorageInterface.UIntUIntMapping jobPausedAt;
@@ -123,6 +134,9 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     Roles2LibraryAdapter(_roles2Library)
     public
     {
+    }
+
+    function init() auth external returns (uint) {
         jobsCount.init("jobsCount");
 
         jobState.init("jobState");
@@ -134,7 +148,12 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         jobSkillsCategory.init("jobSkillsCategory");
         jobSkills.init("jobSkills");
 
+
+        jobCreatedAt.init("jobCreatedAt");
+        jobAcceptedAt.init("jobAcceptedAt");
+        jobPendingStartAt.init("jobPendingStartAt");
         jobStartTime.init("jobStartTime");
+        jobPendingFinishAt.init("jobPendingFinishAt");
         jobFinishTime.init("jobFinishTime");
         jobPaused.init("jobPaused");
         jobPausedAt.init("jobPausedAt");
@@ -151,12 +170,20 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         jobOffers.init("jobOffers");
 
         bindStatus.init("bindStatus");
+            
+        return OK;
     }
 
     function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
         require(_eventsHistory != 0x0);
 
         _setEventsHistory(_eventsHistory);
+        return OK;
+    }
+
+    /// @notice Sets contract address that satisfies BoardControllerAccessor interface
+    function setBoardController(address _boardController) auth external returns (uint) {
+        store.set(boardController, _boardController);
         return OK;
     }
 
@@ -251,6 +278,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         uint jobId = store.get(jobsCount) + 1;
         store.set(bindStatus, jobId, false);
         store.set(jobsCount, jobId);
+        store.set(jobCreatedAt, jobId, now);
         store.set(jobState, jobId, uint(JobState.CREATED));
         store.set(jobClient, jobId, msg.sender);
         store.set(jobSkillsArea, jobId, _area);
@@ -340,10 +368,11 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             revert();
         }
 
+        store.set(jobAcceptedAt, _jobId, now);
         store.set(jobState, _jobId, uint(JobState.ACCEPTED));
         _cleanupJobOffers(_jobId, _worker);
 
-        _emitJobOfferAccepted(_jobId, _worker);
+        JobController(getEventsHistory()).emitJobOfferAccepted(_jobId, _worker);
         return OK;
     }
 
@@ -351,7 +380,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         uint _offersCount = store.count(jobOffers, bytes32(_jobId));
         for (uint _offerIdx = 0; _offerIdx < _offersCount; ++_offerIdx) {
             address _offer = store.get(jobOffers, bytes32(_jobId), _offerIdx);
-            if (_offer == _acceptedOffer) {
+            if (_offer != _acceptedOffer) {
                 store.remove(workerJobs, bytes32(_offer), _jobId);
             }
         }
@@ -365,6 +394,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     external
     returns (uint)
     {
+        store.set(jobPendingStartAt, _jobId, now);
         store.set(jobState, _jobId, uint(JobState.PENDING_START));
         return OK;
     }
@@ -380,7 +410,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         store.set(jobState, _jobId, uint(JobState.STARTED));
         store.set(jobStartTime, _jobId, now);
 
-        _emitWorkStarted(_jobId, now);
+        JobController(getEventsHistory()).emitWorkStarted(_jobId, now);
         return OK;
     }
 
@@ -399,7 +429,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         store.set(jobPaused, _jobId, true);
         store.set(jobPausedAt, _jobId, now);
 
-        _emitWorkPaused(_jobId, now);
+        JobController(getEventsHistory()).emitWorkPaused(_jobId, now);
         return OK;
     }
 
@@ -421,10 +451,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         if (!store.get(jobPaused, _jobId)) {
             return JOB_CONTROLLER_WORK_IS_NOT_PAUSED;
         }
-        store.set(jobPausedFor, _jobId, store.get(jobPausedFor, _jobId) + (now - store.get(jobPausedAt, _jobId)));
         store.set(jobPaused, _jobId, false);
+        store.set(jobPausedFor, _jobId, store.get(jobPausedFor, _jobId) + (now - store.get(jobPausedAt, _jobId)));
 
-        _emitWorkResumed(_jobId, now);
+        JobController(getEventsHistory()).emitWorkResumed(_jobId, now);
         return OK;
     }
 
@@ -443,7 +473,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         if (!_setNewEstimate(_jobId, _additionalTime)) {
             revert();
         }
-        _emitTimeAdded(_jobId, _additionalTime);
+        JobController(getEventsHistory()).emitTimeAdded(_jobId, _additionalTime);
         return OK;
     }
 
@@ -473,6 +503,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     returns (uint)
     {
         _resumeWork(_jobId);  // In case worker have forgotten about paused timer
+        store.set(jobPendingFinishAt, _jobId, now);
         store.set(jobState, _jobId, uint(JobState.PENDING_FINISH));
         return OK;
     }
@@ -485,10 +516,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     external
     returns (uint)
     {
-        store.set(jobState, _jobId, uint(JobState.FINISHED));
         store.set(jobFinishTime, _jobId, now);
+        store.set(jobState, _jobId, uint(JobState.FINISHED));
 
-        _emitWorkFinished(_jobId, now);
+        JobController(getEventsHistory()).emitWorkFinished(_jobId, now);
         return OK;
     }
 
@@ -527,7 +558,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         store.set(jobFinalizedAt, _jobId, getJobState(_jobId));
         store.set(jobState, _jobId, uint(JobState.FINALIZED));
 
-        _emitJobCanceled(_jobId);
+        JobController(getEventsHistory()).emitJobCanceled(_jobId);
         return OK;
     }
 
@@ -556,24 +587,24 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         store.set(jobFinalizedAt, _jobId, getJobState(_jobId));
         store.set(jobState, _jobId, uint(JobState.FINALIZED));
 
-        _emitPaymentReleased(_jobId);
+        JobController(getEventsHistory()).emitPaymentReleased(_jobId);
         return OK;
     }
 
     /// @notice Gets filtered list of jobs ids that fulfill provided parameters
     /// in a paginated way.
     function getJobs(
-        uint _jobState, 
-        uint _skillsArea, 
-        uint _skillsCategory, 
-        uint _skills, 
-        bool _paused, 
-        uint _fromId, 
+        uint _jobState,
+        uint _skillsArea,
+        uint _skillsCategory,
+        uint _skills,
+        bool _paused,
+        uint _fromId,
         uint _maxLen
-    ) 
-    public 
-    view 
-    returns (uint[] _ids) 
+    )
+    public
+    view
+    returns (uint[] _ids)
     {
         _ids = new uint[](_maxLen);
         uint _pointer;
@@ -589,25 +620,25 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return store.count(clientJobs, bytes32(_client));
     }
 
-    /// @notice Gets filtered jobs ids for a client where jobs have provided properties 
+    /// @notice Gets filtered jobs ids for a client where jobs have provided properties
     /// (job state, skills area, skills category, skills, paused)
     function getJobsForClient(
-        address _client, 
-        uint _jobState, 
-        uint _skillsArea, 
-        uint _skillsCategory, 
-        uint _skills, 
+        address _client,
+        uint _jobState,
+        uint _skillsArea,
+        uint _skillsCategory,
+        uint _skills,
         bool _paused,
         uint _fromIdx,
         uint _maxLen
     )
-    public 
-    view 
-    returns (uint[] _ids) 
+    public
+    view
+    returns (uint[] _ids)
     {
         uint _count = store.count(clientJobs, bytes32(_client));
         require(_fromIdx < _count);
-        _maxLen = (_fromIdx + _maxLen < _count) ? _maxLen : (_count - _fromIdx);
+        _maxLen = (_fromIdx + _maxLen <= _count) ? _maxLen : (_count - _fromIdx);
         _ids = new uint[](_maxLen);
         uint _pointer;
         for (uint _idx = _fromIdx; _idx < _fromIdx + _maxLen; ++_idx) {
@@ -627,10 +658,10 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     /// Doesn't inlcude jobs for which a worker had posted an offer but
     /// other worker got the job
     function getJobForWorker(
-        address _worker, 
-        uint _jobState, 
-        uint _skillsArea, 
-        uint _skillsCategory, 
+        address _worker,
+        uint _jobState,
+        uint _skillsArea,
+        uint _skillsCategory,
         uint _skills,
         bool _paused,
         uint _fromIdx,
@@ -642,7 +673,7 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     {
         uint _count = store.count(workerJobs, bytes32(_worker));
         require(_fromIdx < _count);
-        _maxLen = (_fromIdx + _maxLen < _count) ? _maxLen : (_count - _fromIdx);
+        _maxLen = (_fromIdx + _maxLen <= _count) ? _maxLen : (_count - _fromIdx);
         _ids = new uint[](_maxLen);
         uint _pointer;
         for (uint _idx = _fromIdx; _idx < _fromIdx + _maxLen; ++_idx) {
@@ -653,12 +684,12 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             }
         }
     }
-    
+
     function _filterJob(
         uint _jobId,
-        uint _jobState, 
-        uint _skillsArea, 
-        uint _skillsCategory, 
+        uint _jobState,
+        uint _skillsArea,
+        uint _skillsCategory,
         uint _skills,
         bool _paused
     )
@@ -666,8 +697,8 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     view
     returns (bool)
     {
-        return _jobState == store.get(jobState, _jobId) && 
-            _paused == store.get(jobPaused, _jobId) && 
+        return _jobState == store.get(jobState, _jobId) &&
+            _paused == store.get(jobPaused, _jobId) &&
             _hasFlag(store.get(jobSkillsArea, _jobId), _skillsArea) &&
             _hasFlag(store.get(jobSkillsCategory, _jobId), _skillsCategory) &&
             _hasFlag(store.get(jobSkills, _jobId), _skills);
@@ -677,12 +708,13 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return store.get(jobsCount);
     }
 
-    uint8 constant JOBS_RESULT_OFFSET = 9;
+    uint8 constant JOBS_RESULT_OFFSET = 16;
 
     /// @notice Gets jobs details in a archived way (too little stack size
     /// for such amount of return values)
     /// @return {
     ///     "_gotIds": "`uint` identifier",
+    ///     "_boardId": "`uint` board identifier where job was pinned, '0' if no such board",
     ///     "_client": "client's address",
     ///     "_worker": "worker's address",
     ///     "_skillsArea": "`uint` skills area mask",
@@ -690,22 +722,73 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     ///     "_skills": "`uint` skills mask",
     ///     "_detailsIpfs": "`bytes32` details hash",
     ///     "_state": "`uint` job's state, see JobState",
-    ///     "_finalizedAt": "`uint` finalization timestamp"
+    ///     "_createdAt": "`uint` publishing (creation) timestamp"
+    ///     "_acceptedAt": "`uint` an offer has been accepted timestamp"
+    ///     "_pendingStartAt": "`uint` pending started timestamp"
+    ///     "_startedAt": "`uint` work started timestamp"
+    ///     "_pendingFinishAt": "`uint` pending finish timestamp"
+    ///     "_finishedAt": "`uint` work finished timestamp"
+    ///     "_finalizedAt": "`uint` paycheck finalized timestamp"
     /// }
     function getJobsByIds(uint[] _jobIds) public view returns (
         bytes32[] _results
     ) {
+        BoardControllerAccessor _boardController = BoardControllerAccessor(store.get(boardController));
         _results = new bytes32[](_jobIds.length * JOBS_RESULT_OFFSET);
         for (uint _idx = 0; _idx < _jobIds.length; ++_idx) {
             _results[_idx * JOBS_RESULT_OFFSET + 0] = bytes32(_jobIds[_idx]);
-            _results[_idx * JOBS_RESULT_OFFSET + 1] = bytes32(store.get(jobClient, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 2] = bytes32(store.get(jobWorker, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 3] = bytes32(store.get(jobSkillsArea, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 4] = bytes32(store.get(jobSkillsCategory, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 5] = bytes32(store.get(jobSkills, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 6] = store.get(jobDetailsIPFSHash, _jobIds[_idx]);
-            _results[_idx * JOBS_RESULT_OFFSET + 7] = bytes32(store.get(jobState, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 8] = bytes32(store.get(jobFinalizedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 2] = bytes32(store.get(jobClient, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 3] = bytes32(store.get(jobWorker, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 4] = bytes32(store.get(jobSkillsArea, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 5] = bytes32(store.get(jobSkillsCategory, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 6] = bytes32(store.get(jobSkills, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 7] = store.get(jobDetailsIPFSHash, _jobIds[_idx]);
+            _results[_idx * JOBS_RESULT_OFFSET + 8] = bytes32(store.get(jobState, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 9] = bytes32(store.get(jobCreatedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 10] = bytes32(store.get(jobAcceptedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 11] = bytes32(store.get(jobPendingStartAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 12] = bytes32(store.get(jobStartTime, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 13] = bytes32(store.get(jobPendingFinishAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 14] = bytes32(store.get(jobFinishTime, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 15] = bytes32(store.get(jobFinalizedAt, _jobIds[_idx]));
+
+            if (address(_boardController) != 0x0) {
+                _results[_idx * JOBS_RESULT_OFFSET + 1] = bytes32(_boardController.getJobsBoard(_jobIds[_idx]));
+            }
+        }
+    }
+
+    function getJobOffersCount(uint _jobId) public view returns (uint) {
+        return store.count(jobOffers, bytes32(_jobId));
+    }
+
+    function getJobOffers(uint _jobId, uint _fromIdx, uint _maxLen) public view returns (
+        uint _id,
+        address[] _workers,
+        uint[] _rates,
+        uint[] _estimates,
+        uint[] _onTops
+    ) {
+        uint _offersCount = getJobOffersCount(_jobId);
+        if (_fromIdx < _offersCount) {
+            return;
+        }
+
+        _maxLen = (_fromIdx + _maxLen <= _offersCount) ? _maxLen : (_offersCount - _fromIdx);
+
+        _id = _jobId;
+        _workers = new address[](_maxLen);
+        _rates = new uint[](_maxLen);
+        _estimates = new uint[](_maxLen);
+        _onTops = new uint[](_maxLen);
+        uint _pointer = 0;
+
+        for (uint _offerIdx = _fromIdx; _offerIdx < _fromIdx + _maxLen; ++_offerIdx) {
+            _workers[_pointer] = store.get(jobOffers, bytes32(_jobId), _offerIdx);
+            _rates[_pointer] = store.get(jobOfferRate, _jobId, _workers[_pointer]);
+            _estimates[_pointer] = store.get(jobOfferEstimate, _jobId, _workers[_pointer]);
+            _onTops[_pointer] = store.get(jobOfferOntop, _jobId, _workers[_pointer]);
+            _pointer += 1;
         }
     }
 
@@ -829,37 +912,5 @@ contract JobController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
             _estimate,
             _ontop
         );
-    }
-
-    function _emitJobOfferAccepted(uint _jobId, address _worker) internal {
-        JobController(getEventsHistory()).emitJobOfferAccepted(_jobId, _worker);
-    }
-
-    function _emitWorkStarted(uint _jobId, uint _at) internal {
-        JobController(getEventsHistory()).emitWorkStarted(_jobId, _at);
-    }
-
-    function _emitWorkPaused(uint _jobId, uint _at) internal {
-        JobController(getEventsHistory()).emitWorkPaused(_jobId, _at);
-    }
-
-    function _emitWorkResumed(uint _jobId, uint _at) internal {
-        JobController(getEventsHistory()).emitWorkResumed(_jobId, _at);
-    }
-
-    function _emitTimeAdded(uint _jobId, uint _time) internal {
-        JobController(getEventsHistory()).emitTimeAdded(_jobId, _time);
-    }
-
-    function _emitWorkFinished(uint _jobId, uint _at) internal {
-        JobController(getEventsHistory()).emitWorkFinished(_jobId, _at);
-    }
-
-    function _emitPaymentReleased(uint _jobId) internal {
-        JobController(getEventsHistory()).emitPaymentReleased(_jobId);
-    }
-
-    function _emitJobCanceled(uint _jobId) internal {
-        JobController(getEventsHistory()).emitJobCanceled(_jobId);
     }
 }

@@ -18,7 +18,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     uint constant BOARD_CONTROLLER_SCOPE = 11000;
     uint constant BOARD_CONTROLLER_JOB_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 1;
     uint constant BOARD_CONTROLLER_USER_IS_ALREADY_BINDED = BOARD_CONTROLLER_SCOPE + 2;
-    uint constant BOARD_CONTROLLER_BOARD_IS_CLOSED = BOARD_CONTROLLER_SCOPE + 3;
+    uint constant BOARD_CONTROLLER_USER_IS_NOT_BINDED = BOARD_CONTROLLER_SCOPE + 3;
+    uint constant BOARD_CONTROLLER_BOARD_IS_CLOSED = BOARD_CONTROLLER_SCOPE + 4;
 
     event BoardCreated(
         address indexed self,
@@ -67,6 +68,17 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     modifier notBindedUserYet(uint _boardId, address _user) {
         if (getUserStatus(_boardId, _user) == true) {
             uint _resultCode = _emitErrorCode(BOARD_CONTROLLER_USER_IS_ALREADY_BINDED);
+            assembly {
+                mstore(0, _resultCode)
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
+    modifier onlyBoundUser(uint _boardId, address _user) {
+        if (getUserStatus(_boardId, _user) == false) {
+            uint _resultCode = _emitErrorCode(BOARD_CONTROLLER_USER_IS_NOT_BINDED);
             assembly {
                 mstore(0, _resultCode)
                 return(0, 32)
@@ -324,6 +336,19 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     {
         store.add(userBoards, bytes32(_user), _boardId);
         _emitUserBinded(_boardId, _user, true);
+        return OK;
+    }
+
+    function unbindUserFromBoard(
+        uint _boardId,
+        address _user
+    )
+    onlyBoundUser(_boardId, _user)
+    public 
+    returns (uint) 
+    {
+        store.remove(userBoards, bytes32(_user), _boardId);
+        _emitUserBinded(_boardId, _user, false);
         return OK;
     }
 
