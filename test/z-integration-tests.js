@@ -2,6 +2,7 @@ const BoardController = artifacts.require('BoardController')
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const Mock = artifacts.require('./Mock.sol');
 const JobController = artifacts.require('./JobController.sol');
+const JobsDataProvider = artifacts.require('./JobsDataProvider.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
 const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
@@ -73,6 +74,7 @@ contract('Integration tests (user stories)', (accounts) => {
             area: 4,
             category: 4,
             skills: 4,
+            defaultPay: 90,
             details: '0x00bb00bb00bb00bb00bb'
         },
         {
@@ -80,6 +82,7 @@ contract('Integration tests (user stories)', (accounts) => {
             area: 4,
             category: 4,
             skills: 8,
+            defaultPay: 90,
             details: '0x00aa00aa00aa00aa00aa'
         },
         {
@@ -87,6 +90,7 @@ contract('Integration tests (user stories)', (accounts) => {
             area: 4,
             category:4,
             skills: 4,
+            defaultPay: 90,
             details: '0x00ee00ee00ee00ee00ee'
         },
         {
@@ -94,6 +98,7 @@ contract('Integration tests (user stories)', (accounts) => {
             area: 16,
             category: 16,
             skills: 32,
+            defaultPay: 90,
             details: '0x00ff00ff00ff00ff00ff'
         },
         {
@@ -101,6 +106,7 @@ contract('Integration tests (user stories)', (accounts) => {
             area: 4,
             category: 16,
             skills: 4,
+            defaultPay: 90,
             details: '0x00fe00fe00fe00fe00fe'
         },
         {
@@ -108,6 +114,7 @@ contract('Integration tests (user stories)', (accounts) => {
             area: 16,
             category: 4,
             skills: 4,
+            defaultPay: 90,
             details: '0x00fe00fe00fe00fe00fe'
         },
     ]
@@ -115,7 +122,7 @@ contract('Integration tests (user stories)', (accounts) => {
     const setupJob = async (_job, _client = users.client, _depositBalance = 1000000000) => {
         const roles = []
 
-        const postJobTx = await contracts.jobController.postJob(_job.area, _job.category, _job.skills, _job.details, { from: _client })
+        const postJobTx = await contracts.jobController.postJob(_job.area, _job.category, _job.skills, _job.defaultPay, _job.details, { from: _client })
         const postJobEvent = (await eventsHelper.findEvent([contracts.jobController], postJobTx, "JobPosted"))[0]
 
         let jobId = postJobEvent.args.jobId
@@ -179,11 +186,12 @@ contract('Integration tests (user stories)', (accounts) => {
         contracts.recovery = await Recovery.deployed()
         contracts.ratingLibrary = await RatingsAndReputationLibrary.deployed()
         contracts.jobController = await JobController.deployed()
+        contracts.jobsDataProvider = await JobsDataProvider.deployed()
         contracts.mock = await Mock.deployed()
         contracts.paymentGateway = await PaymentGateway.deployed()
 
         await contracts.ratingLibrary.setBoardController(contracts.boardController.address, { from: users.default })
-        await contracts.ratingLibrary.setJobController(contracts.jobController.address, { from: users.default })
+        await contracts.ratingLibrary.setJobController(contracts.jobsDataProvider.address, { from: users.default })
         await contracts.ratingLibrary.setUserLibrary(contracts.userLibrary.address, { from: users.default })
 
         await contracts.rolesLibrary.setRootUser(users.root, true, { from: users.contractOwner })
@@ -323,7 +331,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("job should have `Created` state", async () => {
-                const jobState = await contracts.jobController.getJobState.call(job.id)
+                const jobState = await contracts.jobsDataProvider.getJobState.call(job.id)
                 assert.equal(jobState, stages.CREATED)
             })
 
@@ -411,7 +419,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("job should have `Finalized` state", async () => {
-                const jobState = await contracts.jobController.getJobState.call(job.id)
+                const jobState = await contracts.jobsDataProvider.getJobState.call(job.id)
                 assert.equal(jobState, stages.FINALIZED)
             })
 
@@ -472,7 +480,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await contracts.jobController.startWork(otherJob.id, { from: users.worker2 })
                 await contracts.jobController.confirmStartWork(otherJob.id, { from: users.client })
 
-                const jobState = await contracts.jobController.getJobState.call(otherJob.id)
+                const jobState = await contracts.jobsDataProvider.getJobState.call(otherJob.id)
                 assert.equal(jobState, stages.STARTED)
             })
 
@@ -502,7 +510,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await contracts.jobController.endWork(otherJob.id, { from: users.worker2 })
                 await contracts.jobController.confirmEndWork(otherJob.id, { from: users.client })
 
-                const jobState = await contracts.jobController.getJobState.call(otherJob.id)
+                const jobState = await contracts.jobsDataProvider.getJobState.call(otherJob.id)
                 assert.equal(jobState, stages.FINISHED)
             })
 
@@ -552,7 +560,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("a job should have been finalized", async () => {
-                const jobState = await contracts.jobController.getJobState.call(job.id)
+                const jobState = await contracts.jobsDataProvider.getJobState.call(job.id)
                 assert.equal(jobState, stages.FINALIZED)
             })
 
@@ -640,14 +648,14 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("should be able to find appropriate job offers", async () => {
-                const jobsCount = await contracts.jobController.getJobsCount.call()
+                const jobsCount = await contracts.jobsDataProvider.getJobsCount.call()
                 const jobsIds = [...Array.apply(null, { length: jobsCount }).keys()].map(id => id + 1);
 
                 await Promise.each(jobsIds, async (jobId) => {
-                    let jobSkillsArea = await contracts.jobController.getJobSkillsArea.call(jobId)
-                    let jobSkillsCategory = await contracts.jobController.getJobSkillsCategory.call(jobId)
-                    let jobSkills = await contracts.jobController.getJobSkills.call(jobId)
-                    let jobState = await contracts.jobController.getJobState.call(jobId)
+                    let jobSkillsArea = await contracts.jobsDataProvider.getJobSkillsArea.call(jobId)
+                    let jobSkillsCategory = await contracts.jobsDataProvider.getJobSkillsCategory.call(jobId)
+                    let jobSkills = await contracts.jobsDataProvider.getJobSkills.call(jobId)
+                    let jobState = await contracts.jobsDataProvider.getJobState.call(jobId)
 
                     if (jobState != stages.CREATED) {
                         return;
@@ -707,19 +715,19 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("job should have `Accepted` state", async () => {
-                assert.equal((await contracts.jobController.getJobState.call(job.id)).toNumber(), stages.ACCEPTED)
+                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.ACCEPTED)
             })
 
             it("should be able to start work", async () => {
                 await contracts.jobController.startWork(job.id, { from: users.worker })
 
-                assert.equal((await contracts.jobController.getJobState.call(job.id)).toNumber(), stages.PENDING_START)
+                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.PENDING_START)
             })
 
             it("should be able to confirm work is started by client", async () => {
                 await contracts.jobController.confirmStartWork(job.id, { from: users.client })
 
-                assert.equal((await contracts.jobController.getJobState.call(job.id)).toNumber(), stages.STARTED)
+                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.STARTED)
             })
 
             it("some time should pass", async () => {
@@ -733,13 +741,13 @@ contract('Integration tests (user stories)', (accounts) => {
             it("should end work when it is ready", async () => {
                 await contracts.jobController.endWork(job.id, { from: users.worker })
 
-                assert.equal((await contracts.jobController.getJobState.call(job.id)).toNumber(), stages.PENDING_FINISH)
+                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.PENDING_FINISH)
             })
 
             it("should have confirmation about finishing work from client", async () => {
                 await contracts.jobController.confirmEndWork(job.id, { from: users.client })
 
-                assert.equal((await contracts.jobController.getJobState.call(job.id)).toNumber(), stages.FINISHED)
+                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.FINISHED)
             })
 
             it("should receive payment for the work", async () => {
@@ -774,14 +782,14 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("should have at least 2 job posts", async () => {
-                const jobsCount = await contracts.jobController.getJobsCount.call()
+                const jobsCount = await contracts.jobsDataProvider.getJobsCount.call()
                 const jobsIds = [...Array.apply(null, { length: jobsCount }).keys()].map(id => id + 1);
 
                 await Promise.each(jobsIds, async (jobId) => {
-                    const jobSkillsArea = await contracts.jobController.getJobSkillsArea.call(jobId)
-                    const jobSkillsCategory = await contracts.jobController.getJobSkillsCategory.call(jobId)
-                    const jobSkills = await contracts.jobController.getJobSkills.call(jobId)
-                    const jobState = await contracts.jobController.getJobState.call(jobId)
+                    const jobSkillsArea = await contracts.jobsDataProvider.getJobSkillsArea.call(jobId)
+                    const jobSkillsCategory = await contracts.jobsDataProvider.getJobSkillsCategory.call(jobId)
+                    const jobSkills = await contracts.jobsDataProvider.getJobSkills.call(jobId)
+                    const jobState = await contracts.jobsDataProvider.getJobState.call(jobId)
 
                     if (jobState != stages.CREATED) {
                         return;
@@ -993,7 +1001,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await contracts.jobController.confirmEndWork(otherJob.id, { from: users.client })
                 await contracts.jobController.releasePayment(otherJob.id, { from: users.default })
 
-                assert.equal((await contracts.jobController.getJobState.call(job.id)).toNumber(), stages.FINALIZED)
+                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.FINALIZED)
             })
 
             it("other worker should have the same reward as the first worker", async () => {
