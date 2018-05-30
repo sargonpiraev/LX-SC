@@ -11,11 +11,17 @@ import "./adapters/StorageAdapter.sol";
 
 contract JobDataCore is StorageAdapter {
 
-	uint constant OK = 1;
-
     enum JobState { NOT_SET, CREATED, ACCEPTED, PENDING_START, STARTED, PENDING_FINISH, FINISHED, FINALIZED }
 
+    enum WorkflowType { TM_WITH_CONFIRMATION, TM_WITHOUT_CONFIRMATION, FIXED_PRICE }
+
+    uint constant OK = 1;
+    uint constant WORKFLOW_LAST_ITEM = uint(WorkflowType.FIXED_PRICE);
+
+
     StorageInterface.Address boardController;
+    /// @dev Escrow address for FIXED_PRICE dispute
+    StorageInterface.Address escrowAddress;
 
     StorageInterface.UInt jobsCount;
 
@@ -38,6 +44,9 @@ contract JobDataCore is StorageAdapter {
     StorageInterface.UIntUIntMapping jobPausedAt;
     StorageInterface.UIntUIntMapping jobPausedFor;
 
+    /// @dev Workflow type for a job
+    StorageInterface.UIntUIntMapping jobWorkflowType;  // jobId => workflow type
+
     /// @dev Default pay for a posted job that are recommended for offers
     StorageInterface.UIntUIntMapping jobDefaultPay;  // jobId => default pay size
     StorageInterface.UIntAddressUIntMapping jobOfferRate; // Per minute.
@@ -56,7 +65,6 @@ contract JobDataCore is StorageAdapter {
     // At which state job has been marked as FINALIZED
     StorageInterface.UIntUIntMapping jobFinalizedAt;
 
-
     function JobDataCore(
         Storage _store,
         bytes32 _crate
@@ -67,6 +75,9 @@ contract JobDataCore is StorageAdapter {
     }
 
     function _init() internal returns (uint) {
+        boardController.init("boardController");
+        escrowAddress.init("escrowAddress");
+
         jobsCount.init("jobsCount");
 
         jobState.init("jobState");
@@ -78,7 +89,6 @@ contract JobDataCore is StorageAdapter {
         jobSkillsCategory.init("jobSkillsCategory");
         jobSkills.init("jobSkills");
 
-
         jobCreatedAt.init("jobCreatedAt");
         jobAcceptedAt.init("jobAcceptedAt");
         jobPendingStartAt.init("jobPendingStartAt");
@@ -89,6 +99,7 @@ contract JobDataCore is StorageAdapter {
         jobPausedAt.init("jobPausedAt");
         jobPausedFor.init("jobPausedFor");
 
+        jobWorkflowType.init("jobWorkflowType");
         jobDefaultPay.init("jobDefaultPay");
         jobOfferRate.init("jobOfferRate");
         jobOfferEstimate.init("jobOfferEstimate");
@@ -103,5 +114,5 @@ contract JobDataCore is StorageAdapter {
         bindStatus.init("bindStatus");
             
         return OK;
-	}
+    }
 }

@@ -144,7 +144,7 @@ contract JobsDataProvider is JobDataCore, BitOps {
         return store.get(jobsCount);
     }
 
-    uint8 constant JOBS_RESULT_OFFSET = 20;
+    uint8 constant JOBS_RESULT_OFFSET = 21;
 
     /// @notice Gets jobs details in an archived way (too little stack size
     /// for such amount of return values)
@@ -158,6 +158,7 @@ contract JobsDataProvider is JobDataCore, BitOps {
     ///     "_skills": "`uint` skills mask",
     ///     "_detailsIpfs": "`bytes32` details hash",
     ///     "_state": "`uint` job's state, see JobState",
+    ///     "_flowType": "`uint` job's workflow type, see WorkflowType enum",
     ///     "_paused": "`bool` paused or not, '1' - paused, '0' - running",
     ///     "_defaultPay": "`uint` job's default pay size for job seekers",
     ///     "_createdAt": "`uint` publishing (creation) timestamp",
@@ -184,17 +185,18 @@ contract JobsDataProvider is JobDataCore, BitOps {
             _results[_idx * JOBS_RESULT_OFFSET + 6] = bytes32(store.get(jobSkills, _jobIds[_idx]));
             _results[_idx * JOBS_RESULT_OFFSET + 7] = store.get(jobDetailsIPFSHash, _jobIds[_idx]);
             _results[_idx * JOBS_RESULT_OFFSET + 8] = bytes32(store.get(jobState, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 9] = bytes32(store.get(jobPaused, _jobIds[_idx]) ? 1 : 0);
-            _results[_idx * JOBS_RESULT_OFFSET + 10] = bytes32(store.get(jobDefaultPay, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 11] = bytes32(store.get(jobCreatedAt, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 12] = bytes32(store.get(jobAcceptedAt, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 13] = bytes32(store.get(jobPendingStartAt, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 14] = bytes32(store.get(jobStartTime, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 15] = bytes32(store.get(jobPausedAt, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 16] = bytes32(store.get(jobPausedFor, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 17] = bytes32(store.get(jobPendingFinishAt, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 18] = bytes32(store.get(jobFinishTime, _jobIds[_idx]));
-            _results[_idx * JOBS_RESULT_OFFSET + 19] = bytes32(store.get(jobFinalizedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 9] = bytes32(store.get(jobWorkflowType, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 10] = bytes32(store.get(jobPaused, _jobIds[_idx]) ? 1 : 0);
+            _results[_idx * JOBS_RESULT_OFFSET + 11] = bytes32(store.get(jobDefaultPay, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 12] = bytes32(store.get(jobCreatedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 13] = bytes32(store.get(jobAcceptedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 14] = bytes32(store.get(jobPendingStartAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 15] = bytes32(store.get(jobStartTime, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 16] = bytes32(store.get(jobPausedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 17] = bytes32(store.get(jobPausedFor, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 18] = bytes32(store.get(jobPendingFinishAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 19] = bytes32(store.get(jobFinishTime, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 20] = bytes32(store.get(jobFinalizedAt, _jobIds[_idx]));
 
             if (address(_boardController) != 0x0) {
                 _results[_idx * JOBS_RESULT_OFFSET + 1] = bytes32(_boardController.getJobsBoard(_jobIds[_idx]));

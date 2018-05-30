@@ -33,6 +33,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     uint constant JOB_CONTROLLER_WORKER_RATE_NOT_SET = JOB_CONTROLLER_SCOPE + 4;
     uint constant JOB_CONTROLLER_WORK_IS_ALREADY_PAUSED = JOB_CONTROLLER_SCOPE + 5;
     uint constant JOB_CONTROLLER_WORK_IS_NOT_PAUSED = JOB_CONTROLLER_SCOPE + 6;
+    uint constant JOB_CONTROLLER_INVALID_WORKFLOW_TYPE = JOB_CONTROLLER_SCOPE + 7;
 
     event JobPosted(address indexed self, uint indexed jobId, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash, bool bindStatus);
     event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
@@ -74,6 +75,16 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
             _emitErrorCode(JOB_CONTROLLER_INVALID_STATE);
             assembly {
                 mstore(0, 13003) // JOB_CONTROLLER_INVALID_STATE
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
+    modifier onlyValidWorkflow(uint _flowType) {
+        if (_flowType > uint(WORKFLOW_LAST_ITEM)) {
+            assembly {
+                mstore(0, 13007) // JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
                 return(0, 32)
             }
         }
@@ -200,13 +211,17 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         return ((prev + _ontop) / 10) * 11 > prev;
     }
 
+    /// @notice Creates and posts a new job to a job marketplace
+    /// @param _flowType see WorkflowType
     function postJob(
+        uint _flowType,
         uint _area,
         uint _category,
         uint _skills,
         uint _defaultPay,
         bytes32 _detailsIPFSHash
     )
+    onlyValidWorkflow(_flowType)
     singleOddFlag(_area)
     singleOddFlag(_category)
     hasFlags(_skills)
@@ -218,6 +233,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         store.set(jobsCount, jobId);
         store.set(jobCreatedAt, jobId, now);
         store.set(jobState, jobId, uint(JobState.CREATED));
+        store.set(jobWorkflowType, jobId, _flowType);
         store.set(jobClient, jobId, msg.sender);
         store.set(jobSkillsArea, jobId, _area);
         store.set(jobSkillsCategory, jobId, _category);
