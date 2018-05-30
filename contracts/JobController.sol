@@ -35,7 +35,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     uint constant JOB_CONTROLLER_WORK_IS_NOT_PAUSED = JOB_CONTROLLER_SCOPE + 6;
     uint constant JOB_CONTROLLER_INVALID_WORKFLOW_TYPE = JOB_CONTROLLER_SCOPE + 7;
 
-    event JobPosted(address indexed self, uint indexed jobId, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash, bool bindStatus);
+    event JobPosted(address indexed self, uint indexed jobId, uint flowType, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash, bool bindStatus);
     event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
     event JobOfferAccepted(address indexed self, uint indexed jobId, address worker);
     event WorkStarted(address indexed self, uint indexed jobId, uint at);
@@ -82,7 +82,27 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     }
 
     modifier onlyValidWorkflow(uint _flowType) {
-        if (_flowType > uint(WORKFLOW_LAST_ITEM)) {
+        if (!(_isSingleFlag(_flowType) && _flowType <= WORKFLOW_MAX)) {
+            assembly {
+                mstore(0, 13007) // JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
+    modifier onlyTMFlow(uint _jobId) {
+        if (!_hasFlag(store.get(jobWorkflowType, _jobId), WORKFLOW_TM_GROUP)) {
+            assembly {
+                mstore(0, 13007) // JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
+    modifier onlyFixedPriceFlow(uint _jobId) {
+        if (!_hasFlag(store.get(jobWorkflowType, _jobId), WORKFLOW_FIXED_PRICE_GROUP)) {
             assembly {
                 mstore(0, 13007) // JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
                 return(0, 32)
@@ -143,8 +163,13 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     }
 
     function calculateLockAmountFor(address worker, uint _jobId) public view returns (uint) {
-        uint onTop = store.get(jobOfferOntop, _jobId, worker);
-        return calculateLock(worker, _jobId, store.get(jobOfferEstimate, _jobId, worker) + 60, onTop);
+        uint _flowType = store.get(jobWorkflowType, _jobId);
+        if (_hasFlag(_flowType, WORKFLOW_TM_GROUP)) {
+            uint onTop = store.get(jobOfferOntop, _jobId, worker);
+            return calculateLock(worker, _jobId, store.get(jobOfferEstimate, _jobId, worker) + 60, onTop);
+        } else if (_hasFlag(_flowType, WORKFLOW_FIXED_PRICE_GROUP)) {
+            return store.get(jobOfferRate, _jobId, worker);
+        }
     }
 
     function calculatePaycheck(uint _jobId) public view returns (uint) {
@@ -242,7 +267,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         store.set(jobDetailsIPFSHash, jobId, _detailsIPFSHash);
         store.add(clientJobs, bytes32(msg.sender), jobId);
 
-        _emitJobPosted(jobId, msg.sender, _area, _category, _skills, _defaultPay, _detailsIPFSHash, false);
+        _emitJobPosted(jobId, _flowType, msg.sender, _area, _category, _skills, _defaultPay, _detailsIPFSHash, false);
         return OK;
     }
 
@@ -253,6 +278,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _ontop
     )
     onlyNotClient(_jobId)
+    onlyTMFlow(_jobId)
     onlyJobState(_jobId, JobState.CREATED)
     public
     returns (uint)
@@ -272,6 +298,28 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         store.add(jobOffers, bytes32(_jobId), msg.sender);
 
         _emitJobOfferPosted(_jobId, msg.sender, _rate, _estimate, _ontop);
+        return OK;
+    }
+
+    function postJobOffer(
+        uint _jobId,
+        uint _price
+    )
+    onlyNotClient(_jobId)
+    onlyFixedPriceFlow(_jobId)
+    onlyJobState(_jobId, JobState.CREATED)
+    external
+    returns (uint) {
+        require(_price > 0);
+
+        if (!_hasSkillsCheck(_jobId)) {
+            return _emitErrorCode(JOB_CONTROLLER_INVALID_SKILLS);
+        }
+
+        store.set(jobOfferRate, _jobId, msg.sender, _price);
+        store.add(workerJobs, bytes32(msg.sender), _jobId);
+        store.add(jobOffers, bytes32(_jobId), msg.sender);
+
         return OK;
     }
 
@@ -533,6 +581,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
 
     function emitJobPosted(
         uint _jobId,
+        uint _flowType,
         address _client,
         uint _skillsArea,
         uint _skillsCategory,
@@ -543,7 +592,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     )
     public
     {
-        JobPosted(_self(), _jobId, _client, _skillsArea, _skillsCategory, _skills, _defaultPay, _detailsIPFSHash, _bindStatus);
+        JobPosted(_self(), _jobId, _flowType, _client, _skillsArea, _skillsCategory, _skills, _defaultPay, _detailsIPFSHash, _bindStatus);
     }
 
     function emitJobOfferPosted(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) public {
@@ -588,6 +637,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
 
     function _emitJobPosted(
         uint _jobId,
+        uint _flowType,
         address _client,
         uint _skillsArea,
         uint _skillsCategory,
@@ -600,6 +650,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     {
         JobController(getEventsHistory()).emitJobPosted(
             _jobId,
+            _flowType,
             _client,
             _skillsArea,
             _skillsCategory,

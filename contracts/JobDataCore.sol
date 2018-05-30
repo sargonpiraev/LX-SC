@@ -13,10 +13,16 @@ contract JobDataCore is StorageAdapter {
 
     enum JobState { NOT_SET, CREATED, ACCEPTED, PENDING_START, STARTED, PENDING_FINISH, FINISHED, FINALIZED }
 
-    enum WorkflowType { TM_WITH_CONFIRMATION, TM_WITHOUT_CONFIRMATION, FIXED_PRICE }
-
     uint constant OK = 1;
-    uint constant WORKFLOW_LAST_ITEM = uint(WorkflowType.FIXED_PRICE);
+
+    /// Defines a set of masks that define different groups of workflows
+    uint8 constant WORKFLOW_TM_WITH_CONFIRMATION = 0x01;
+    uint8 constant WORKFLOW_TM_WITHOUT_CONFIRMATION = 0x02;
+    uint8 constant WORKFLOW_FIXED_PRICE = 0x04;
+    uint8 constant WORKFLOW_MAX = WORKFLOW_FIXED_PRICE;
+
+    uint8 constant WORKFLOW_TM_GROUP = WORKFLOW_TM_WITH_CONFIRMATION | WORKFLOW_TM_WITHOUT_CONFIRMATION;
+    uint8 constant WORKFLOW_FIXED_PRICE_GROUP = WORKFLOW_FIXED_PRICE;
 
 
     StorageInterface.Address boardController;
