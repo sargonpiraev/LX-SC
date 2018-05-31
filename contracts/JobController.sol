@@ -13,11 +13,6 @@ import "./base/BitOps.sol";
 import "./JobDataCore.sol";
 
 
-contract EscrowInterface {
-    function openDispute(uint _jobId) payable public returns (uint);
-}
-
-
 contract UserLibraryInterface {
     function hasSkills(address _user, uint _area, uint _category, uint _skills) public view returns (bool);
 }
@@ -40,7 +35,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     uint constant JOB_CONTROLLER_WORK_IS_NOT_PAUSED = JOB_CONTROLLER_SCOPE + 6;
     uint constant JOB_CONTROLLER_INVALID_WORKFLOW_TYPE = JOB_CONTROLLER_SCOPE + 7;
 
-    event JobPosted(address indexed self, uint indexed jobId, uint flowType, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash, bool bindStatus);
+    event JobPosted(address indexed self, uint indexed jobId, bytes32 flowType, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash, bool bindStatus);
     event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
     event JobOfferAccepted(address indexed self, uint indexed jobId, address worker);
     event WorkStarted(address indexed self, uint indexed jobId, uint at);
@@ -50,6 +45,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     event WorkFinished(address indexed self, uint indexed jobId, uint at);
     event WorkAccepted(address indexed self, uint indexed jobId, uint at);
     event WorkRejected(address indexed self, uint indexed jobId, uint at);
+    event WorkDisputeResolved(address indexed self, uint indexed jobId, uint at);
     event PaymentReleased(address indexed self, uint indexed jobId);
     event JobCanceled(address indexed self, uint indexed jobId);
 
@@ -623,6 +619,52 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         return OK;
     }
 
+    function resolveWorkDispute(
+        uint _jobId,
+        uint _workerPaycheck,
+        uint _penaltyFee
+    )
+    external
+    auth
+    onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
+    onlyJobState(_jobId, JobState.WORK_REJECTED)
+    returns (uint _resultCode) {
+        uint payCheck = store.get(jobOfferRate, _jobId, worker);
+        address worker = store.get(jobWorker, _jobId);
+        address client = store.get(jobClient, _jobId);
+        if (_workerPaycheck > 0) {
+            _resultCode = paymentProcessor.releasePayment(
+                bytes32(_jobId),
+                worker,
+                _workerPaycheck,
+                client,
+                0,
+                _penaltyFee
+            );
+            if (_resultCode != OK) {
+                return _emitErrorCode(_resultCode);
+            }
+        } else {
+            _resultCode = paymentProcessor.releasePayment(
+                bytes32(_jobId),
+                client,
+                payCheck,
+                client,
+                0,
+                _penaltyFee
+            );
+            if (_resultCode != OK) {
+                return _emitErrorCode(_resultCode);
+            }
+        }
+
+        store.set(jobFinalizedAt, _jobId, now);
+        store.set(jobState, _jobId, uint(JobState.FINALIZED));
+
+        JobController(getEventsHistory()).emitWorkDistputeResolved(_jobId, now);
+        return OK;
+    }
+
     function releasePayment(
         uint _jobId
     )
@@ -665,7 +707,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     )
     public
     {
-        JobPosted(_self(), _jobId, _flowType, _client, _skillsArea, _skillsCategory, _skills, _defaultPay, _detailsIPFSHash, _bindStatus);
+        JobPosted(_self(), _jobId, bytes32(_flowType), _client, _skillsArea, _skillsCategory, _skills, _defaultPay, _detailsIPFSHash, _bindStatus);
     }
 
     function emitJobOfferPosted(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) public {
@@ -702,6 +744,10 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
 
     function emitWorkRejected(uint _jobId, uint _at) public {
         WorkRejected(_self(), _jobId, _at);
+    }
+
+    function emitWorkDistputeResolved(uint _jobId, uint _at) public {
+        WorkDisputeResolved(_self(), _jobId, _at);
     }
 
     function emitPaymentReleased(uint _jobId) public {
