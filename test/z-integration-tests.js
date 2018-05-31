@@ -27,14 +27,16 @@ contract('Integration tests (user stories)', (accounts) => {
     const reverter = new Reverter(web3);
 
     const stages = {
-        NOT_SET: 0,
-        CREATED: 1,
-        OFFER_ACCEPTED: 2,
-        PENDING_START: 3,
-        STARTED: 4,
-        PENDING_FINISH: 5,
-        FINISHED: 6,
-        FINALIZED: 7
+        NOT_SET: 0, 
+        CREATED: 1, 
+        OFFER_ACCEPTED: 2, 
+        PENDING_START: 3, 
+        STARTED: 4, 
+        PENDING_FINISH: 5, 
+        FINISHED: 6, 
+        WORK_ACCEPTED: 7, 
+        WORK_REJECTED: 8, 
+        FINALIZED: 9,
     };
 
     const roles = {
@@ -44,7 +46,7 @@ contract('Integration tests (user stories)', (accounts) => {
         validator: 4
     }
 
-
+    const tmFlow = web3.toBigNumber(2).pow(255).add(1) /// WORKFLOW_TM + CONFIRMATION
 
     const users = {
         default: accounts[0],
@@ -71,6 +73,7 @@ contract('Integration tests (user stories)', (accounts) => {
     var jobs = [
         {
             id: null,
+            flow: tmFlow,
             area: 4,
             category: 4,
             skills: 4,
@@ -79,6 +82,7 @@ contract('Integration tests (user stories)', (accounts) => {
         },
         {
             id: null,
+            flow: tmFlow,
             area: 4,
             category: 4,
             skills: 8,
@@ -87,6 +91,7 @@ contract('Integration tests (user stories)', (accounts) => {
         },
         {
             id: null,
+            flow: tmFlow,
             area: 4,
             category:4,
             skills: 4,
@@ -95,6 +100,7 @@ contract('Integration tests (user stories)', (accounts) => {
         },
         {
             id: null,
+            flow: tmFlow,
             area: 16,
             category: 16,
             skills: 32,
@@ -103,6 +109,7 @@ contract('Integration tests (user stories)', (accounts) => {
         },
         {
             id: null,
+            flow: tmFlow,
             area: 4,
             category: 16,
             skills: 4,
@@ -111,6 +118,7 @@ contract('Integration tests (user stories)', (accounts) => {
         },
         {
             id: null,
+            flow: tmFlow,
             area: 16,
             category: 4,
             skills: 4,
@@ -122,7 +130,7 @@ contract('Integration tests (user stories)', (accounts) => {
     const setupJob = async (_job, _client = users.client, _depositBalance = 1000000000) => {
         const roles = []
 
-        const postJobTx = await contracts.jobController.postJob(_job.area, _job.category, _job.skills, _job.defaultPay, _job.details, { from: _client })
+        const postJobTx = await contracts.jobController.postJob(_job.flow, _job.area, _job.category, _job.skills, _job.defaultPay, _job.details, { from: _client })
         const postJobEvent = (await eventsHelper.findEvent([contracts.jobController], postJobTx, "JobPosted"))[0]
 
         let jobId = postJobEvent.args.jobId

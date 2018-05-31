@@ -59,18 +59,22 @@ contract('RatingsAndReputationLibrary', function(accounts) {
   const evaluator = accounts[6];
 
   const JOB_STATES = {
-    NOT_SET: 0,
-    CREATED: 1,
-    OFFER_ACCEPTED: 2,
-    PENDING_START: 3,
-    STARTED: 4,
-    PENDING_FINISH: 5,
-    FINISHED: 6,
-    FINALIZED: 7,
+    NOT_SET: 0, 
+    CREATED: 1, 
+    OFFER_ACCEPTED: 2, 
+    PENDING_START: 3, 
+    STARTED: 4, 
+    PENDING_FINISH: 5, 
+    FINISHED: 6, 
+    WORK_ACCEPTED: 7, 
+    WORK_REJECTED: 8, 
+    FINALIZED: 9,
   }
 
   let FINALIZED_JOB;
   let NOT_FINALIZED_JOB;
+
+  const jobFlow = web3.toBigNumber(2).pow(255).add(1) /// WORKFLOW_TM + CONFIRMATION
 
   const equal = (a, b) => {
     return a.valueOf() === b.valueOf();
@@ -94,7 +98,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       _worker, recovery, roles, jobArea, [jobCategory], [jobSkills]
     ))
     .then(() => jobController.postJob(
-      jobArea, jobCategory, jobSkills, 4 /* default pay size */, "Job details", {from: _client}
+      jobFlow, jobArea, jobCategory, jobSkills, 4 /* default pay size */, "Job details", {from: _client}
     ))
     .then(tx => jobId = tx.logs[0].args.jobId)
     .then(() => jobController.postJobOffer(
@@ -156,11 +160,11 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(() => ratingsLibrary.setUserLibrary(mock.address))
     .then(() => ratingsLibrary.setBoardController(boardController.address))
 
-    .then(() => setupJob(0, 0, JOB_STATES.FINALIZED))
+    .then(() => setupJob(0, 0, 7))
     .then(jobId => finishJob(jobId))  // jobId#1, to test finished jobs
     .then(jobId => FINALIZED_JOB = jobId.toNumber())
 
-    .then(() => setupJob(0, 0, JOB_STATES.FINALIZED))  // jobId#2, to test canceled jobs
+    .then(() => setupJob(0, 0, 7))  // jobId#2, to test canceled jobs
     .then(jobId => NOT_FINALIZED_JOB = jobId.toNumber())
 
     .then(() => boardController.createBoard(boardTags, boardArea, boardCategory, "ipfsHash"))
@@ -714,7 +718,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => call(...args))
       .then(() => jobController.confirmEndWork(jobId, {from: client}))
       .then(() => jobsDataProvider.getJobState(jobId))
-      .then(asserts.equal(6))  // Ensure all previous stage changes was successful
+      .then(asserts.equal(JOB_STATES.FINISHED))  // Ensure all previous stage changes was successful
       .then(() => call(...args))
       .then(() => Promise.each(skills, skill => {
         return ratingsLibrary.getSkillRating(
@@ -792,9 +796,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       return Promise.resolve()
       .then(() => jobController.cancelJob(jobId, {from: client}))
       .then(() => jobsDataProvider.getJobState(jobId))
-      .then(asserts.equal(7))  // Ensure the job is FINALIZED
+      .then(asserts.equal(JOB_STATES.FINALIZED))  // Ensure the job is FINALIZED
       .then(() => jobsDataProvider.getFinalState(jobId))
-      .then(asserts.equal(2))  // Ensure the job was canceled at OFFER_ACCEPTED state
+      .then(asserts.equal(JOB_STATES.OFFER_ACCEPTED))  // Ensure the job was canceled at OFFER_ACCEPTED state
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
@@ -819,9 +823,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => jobController.startWork(jobId, {from: worker}))
       .then(() => jobController.cancelJob(jobId, {from: client}))
       .then(() => jobsDataProvider.getJobState(jobId))
-      .then(asserts.equal(7))  // Ensure the job is FINALIZED
+      .then(asserts.equal(JOB_STATES.FINALIZED))  // Ensure the job is FINALIZED
       .then(() => jobsDataProvider.getFinalState(jobId))
-      .then(asserts.equal(3))  // Ensure the job was canceled at PENDING_START state
+      .then(asserts.equal(JOB_STATES.PENDING_START))  // Ensure the job was canceled at PENDING_START state
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
@@ -1129,9 +1133,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => jobController.confirmStartWork(jobId, {from: client}))
       .then(() => jobController.cancelJob(jobId, {from: client}))
       .then(() => jobsDataProvider.getJobState(jobId))
-      .then(asserts.equal(7))  // Ensure the job is FINALIZED
+      .then(asserts.equal(JOB_STATES.FINALIZED))  // Ensure the job is FINALIZED
       .then(() => jobsDataProvider.getFinalState(jobId))
-      .then(asserts.equal(4))  // Ensure the job was canceled at STARTED state
+      .then(asserts.equal(JOB_STATES.STARTED))  // Ensure the job was canceled at STARTED state
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
@@ -1158,9 +1162,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => jobController.endWork(jobId, {from: worker}))
       .then(() => jobController.cancelJob(jobId, {from: client}))
       .then(() => jobsDataProvider.getJobState(jobId))
-      .then(asserts.equal(7))  // Ensure the job is FINALIZED
+      .then(asserts.equal(JOB_STATES.FINALIZED))  // Ensure the job is FINALIZED
       .then(() => jobsDataProvider.getFinalState(jobId))
-      .then(asserts.equal(5))  // Ensure the job was canceled at PENDING_FINISH state
+      .then(asserts.equal(JOB_STATES.PENDING_FINISH))  // Ensure the job was canceled at PENDING_FINISH state
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))

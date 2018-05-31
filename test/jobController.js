@@ -49,7 +49,21 @@ contract('JobController', function(accounts) {
     NOT_INITIATOR: 2,
   }
 
+  const JobState = {
+    NOT_SET: 0, 
+    CREATED: 1, 
+    OFFER_ACCEPTED: 2, 
+    PENDING_START: 3, 
+    STARTED: 4, 
+    PENDING_FINISH: 5, 
+    FINISHED: 6, 
+    WORK_ACCEPTED: 7, 
+    WORK_REJECTED: 8, 
+    FINALIZED: 9,
+  }
+
   const jobDefaultPaySize = 90;
+  const jobFlow = web3.toBigNumber(2).pow(255).add(1) /// WORKFLOW_TM + CONFIRMATION flag
 
   const assertInternalBalance = (address, expectedValue) => {
     return (actualValue) => {
@@ -112,7 +126,7 @@ contract('JobController', function(accounts) {
       // Represents full chain of interactions between client and worker
       // Provided `operation` will try to execute on each stage, comparing with expected results
 
-      .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
+      .then(() => jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
       .then(() => operation.call(...args))
       .then(result => assert.equal(result.toNumber(), stages.CREATED))
 
@@ -173,7 +187,7 @@ contract('JobController', function(accounts) {
     }
 
     return Promise.resolve()
-      .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+      .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
       .then(() => jobController.postJobOffer(
         jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
       ))
@@ -295,7 +309,7 @@ contract('JobController', function(accounts) {
       const category = 4;
       const skills = 555;
       return Promise.resolve()
-        .then(() => jobController.postJob.call(area, category, skills, jobDefaultPaySize, "Job details"))
+        .then(() => jobController.postJob.call(jobFlow, area, category, skills, jobDefaultPaySize, "Job details"))
         .then(asserts.equal(0));
     });
 
@@ -304,7 +318,7 @@ contract('JobController', function(accounts) {
       const category = 4;
       const skills = 555;
       return Promise.resolve()
-        .then(() => jobController.postJob.call(area, category, skills, jobDefaultPaySize, "Job details"))
+        .then(() => jobController.postJob.call(jobFlow, area, category, skills, jobDefaultPaySize, "Job details"))
         .then(asserts.equal(0));
     });
 
@@ -313,7 +327,7 @@ contract('JobController', function(accounts) {
       const category = 2;
       const skills = 555;
       return Promise.resolve()
-        .then(() => jobController.postJob.call(area, category, skills, jobDefaultPaySize, "Job details"))
+        .then(() => jobController.postJob.call(jobFlow, area, category, skills, jobDefaultPaySize, "Job details"))
         .then(asserts.equal(0));
     });
 
@@ -322,7 +336,7 @@ contract('JobController', function(accounts) {
       const category = 5;
       const skills = 555;
       return Promise.resolve()
-        .then(() => jobController.postJob.call(area, category, skills, jobDefaultPaySize, "Job details"))
+        .then(() => jobController.postJob.call(jobFlow, area, category, skills, jobDefaultPaySize, "Job details"))
         .then(asserts.equal(0));
     });
 
@@ -331,7 +345,7 @@ contract('JobController', function(accounts) {
       const category = 4;
       const skills = 0;
       return Promise.resolve()
-        .then(() => jobController.postJob.call(area, category, skills, jobDefaultPaySize, "Job details"))
+        .then(() => jobController.postJob.call(jobFlow, area, category, skills, jobDefaultPaySize, "Job details"))
         .then(asserts.equal(0));
     });
 
@@ -340,7 +354,7 @@ contract('JobController', function(accounts) {
       const category = 4;
       const skills = -12;
       return Promise.resolve()
-        .then(() => jobController.postJob.call(area, category, skills, jobDefaultPaySize, "Job details"))
+        .then(() => jobController.postJob.call(jobFlow, area, category, skills, jobDefaultPaySize, "Job details"))
         //.then(() => jobController.getJobSkills.call(1))
         .then(asserts.equal(0));
     });
@@ -350,7 +364,7 @@ contract('JobController', function(accounts) {
       const category = -4;
       const skills = 3;
       return Promise.resolve()
-        .then(() => jobController.postJob.call(area, category, skills, jobDefaultPaySize, "Job details"))
+        .then(() => jobController.postJob.call(jobFlow, area, category, skills, jobDefaultPaySize, "Job details"))
         .then(asserts.equal(0));
     });
 
@@ -359,13 +373,13 @@ contract('JobController', function(accounts) {
       const category = 4;
       const skills = 3;
       return Promise.resolve()
-        .then(() => jobController.postJob.call(area, category, skills, jobDefaultPaySize, "Job details"))
+        .then(() => jobController.postJob.call(jobFlow, area, category, skills, jobDefaultPaySize, "Job details"))
         .then(asserts.equal(0));
     });
 
     it('should allow anyone to post a job', () => {
       return Promise.each(accounts, account => {
-        return jobController.postJob.call(4, 4, 4, jobDefaultPaySize, 'Job details', {from: account})
+        return jobController.postJob.call(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: account})
           .then(jobId => assert.equal(jobId, 1));
       });
     });
@@ -375,7 +389,7 @@ contract('JobController', function(accounts) {
       const area = 1;
       const category = 4;
       const skills = 2;
-      const args = [area, category, skills, jobDefaultPaySize, "Job details"];
+      const args = [jobFlow, area, category, skills, jobDefaultPaySize, "Job details"];
       return Promise.each(clients, c => {
           return jobController.postJob(...args, {from: c})
             .then(helpers.assertLogs([{
@@ -396,7 +410,7 @@ contract('JobController', function(accounts) {
 
     it('should NOT a post job offer with null rate', () => {
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer.call(
           1, 0, 1, 1, {from: worker}
           )
@@ -406,7 +420,7 @@ contract('JobController', function(accounts) {
 
     it('should NOT a post job offer with null estimate', () => {
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer.call(
           1, '0xfffffffffffffffffff', 0, 1, {from: worker}
           )
@@ -423,7 +437,7 @@ contract('JobController', function(accounts) {
        * With these values,  ((rate * (estimate + 60) + ontop) / 10) * 11  will equal (uint256 + 3)
        */
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer.call(
           jobId, rate, estimate, ontop, {from: worker}
           )
@@ -440,7 +454,7 @@ contract('JobController', function(accounts) {
        * With these values,  ((rate * (estimate + 60) + ontop) / 10) * 11  will equal near the uint256 value
        */
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer.call(
           jobId, rate, estimate, ontop, {from: worker}
           )
@@ -449,7 +463,7 @@ contract('JobController', function(accounts) {
     });
 
     it("should check skills on posting job offer", () => {
-      return jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client})
+      return jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client})
         .then(() => ignoreSkillsCheck(false))
         .then(() => mock.expect(
           jobController.address,
@@ -465,7 +479,7 @@ contract('JobController', function(accounts) {
 
     it("should NOT post job offer if worker skills does not match", () => {
       return jobController.setUserLibrary(userLibrary.address)
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer.call(
           1, 1000, 180, 1000, {from: worker})
         )
@@ -484,14 +498,14 @@ contract('JobController', function(accounts) {
       const jobEstimate = 180;
 
       return Promise.resolve()
-        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
+        .then(() => jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
         .then(() => jobController.postJobOffer.call(jobId, workerRate, jobEstimate, workerOnTop, {from: client}))
         .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
     });
 
     it("should allow to post job offer with no ontop payment", () => {
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer.call(
           1, '0xfffffffffffffffffff', 1, 0, {from: worker}
           )
@@ -502,7 +516,7 @@ contract('JobController', function(accounts) {
     it("should post job offer if worker skills match", () => {
       return Promise.resolve()
         .then(() => jobController.setUserLibrary(userLibrary.address))
-        .then(() => jobController.postJob(16, 1, 1, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 16, 1, 1, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => userLibrary.setMany(worker, 16, [1], [1]))
         .then(() => jobController.postJobOffer.call(
           1, 1000, 180, 1000, {from: worker})
@@ -523,7 +537,7 @@ contract('JobController', function(accounts) {
       const args = [jobId, workerRate, jobEstimate, workerOnTop];
       return Promise.resolve()
         .then(() => jobController.postJob(
-          jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}
+          jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}
         ))
         .then(() => {
           return Promise.each(workers, w => {
@@ -548,7 +562,7 @@ contract('JobController', function(accounts) {
 
     it('should NOT accept job offer for non-existent job worker', () => {
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(async () => {
           const payment = await jobController.calculateLockAmountFor.call(worker, 1)
           return await jobController.acceptOffer.call(1, worker, { from: client, value: payment, })
@@ -558,7 +572,7 @@ contract('JobController', function(accounts) {
 
     it('should THROW on `acceptOffer` if client sent insufficient funds', () => {
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           1, '0xfffffffffffffffffff', 1, 1, {from: worker}
           )
@@ -575,7 +589,7 @@ contract('JobController', function(accounts) {
     it('should THROW when trying to accept job offer if payment lock was not ' +
        'allowed in Payment Processor', () => {
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           1, '0x12f2a36ecd555', 1, '0x12f2a36ecd555', {from: worker}
           )
@@ -594,7 +608,7 @@ contract('JobController', function(accounts) {
 
     it('should allow to accept job offer if payment lock was allowed by Payment Processor', () => {
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           1, '0x12f2a36ecd555', 1, '0x12f2a36ecd555', {from: worker}
           )
@@ -628,7 +642,7 @@ contract('JobController', function(accounts) {
         .then(() => paymentGateway.getBalance(client))
         .then(result => clientBalanceBefore = result)
         .then(result => workerBalanceBefore = result)
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details ipfs hash', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details ipfs hash', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
@@ -661,7 +675,7 @@ contract('JobController', function(accounts) {
       const jobEstimate = 180;
 
       return Promise.resolve()
-        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
+        .then(() => jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
         .then(() => jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, {from: worker}))
         .then(async () => {
           const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
@@ -730,7 +744,7 @@ contract('JobController', function(accounts) {
 
         .then(() => jobController.releasePayment(jobId))
         .then(() => jobsDataProvider.getJobState(jobId))
-        .then(asserts.equal(7));
+        .then(asserts.equal(JobState.FINALIZED));
     });
 
     it('should allow anyone to post an offer for a job only when a job has CREATED status', () => {
@@ -821,7 +835,7 @@ contract('JobController', function(accounts) {
       const jobEstimate = 180;
 
       return Promise.resolve()
-        .then(() => jobController.postJob(jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
+        .then(() => jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
         .then(() => jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, {from: worker}))
         .then(async () => {
           const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
@@ -832,7 +846,7 @@ contract('JobController', function(accounts) {
         .then(() => jobController.endWork(jobId, {from: worker}))
         .then(() => jobController.confirmEndWork(jobId, {from: client}))
         .then(() => jobsDataProvider.getJobState(jobId))
-        .then(asserts.equal(6))
+        .then(asserts.equal(JobState.FINISHED))
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
         .then((code) => assert.equal(code, ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE))
     });
@@ -848,7 +862,7 @@ contract('JobController', function(accounts) {
       const workerOnTop = '0x12f2a36ecd555';
       const jobEstimate = 180;
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 7, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 7, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
@@ -871,7 +885,7 @@ contract('JobController', function(accounts) {
       const workerOnTop = '0x12f2a36ecd555';
       const jobEstimate = 180;
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 7, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 7, jobDefaultPaySize, 'Job details', {from: client}))
 
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
@@ -892,7 +906,7 @@ contract('JobController', function(accounts) {
       const workerOnTop = '0x12f2a36ecd555';
       const jobEstimate = 180;
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 7, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 7, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
@@ -919,7 +933,7 @@ contract('JobController', function(accounts) {
       const workerOnTop = '0x12f2a36ecd555';
       const jobEstimate = 180;
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 7, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 7, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
@@ -950,7 +964,7 @@ contract('JobController', function(accounts) {
       const workerOnTop = '0x12f2a36ecd555';
       const jobEstimate = 180;
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 7, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 7, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
@@ -989,7 +1003,7 @@ contract('JobController', function(accounts) {
 
       return Promise.resolve()
       // Post job
-        .then(() => jobController.postJob(skillsArea, skillsCategory, skills, jobDefaultPaySize, jobDetailsIpfsHash, {from: client}))
+        .then(() => jobController.postJob(jobFlow, skillsArea, skillsCategory, skills, jobDefaultPaySize, jobDetailsIpfsHash, {from: client}))
         .then(tx => eventsHelper.extractEvents(tx, "JobPosted"))
         .then(async (events) => {
           assert.equal(events.length, 1);
@@ -1130,7 +1144,7 @@ contract('JobController', function(accounts) {
 
       return Promise.resolve()
       // Post job
-        .then(() => jobController.postJob(skillsArea, skillsCategory, skills, jobDefaultPaySize, jobDetails, {from: client}))
+        .then(() => jobController.postJob(jobFlow, skillsArea, skillsCategory, skills, jobDefaultPaySize, jobDetails, {from: client}))
         .then(tx => eventsHelper.extractEvents(tx, "JobPosted"))
         .then(events => {
           assert.equal(events.length, 1);
@@ -1261,7 +1275,7 @@ contract('JobController', function(accounts) {
       const jobEstimate = 240;
 
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details hash', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details hash', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
@@ -1291,7 +1305,7 @@ contract('JobController', function(accounts) {
         .then(result => clientBalanceBefore = result)
         .then(() => paymentGateway.getBalance(worker))
         .then(result => workerBalanceBefore = result)
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
@@ -1317,7 +1331,7 @@ contract('JobController', function(accounts) {
       const workerOnTop = 1000000000;
       const jobEstimate = 240;
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
@@ -1335,7 +1349,7 @@ contract('JobController', function(accounts) {
         .then(assert.isTrue)
 
         .then(() => jobController.releasePayment.call(jobId))
-        .then((code) => assert.equal(code, ErrorsNamespace.PAYMENT_PROCESSOR_OPERATION_IS_NOT_APPROVED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.PAYMENT_PROCESSOR_OPERATION_IS_NOT_APPROVED))
     });
 
     it("should allow to release payment when operation was allowed by Payment Processor", () => {
@@ -1344,7 +1358,7 @@ contract('JobController', function(accounts) {
       const workerOnTop = 1000000000;
       const jobEstimate = 240;
       return Promise.resolve()
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
@@ -1382,7 +1396,7 @@ contract('JobController', function(accounts) {
         .then(result => clientBalanceBefore = result)
         .then(() => paymentGateway.getBalance(worker))
         .then(result => workerBalanceBefore = result)
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
@@ -1415,7 +1429,7 @@ contract('JobController', function(accounts) {
         .then(result => clientBalanceBefore = result)
         .then(() => paymentGateway.getBalance(worker))
         .then(result => workerBalanceBefore = result)
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
@@ -1450,7 +1464,7 @@ contract('JobController', function(accounts) {
         .then(result => clientBalanceBefore = result)
         .then(() => paymentGateway.getBalance(worker))
         .then(result => workerBalanceBefore = result)
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
@@ -1487,7 +1501,7 @@ contract('JobController', function(accounts) {
         .then(result => clientBalanceBefore = result)
         .then(() => paymentGateway.getBalance(worker))
         .then(result => workerBalanceBefore = result)
-        .then(() => jobController.postJob(4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
+        .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
