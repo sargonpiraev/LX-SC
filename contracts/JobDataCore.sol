@@ -28,8 +28,8 @@ contract JobDataCore is StorageAdapter, BitOps {
     uint constant OK = 1;
 
     /// Defines a set of masks that define different groups of workflows
-    uint constant WORKFLOW_TM = 0x01;
-    uint constant WORKFLOW_FIXED_PRICE = 0x02;
+    uint constant WORKFLOW_TM = 1;
+    uint constant WORKFLOW_FIXED_PRICE = 2;
 
     uint constant WORKFLOW_MAX = WORKFLOW_FIXED_PRICE;
 
@@ -141,7 +141,7 @@ contract JobDataCore is StorageAdapter, BitOps {
 
     function _isValidFlow(uint _flow) internal pure returns (bool) {
         uint _flowType = _flow & ~WORKFLOW_FEATURE_FLAGS;
-        uint _featureFlags = _flowType & WORKFLOW_FEATURE_FLAGS;
+        uint _featureFlags = _flow & WORKFLOW_FEATURE_FLAGS;
         if (!(_isSingleFlag(_flowType) && _flowType <= WORKFLOW_MAX)) {
             return false;
         }
@@ -150,9 +150,9 @@ contract JobDataCore is StorageAdapter, BitOps {
             (WORKFLOW_TM == _flowType && _hasFlags(WORKFLOW_TM_FEATURES_ALLOWED, _featureFlags)) ||
             (WORKFLOW_FIXED_PRICE == _flowType && _hasFlags(WORKFLOW_FIXED_PRICE_FEATURES_ALLOWED, _featureFlags));
         if (!_featuresApproved) {
-            return true;
+            return false;
         }
 
-        return false;
+        return true;
     }
 }

@@ -15,7 +15,7 @@ interface BoardControllerAccessor {
 }
 
 
-contract JobsDataProvider is JobDataCore, BitOps {
+contract JobsDataProvider is JobDataCore {
 
     function JobsDataProvider(
         Storage _store,
