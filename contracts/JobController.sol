@@ -203,7 +203,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
             return store.get(jobOfferOntop, _jobId, worker) +
                    store.get(jobOfferRate, _jobId, worker) * 60;
         } else if (
-            _jobState == uint(JobState.ACCEPTED) ||
+            _jobState == uint(JobState.OFFER_ACCEPTED) ||
             _jobState == uint(JobState.PENDING_START)
         ) {
             // Job hasn't even started yet, but has been accepted,
@@ -348,7 +348,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         }
 
         store.set(jobAcceptedAt, _jobId, now);
-        store.set(jobState, _jobId, uint(JobState.ACCEPTED));
+        store.set(jobState, _jobId, uint(JobState.OFFER_ACCEPTED));
         _cleanupJobOffers(_jobId, _worker);
 
         JobController(getEventsHistory()).emitJobOfferAccepted(_jobId, _worker);
@@ -369,7 +369,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _jobId
     )
     onlyWorker(_jobId)
-    onlyJobState(_jobId, JobState.ACCEPTED)
+    onlyJobState(_jobId, JobState.OFFER_ACCEPTED)
     external
     returns (uint)
     {
@@ -514,7 +514,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     {
         uint _jobState = _getJobState(_jobId);
         if (
-            _jobState != uint(JobState.ACCEPTED) &&
+            _jobState != uint(JobState.OFFER_ACCEPTED) &&
             _jobState != uint(JobState.PENDING_START) &&
             _jobState != uint(JobState.STARTED) &&
             _jobState != uint(JobState.PENDING_FINISH)

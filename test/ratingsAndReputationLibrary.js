@@ -61,7 +61,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
   const JOB_STATES = {
     NOT_SET: 0,
     CREATED: 1,
-    ACCEPTED: 2,
+    OFFER_ACCEPTED: 2,
     PENDING_START: 3,
     STARTED: 4,
     PENDING_FINISH: 5,
@@ -783,7 +783,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       }));
     });
 
-    it('should NOT allow to rate worker skills if a job was canceled on ACCEPTED state', () => {
+    it('should NOT allow to rate worker skills if a job was canceled on OFFER_ACCEPTED state', () => {
       const jobId = NOT_FINALIZED_JOB;
       const area = helpers.getFlag(0);
       const category = helpers.getFlag(0);
@@ -794,7 +794,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => jobsDataProvider.getJobState(jobId))
       .then(asserts.equal(7))  // Ensure the job is FINALIZED
       .then(() => jobsDataProvider.getFinalState(jobId))
-      .then(asserts.equal(2))  // Ensure the job was canceled at ACCEPTED state
+      .then(asserts.equal(2))  // Ensure the job was canceled at OFFER_ACCEPTED state
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))

@@ -29,7 +29,7 @@ contract('Integration tests (user stories)', (accounts) => {
     const stages = {
         NOT_SET: 0,
         CREATED: 1,
-        ACCEPTED: 2,
+        OFFER_ACCEPTED: 2,
         PENDING_START: 3,
         STARTED: 4,
         PENDING_FINISH: 5,
@@ -715,7 +715,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("job should have `Accepted` state", async () => {
-                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.ACCEPTED)
+                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.OFFER_ACCEPTED)
             })
 
             it("should be able to start work", async () => {

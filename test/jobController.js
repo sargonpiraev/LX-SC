@@ -85,7 +85,7 @@ contract('JobController', function(accounts) {
   const operationAllowance = (operation, args, results) => {
     let stages = {
       CREATED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
-      ACCEPTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
+      OFFER_ACCEPTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
       PENDING_START: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
       STARTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
       PENDING_FINISH: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
@@ -122,7 +122,7 @@ contract('JobController', function(accounts) {
         return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
       })
       .then(() => operation.call(...args))
-      .then(result => assert.equal(result.toNumber(), stages.ACCEPTED))
+      .then(result => assert.equal(result.toNumber(), stages.OFFER_ACCEPTED))
 
       .then(() => jobController.startWork(jobId, {from: worker}))
       .then(() => operation.call(...args))
@@ -738,18 +738,18 @@ contract('JobController', function(accounts) {
       const args = [1, '0x12F2A36ECD555', 180, '0x12F2A36ECD555', {from: worker}];
       const results = {
         CREATED: ErrorsNamespace.OK,
-        ACCEPTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
+        OFFER_ACCEPTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
       };
       return Promise.resolve()
         .then(() => operationAllowance(operation, args, results));
     });
 
-    it('should allow assigned worker to request work start only when a job has ACCEPTED status', () => {
+    it('should allow assigned worker to request work start only when a job has OFFER_ACCEPTED status', () => {
       const operation = jobController.startWork;
       const args = [1, {from: worker}];
       const results = {
         CREATED: ErrorsNamespace.UNAUTHORIZED,
-        ACCEPTED: ErrorsNamespace.OK,
+        OFFER_ACCEPTED: ErrorsNamespace.OK,
         PENDING_START: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
       };
       return Promise.resolve()
@@ -772,7 +772,7 @@ contract('JobController', function(accounts) {
       const args = [1, {from: worker}];
       const results = {
           CREATED: ErrorsNamespace.UNAUTHORIZED,
-          ACCEPTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
+          OFFER_ACCEPTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
           PENDING_START: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
           STARTED: ErrorsNamespace.OK,
       };
@@ -796,11 +796,11 @@ contract('JobController', function(accounts) {
         .then(() => operationAllowance(operation, args, results));
     });
 
-    it('should allow client to cancel job only at ACCEPTED, PENDING_START, STARTED and PENDING_FINISH states', () => {
+    it('should allow client to cancel job only at OFFER_ACCEPTED, PENDING_START, STARTED and PENDING_FINISH states', () => {
       const operation = jobController.cancelJob;
       const args = [1, {from: client}];
       const results = {
-        ACCEPTED: ErrorsNamespace.OK,
+        OFFER_ACCEPTED: ErrorsNamespace.OK,
         PENDING_START: ErrorsNamespace.OK,
         STARTED: ErrorsNamespace.OK,
         PENDING_FINISH: ErrorsNamespace.OK
@@ -1366,7 +1366,7 @@ contract('JobController', function(accounts) {
         .then((code) => assert.equal(code, ErrorsNamespace.OK))
     });
 
-    it('should release just jobOfferOnTop on `cancelJob` on ACCEPTED job stage', () => {
+    it('should release just jobOfferOnTop on `cancelJob` on OFFER_ACCEPTED job stage', () => {
       const jobId = 1;
       const workerRate = 200000000000;
       const workerOnTop = 1000000000;

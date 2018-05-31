@@ -11,7 +11,18 @@ import "./adapters/StorageAdapter.sol";
 
 contract JobDataCore is StorageAdapter {
 
-    enum JobState { NOT_SET, CREATED, ACCEPTED, PENDING_START, STARTED, PENDING_FINISH, FINISHED, FINALIZED }
+    enum JobState { 
+        NOT_SET, 
+        CREATED, 
+        OFFER_ACCEPTED, 
+        PENDING_START, 
+        STARTED, 
+        PENDING_FINISH, 
+        FINISHED, 
+        WORK_ACCEPTED, 
+        WORK_REJECTED, 
+        FINALIZED
+    }
 
     uint constant OK = 1;
 
