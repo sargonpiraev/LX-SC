@@ -13,6 +13,11 @@ import "./base/BitOps.sol";
 import "./JobDataCore.sol";
 
 
+contract EscrowInterface {
+    function openDispute(uint _jobId) payable public returns (uint);
+}
+
+
 contract UserLibraryInterface {
     function hasSkills(address _user, uint _area, uint _category, uint _skills) public view returns (bool);
 }
@@ -43,6 +48,8 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     event WorkPaused(address indexed self, uint indexed jobId, uint at);
     event WorkResumed(address indexed self, uint indexed jobId, uint at);
     event WorkFinished(address indexed self, uint indexed jobId, uint at);
+    event WorkAccepted(address indexed self, uint indexed jobId, uint at);
+    event WorkRejected(address indexed self, uint indexed jobId, uint at);
     event PaymentReleased(address indexed self, uint indexed jobId);
     event JobCanceled(address indexed self, uint indexed jobId);
 
@@ -103,19 +110,9 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     }
 
     modifier onlyStartedState(uint _jobId) {
-        uint _flowType = store.get(jobWorkflowType, _jobId);
+        uint _flow = store.get(jobWorkflowType, _jobId);
         uint _jobState = store.get(jobState, _jobId);
-        bool _needsConfirmation = (_flowType & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
-        if (_needsConfirmation && _jobState != uint(JobState.STARTED)) {
-            assembly {
-                mstore(0, 13003) // JOB_CONTROLLER_INVALID_STATE
-                return(0, 32)
-            }
-        }
-
-        if (!_needsConfirmation &&
-            (_jobState != uint(JobState.PENDING_START) || _jobState != uint(JobState.STARTED))
-        ) {
+        if (!_isStartedStateForFlow(_flow, _jobState)) {
             assembly {
                 mstore(0, 13003) // JOB_CONTROLLER_INVALID_STATE
                 return(0, 32)
@@ -175,7 +172,6 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         return OK;
     }
 
-
     function calculateLock(address worker, uint _jobId, uint _time, uint _onTop) public view returns (uint) {
         // Lock additional working hour + 10% of resulting amount
         uint rate = store.get(jobOfferRate, _jobId, worker);
@@ -189,17 +185,30 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     }
 
     function calculateLockAmountFor(address worker, uint _jobId) public view returns (uint) {
-        uint _flowType = store.get(jobWorkflowType, _jobId);
-        if (_hasFlag(_flowType, WORKFLOW_TM)) {
+        uint _flow = store.get(jobWorkflowType, _jobId);
+        if (_hasFlag(_flow, WORKFLOW_TM)) {
             uint onTop = store.get(jobOfferOntop, _jobId, worker);
             return calculateLock(worker, _jobId, store.get(jobOfferEstimate, _jobId, worker) + 60, onTop);
-        } else if (_hasFlag(_flowType, WORKFLOW_FIXED_PRICE)) {
+        } else if (_hasFlag(_flow, WORKFLOW_FIXED_PRICE)) {
             return store.get(jobOfferRate, _jobId, worker);
         }
-        assert(false); // NOTE: other types of workflow is not supported right now
+
+        assert(false); // NOTE: need to update; other types of workflow is not supported right now
     }
 
     function calculatePaycheck(uint _jobId) public view returns (uint) {
+        uint _flow = store.get(jobWorkflowType, _jobId);
+
+        if (_hasFlag(_flow, WORKFLOW_TM)) {
+            return _calculatePaycheckForTM(_jobId);
+        } else if (_hasFlag(_flow, WORKFLOW_FIXED_PRICE)) {
+            return _calculatePaycheckForFixedPrice(_jobId);
+        }
+
+        assert(false); /// NOTE: need to update; other types of workflow is not supported right now
+    }
+
+    function _calculatePaycheckForTM(uint _jobId) private view returns (uint) {
         address worker = store.get(jobWorker, _jobId);
         uint _jobState = _getJobState(_jobId);
         if (_jobState == uint(JobState.FINISHED)) {
@@ -245,6 +254,15 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
             // Job hasn't even started yet, but has been accepted,
             // release just worker "on top" expenses.
             return store.get(jobOfferOntop, _jobId, worker);
+        }
+    }
+
+    function _calculatePaycheckForFixedPrice(uint _jobId) private view returns (uint) {
+        address worker = store.get(jobWorker, _jobId);
+        uint _jobState = _getJobState(_jobId);
+
+        if (_jobState == uint(JobState.WORK_ACCEPTED)) {
+            return store.get(jobOfferRate, _jobId, worker);
         }
     }
 
@@ -582,6 +600,34 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         return OK;
     }
 
+    function acceptWorkResults(uint _jobId)
+    external
+    onlyClient(_jobId)
+    onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
+    onlyJobState(_jobId, JobState.PENDING_FINISH)
+    returns (uint) 
+    {
+        store.set(jobFinishTime, _jobId, now);
+        store.set(jobState, _jobId, uint(JobState.WORK_ACCEPTED));
+
+        JobController(getEventsHistory()).emitWorkAccepted(_jobId, now);
+        return OK;
+    }
+
+    function rejectWorkResults(uint _jobId)
+    external
+    onlyClient(_jobId)
+    onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
+    onlyJobState(_jobId, JobState.PENDING_FINISH)
+    returns (uint _resultCode) 
+    {
+        store.set(jobFinishTime, _jobId, now);
+        store.set(jobState, _jobId, uint(JobState.WORK_REJECTED));
+
+        JobController(getEventsHistory()).emitWorkRejected(_jobId, now);
+        return OK;
+    }
+
     function releasePayment(
         uint _jobId
     )
@@ -655,6 +701,14 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         WorkFinished(_self(), _jobId, _at);
     }
 
+    function emitWorkAccepted(uint _jobId, uint _at) public {
+        WorkAccepted(_self(), _jobId, _at);
+    }
+
+    function emitWorkRejected(uint _jobId, uint _at) public {
+        WorkRejected(_self(), _jobId, _at);
+    }
+
     function emitPaymentReleased(uint _jobId) public {
         PaymentReleased(_self(), _jobId);
     }
@@ -686,6 +740,20 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
             if (_jobState == uint(JobState.WORK_ACCEPTED) || _jobState == uint(JobState.WORK_REJECTED)) {
                 return true;
             }
+        }
+    }
+
+    function _isStartedStateForFlow(uint _flow, uint _jobState) internal pure returns (bool) {
+        bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
+        if (_needsConfirmation && 
+        _jobState != uint(JobState.STARTED)) {
+            return true;
+        }
+
+        if (!_needsConfirmation &&
+            (_jobState != uint(JobState.PENDING_START) || _jobState != uint(JobState.STARTED))
+        ) {
+            return true;
         }
     }
 
