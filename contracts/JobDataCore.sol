@@ -27,13 +27,13 @@ contract JobDataCore is StorageAdapter {
     uint constant OK = 1;
 
     /// Defines a set of masks that define different groups of workflows
-    uint8 constant WORKFLOW_TM_WITH_CONFIRMATION = 0x01;
-    uint8 constant WORKFLOW_TM_WITHOUT_CONFIRMATION = 0x02;
-    uint8 constant WORKFLOW_FIXED_PRICE = 0x04;
-    uint8 constant WORKFLOW_MAX = WORKFLOW_FIXED_PRICE;
+    uint constant WORKFLOW_TM_WITH_CONFIRMATION = 0x01;
+    uint constant WORKFLOW_TM_WITHOUT_CONFIRMATION = 0x02;
+    uint constant WORKFLOW_FIXED_PRICE = 0x04;
+    uint constant WORKFLOW_MAX = WORKFLOW_FIXED_PRICE;
 
-    uint8 constant WORKFLOW_TM_GROUP = WORKFLOW_TM_WITH_CONFIRMATION | WORKFLOW_TM_WITHOUT_CONFIRMATION;
-    uint8 constant WORKFLOW_FIXED_PRICE_GROUP = WORKFLOW_FIXED_PRICE;
+    uint constant WORKFLOW_TM_GROUP = WORKFLOW_TM_WITH_CONFIRMATION | WORKFLOW_TM_WITHOUT_CONFIRMATION;
+    uint constant WORKFLOW_FIXED_PRICE_GROUP = WORKFLOW_FIXED_PRICE;
 
 
     StorageInterface.Address boardController;
