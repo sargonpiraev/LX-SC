@@ -207,13 +207,15 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     function _calculatePaycheckForTM(uint _jobId) private view returns (uint) {
         address worker = store.get(jobWorker, _jobId);
         uint _jobState = _getJobState(_jobId);
-        if (_jobState == uint(JobState.FINISHED)) {
+        uint _flow = store.get(jobWorkflowType, _jobId);
+        bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
+        if (_isFinishedStateForFlow(_flow, _jobState)) {
             // Means that participants have agreed on job completion,
             // reward should be calculated depending on worker's time spent.
             uint maxEstimatedTime = store.get(jobOfferEstimate, _jobId, worker) + 60;
-            uint timeSpent = (store.get(jobFinishTime, _jobId) -
-                              store.get(jobStartTime, _jobId) -
-                              store.get(jobPausedFor, _jobId)) / 60;
+            uint timeSpent = ((_needsConfirmation ? store.get(jobFinishTime, _jobId) : store.get(jobPendingFinishAt, _jobId)) -
+                            (_needsConfirmation ? store.get(jobStartTime, _jobId) : store.get(jobPendingStartAt, _jobId)) -
+                            store.get(jobPausedFor, _jobId)) / 60;
             if (timeSpent > 60 && timeSpent <= maxEstimatedTime) {
                 // Worker was doing the job for more than an hour, but less then
                 // maximum estimated working time. Release money for the time
@@ -237,7 +239,8 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
             }
         } else if (
             _jobState == uint(JobState.STARTED) ||
-            _jobState == uint(JobState.PENDING_FINISH)
+            (!_needsConfirmation && _jobState == uint(JobState.PENDING_START)) ||
+            (_needsConfirmation && _jobState == uint(JobState.PENDING_FINISH))
         ) {
             // Job has been canceled right after start or right before completion,
             // minimum of 1 working hour + "on top" should be released.
@@ -245,7 +248,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
                    store.get(jobOfferRate, _jobId, worker) * 60;
         } else if (
             _jobState == uint(JobState.OFFER_ACCEPTED) ||
-            _jobState == uint(JobState.PENDING_START)
+            (_needsConfirmation && _jobState == uint(JobState.PENDING_START))
         ) {
             // Job hasn't even started yet, but has been accepted,
             // release just worker "on top" expenses.
@@ -584,7 +587,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
             return _emitErrorCode(_resultCode);
         }
 
-        store.set(jobFinalizedAt, _jobId, now);
+        store.set(jobFinalizedAt, _jobId, _getJobState(_jobId));
         store.set(jobState, _jobId, uint(JobState.FINALIZED));
 
         JobController(getEventsHistory()).emitJobCanceled(_jobId);
@@ -658,7 +661,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
             }
         }
 
-        store.set(jobFinalizedAt, _jobId, now);
+        store.set(jobFinalizedAt, _jobId, _getJobState(_jobId));
         store.set(jobState, _jobId, uint(JobState.FINALIZED));
 
         JobController(getEventsHistory()).emitWorkDistputeResolved(_jobId, now);
@@ -687,7 +690,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
             return _emitErrorCode(_resultCode);
         }
 
-        store.set(jobFinalizedAt, _jobId, now);
+        store.set(jobFinalizedAt, _jobId, _getJobState(_jobId));
         store.set(jobState, _jobId, uint(JobState.FINALIZED));
 
         JobController(getEventsHistory()).emitPaymentReleased(_jobId);
