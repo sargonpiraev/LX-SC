@@ -6,10 +6,11 @@
 pragma solidity ^0.4.18;
 
 
+import "./base/BitOps.sol";
 import "./adapters/StorageAdapter.sol";
 
 
-contract JobDataCore is StorageAdapter {
+contract JobDataCore is StorageAdapter, BitOps {
 
     enum JobState { 
         NOT_SET, 
@@ -27,14 +28,19 @@ contract JobDataCore is StorageAdapter {
     uint constant OK = 1;
 
     /// Defines a set of masks that define different groups of workflows
-    uint constant WORKFLOW_TM_WITH_CONFIRMATION = 0x01;
-    uint constant WORKFLOW_TM_WITHOUT_CONFIRMATION = 0x02;
-    uint constant WORKFLOW_FIXED_PRICE = 0x04;
+    uint constant WORKFLOW_TM = 0x01;
+    uint constant WORKFLOW_FIXED_PRICE = 0x02;
+
     uint constant WORKFLOW_MAX = WORKFLOW_FIXED_PRICE;
 
-    uint constant WORKFLOW_TM_GROUP = WORKFLOW_TM_WITH_CONFIRMATION | WORKFLOW_TM_WITHOUT_CONFIRMATION;
-    uint constant WORKFLOW_FIXED_PRICE_GROUP = WORKFLOW_FIXED_PRICE;
+    uint constant WORKFLOW_TM_FEATURES_ALLOWED = WORKFLOW_CONFIRMATION_NEEDED_FLAG;
+    uint constant WORKFLOW_FIXED_PRICE_FEATURES_ALLOWED = 0;
 
+    uint constant WORKFLOW_CONFIRMATION_ALLOWED = WORKFLOW_TM;
+
+    uint constant WORKFLOW_CONFIRMATION_NEEDED_FLAG = 0x8000000000000000000000000000000000000000000000000000000000000000;
+
+    uint constant WORKFLOW_FEATURE_FLAGS = WORKFLOW_CONFIRMATION_NEEDED_FLAG;
 
     StorageInterface.Address boardController;
     /// @dev Escrow address for FIXED_PRICE dispute
@@ -131,5 +137,22 @@ contract JobDataCore is StorageAdapter {
         bindStatus.init("bindStatus");
             
         return OK;
+    }
+
+    function _isValidFlow(uint _flow) internal pure returns (bool) {
+        uint _flowType = _flow & ~WORKFLOW_FEATURE_FLAGS;
+        uint _featureFlags = _flowType & WORKFLOW_FEATURE_FLAGS;
+        if (!(_isSingleFlag(_flowType) && _flowType <= WORKFLOW_MAX)) {
+            return false;
+        }
+
+        bool _featuresApproved = 
+            (WORKFLOW_TM == _flowType && _hasFlags(WORKFLOW_TM_FEATURES_ALLOWED, _featureFlags)) ||
+            (WORKFLOW_FIXED_PRICE == _flowType && _hasFlags(WORKFLOW_FIXED_PRICE_FEATURES_ALLOWED, _featureFlags));
+        if (!_featuresApproved) {
+            return true;
+        }
+
+        return false;
     }
 }
