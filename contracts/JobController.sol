@@ -91,18 +91,8 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         _;
     }
 
-    modifier onlyTMFlow(uint _jobId) {
-        if (!_hasFlag(store.get(jobWorkflowType, _jobId), WORKFLOW_TM_GROUP)) {
-            assembly {
-                mstore(0, 13007) // JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
-                return(0, 32)
-            }
-        }
-        _;
-    }
-
-    modifier onlyFixedPriceFlow(uint _jobId) {
-        if (!_hasFlag(store.get(jobWorkflowType, _jobId), WORKFLOW_FIXED_PRICE_GROUP)) {
+    modifier onlyFlow(uint _jobId, uint _flowTypeGroup) {
+        if (!_hasFlag(store.get(jobWorkflowType, _jobId), _flowTypeGroup)) {
             assembly {
                 mstore(0, 13007) // JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
                 return(0, 32)
@@ -170,6 +160,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         } else if (_hasFlag(_flowType, WORKFLOW_FIXED_PRICE_GROUP)) {
             return store.get(jobOfferRate, _jobId, worker);
         }
+        assert(false); // NOTE: other types of workflow is not supported right now
     }
 
     function calculatePaycheck(uint _jobId) public view returns (uint) {
@@ -278,7 +269,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _ontop
     )
     onlyNotClient(_jobId)
-    onlyTMFlow(_jobId)
+    onlyFlow(_jobId, WORKFLOW_TM_GROUP)
     onlyJobState(_jobId, JobState.CREATED)
     public
     returns (uint)
@@ -306,7 +297,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _price
     )
     onlyNotClient(_jobId)
-    onlyFixedPriceFlow(_jobId)
+    onlyFlow(_jobId, WORKFLOW_FIXED_PRICE_GROUP)
     onlyJobState(_jobId, JobState.CREATED)
     external
     returns (uint) {
@@ -391,6 +382,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _jobId
     )
     onlyClient(_jobId)
+    onlyFlow(_jobId, WORKFLOW_TM_WITH_CONFIRMATION)
     onlyJobState(_jobId, JobState.PENDING_START)
     external
     returns (uint)
@@ -451,6 +443,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint16 _additionalTime
     )
     onlyClient(_jobId)
+    onlyFlow(_jobId, WORKFLOW_TM_GROUP)
     onlyJobState(_jobId, JobState.STARTED)
     external
     payable
@@ -500,6 +493,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _jobId
     )
     onlyClient(_jobId)
+    onlyFlow(_jobId, WORKFLOW_TM_WITH_CONFIRMATION)
     onlyJobState(_jobId, JobState.PENDING_FINISH)
     external
     returns (uint)
