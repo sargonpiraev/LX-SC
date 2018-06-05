@@ -37,6 +37,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
 
     event JobPosted(address indexed self, uint indexed jobId, bytes32 flowType, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash, bool bindStatus);
     event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
+    event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint price);
     event JobOfferAccepted(address indexed self, uint indexed jobId, address worker);
     event WorkStarted(address indexed self, uint indexed jobId, uint at);
     event TimeAdded(address indexed self, uint indexed jobId, uint time);  // Additional `time` in minutes
@@ -363,6 +364,8 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         store.set(jobOfferRate, _jobId, msg.sender, _price);
         store.add(workerJobs, bytes32(msg.sender), _jobId);
         store.add(jobOffers, bytes32(_jobId), msg.sender);
+
+        JobController(getEventsHistory()).emitJobOfferPosted(_jobId, msg.sender, _price);
 
         return OK;
     }
@@ -715,6 +718,10 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
 
     function emitJobOfferPosted(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) public {
         JobOfferPosted(_self(), _jobId, _worker, _rate, _estimate, _ontop);
+    }
+
+    function emitJobOfferPosted(uint _jobId, address _worker, uint _price) public {
+        JobOfferPosted(_self(), _jobId, _worker, _price);
     }
 
     function emitJobOfferAccepted(uint _jobId, address _worker) public {
