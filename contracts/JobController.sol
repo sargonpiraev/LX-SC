@@ -345,7 +345,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         return OK;
     }
 
-    function postJobOffer(
+    function postJobOfferWithPrice(
         uint _jobId,
         uint _price
     )
