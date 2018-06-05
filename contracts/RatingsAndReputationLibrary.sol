@@ -54,7 +54,18 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     event SkillEvaluated(address indexed self, address indexed rater, address indexed to, uint8 rating, uint area, uint category, uint skill);
     event BoardRatingGiven(address indexed self, address indexed rater, uint indexed to, uint8 rating);
 
-    enum JobState { NOT_SET, CREATED, ACCEPTED, PENDING_START, STARTED, PENDING_FINISH, FINISHED, FINALIZED }
+    enum JobState { 
+        NOT_SET, 
+        CREATED, 
+        OFFER_ACCEPTED, 
+        PENDING_START, 
+        STARTED, 
+        PENDING_FINISH, 
+        FINISHED, 
+        WORK_ACCEPTED, 
+        WORK_REJECTED, 
+        FINALIZED
+    }
 
     JobControllerInterface jobController;
     UserLibraryInterface userLibrary;

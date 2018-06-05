@@ -2,6 +2,11 @@
 
 ./node_modules/.bin/truffle console --network ntr1x
 
+const confirmationWorkflowFlag = web3.toBigNumber(2).pow(255);
+const tmWorkflow = web3.toBigNumber(1)
+const tmWithConfirmationWorkflow = tmWorkflow.add(confirmationWorkflowFlag)
+const fixedPriceWorkflow = web3.toBigNumber(2)
+
 web3.eth.getAccounts((e,a) => console.log(a))
 web3.eth.getBalance("0xfebc7d461b970516c6d3629923c73cc6475f1d13", (e,b) => console.log(b))
 
@@ -66,15 +71,15 @@ FakeCoin.deployed().then(f => f.mint("0x00b436db5bd741285b98d6bcf488eceadb4c410e
 
 PaymentGateway.deployed().then( p => p.deposit(10000, FakeCoin.address))
 
-JobController.deployed().then(j => j.postJob(4,4,4,"Task 1"))
-JobController.deployed().then(j => j.postJob(4,4,4,"Task 2"))
-JobController.deployed().then(j => j.postJob(4,4,4,"Task 3"))
-JobController.deployed().then(j => j.postJob(4,4,4,"Task id 4"))
-JobController.deployed().then(j => j.postJob(64,64,64,"Task id 5"))
-JobController.deployed().then(j => j.postJob(16,16,16,"Task id 6"))
-JobController.deployed().then(j => j.postJob(16,16,16,"Task id 7"))
-JobController.deployed().then(j => j.postJob(16,16,16,"Task id 8"))
-JobController.deployed().then(j => j.postJob(16,16,16,"Task id 9"))
+JobController.deployed().then(j => j.postJob(tmWithConfirmationWorkflow,4,4,4,10,"Task 1"))
+JobController.deployed().then(j => j.postJob(tmWithConfirmationWorkflow,4,4,4,20,"Task 2"))
+JobController.deployed().then(j => j.postJob(tmWithConfirmationWorkflow,4,4,4,30,"Task 3"))
+JobController.deployed().then(j => j.postJob(tmWithConfirmationWorkflow,4,4,4,40,"Task id 4"))
+JobController.deployed().then(j => j.postJob(tmWithConfirmationWorkflow,64,64,64,50,"Task id 5"))
+JobController.deployed().then(j => j.postJob(tmWithConfirmationWorkflow,16,16,16,60,"Task id 6"))
+JobController.deployed().then(j => j.postJob(tmWithConfirmationWorkflow,16,16,16,70,"Task id 7"))
+JobController.deployed().then(j => j.postJob(tmWithConfirmationWorkflow,16,16,16,80,"Task id 8"))
+JobController.deployed().then(j => j.postJob(tmWithConfirmationWorkflow,16,16,16,90,"Task id 9"))
 
 JobController.deployed().then(j => j.acceptOffer(5, "0x00aabd706f4ee7ec560517f82a1d492b21fef05e"))
 JobController.deployed().then(j => j.acceptOffer(6, "0x003045868e9b5405f710643d1b31dab330b186ec"))

@@ -55,6 +55,9 @@ module.exports = {
   ignoreAuth: (mock, enabled = true) => {
     return mock.ignore(roles2LibraryInterface.canCall.getData().slice(0, 10), enabled);
   },
+  getBitFlag: index => {
+    return web3.toBigNumber(2).pow(index);
+  },
   getFlag: index => {
     return web3.toBigNumber(2).pow(index*2);
   },
