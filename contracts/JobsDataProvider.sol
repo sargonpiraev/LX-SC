@@ -216,7 +216,7 @@ contract JobsDataProvider is JobDataCore {
         uint[] _onTops
     ) {
         uint _offersCount = getJobOffersCount(_jobId);
-        if (_fromIdx < _offersCount) {
+        if (_fromIdx > _offersCount) {
             return;
         }
 
