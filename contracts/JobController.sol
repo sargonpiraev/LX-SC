@@ -438,6 +438,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _jobId
     )
     onlyClient(_jobId)
+    onlyFlow(_jobId, WORKFLOW_TM)
     onlyJobState(_jobId, JobState.PENDING_START)
     external
     returns (uint)
