@@ -636,8 +636,8 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
     onlyJobState(_jobId, JobState.WORK_REJECTED)
     returns (uint _resultCode) {
-        uint payCheck = store.get(jobOfferRate, _jobId, worker);
         address worker = store.get(jobWorker, _jobId);
+        uint payCheck = store.get(jobOfferRate, _jobId, worker);
         address client = store.get(jobClient, _jobId);
         if (_workerPaycheck > 0) {
             _resultCode = paymentProcessor.releasePayment(
