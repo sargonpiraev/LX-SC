@@ -14,6 +14,53 @@ $ npm run testrpc
 $ npm run test:all
 ```
 
+
+# Workflows
+
+There are different approaches of how to manage work and how to deal with rewards for work being done. We introduced several strategies that will allow to be more flexible when cope with payment size:
+- Time & Material flow (with confirmation from client's side and without it, so client no need to confirm the begging and end of work);
+- Fixed Price flow.
+
+### Time & Material
+
+It is a standard way to treat spent resources and pay for them according to a set up rate. The final amount of resources will be known only after a work will be done. Speaking on a language of contracts this algorithm in its simpliest way looks like this:
+1. **client**:> `JobController#postJob()`
+2. **worker**:> `JobController#postJobOffer()`
+3. **client**:> `JobController#acceptOffer()`
+4. **worker**:> `JobController#startWork()`
+5. **client**:> `JobController#confirmStartWork()`
+6. **worker**:> `JobController#pauseWork()` or `JobController#resumeWork()`
+7. **client**:> (could provide additional time to finish work) `JobController#addMoreTime()`
+8. **worker**:> `JobController#endWork()`
+9. **client**:> `JobController#confirmEndWorking()`
+10. **anyone**:> `JobController#releasePayment()`
+
+So after the step 10 (releasing payment) a worker has ETH on his account that he have earned.
+
+### Fixed Price
+
+This type of flow stands for fixed and prediscussed price for any spents of time during the work. So there is no additional or 'ontop' payments after a work was finished. When a worker ends his work a client have to decide if he is good with the result of a work or not, so he could either accept or reject results of work. In case when a client rejects work results then the dispute opens and referee should decide if client right or not. A referee (this role works like escrow accounts) should resolve this dispute by splitting the total balance between participants or give it to either side. 
+> Penalty fee could be charged for dispute resolvement.
+
+Algorithm of a job with fixed price flow is:
+1. **client**:> `JobController#postJob()`
+2. **worker**:> `JobController#postJobOfferWithPrice()`
+3. **client**:> `JobController#acceptOffer()`
+4. **worker**:> `JobController#startWork()`
+5. **worker**:> `JobController#pauseWork()` or `JobController#resumeWork()` (but it is totally optional)
+6. **worker**:> `JobController#endWork()`
+
+After that both are possible:
+
+7. **client**:> `JobController#acceptWorkResults()`
+8. **anyone**:> `JobController#releasePayment()`
+
+or (when dispute is opened):
+
+7. **client**:> `JobController#rejectWorkResults()`
+8. **referee**:> `JobController#resolveWorkDispute()` (here payments are transferred directly to client/worker accounts in provided proportions)
+
+
 # Structure
 
 Smart contracts by their purpose are divided into several groups:
