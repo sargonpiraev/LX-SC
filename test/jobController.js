@@ -42,6 +42,7 @@ contract('JobController', function(accounts) {
 
   const client = accounts[1];
   const worker = accounts[2];
+  const client2 = accounts[5];
   const stranger = accounts[9];
 
   const AccountRole = {
@@ -61,6 +62,8 @@ contract('JobController', function(accounts) {
     WORK_REJECTED: 2**7, 
     FINALIZED: 2**8,
   }
+
+  const JOBS_RESULT_OFFSET = 21
 
   const jobDefaultPaySize = 90;
   const jobFlow = web3.toBigNumber(2).pow(255).add(1) /// WORKFLOW_TM + CONFIRMATION flag
@@ -1623,5 +1626,260 @@ contract('JobController', function(accounts) {
 
   });
 
+  describe('Jobs Data Provider', () => {
+    const jobDetailsIPFSHash = "0x0011001100ff"
+    const allSkills = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+    const allSkillsCategories = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+    const allSkillsAreas = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+    const allJobStates = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+    const allPausedStates = 2
+
+    const workerRate = 200000000000
+    const workerOnTop = 1000000000
+    const jobEstimate = 240
+
+    beforeEach(async () => {
+      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client2, })
+
+      await jobController.postJobOffer(1, workerRate, jobEstimate, workerOnTop, { from: worker, })
+      await jobController.postJobOffer(3, workerRate, jobEstimate, workerOnTop, { from: worker, })
+
+      {
+        const jobId = 3
+        var payment = await jobController.calculateLockAmountFor(worker, jobId)
+        await jobController.acceptOffer(jobId, worker, { from: client2, value: payment, })
+        await jobController.startWork(jobId, { from: worker, })
+        await jobController.confirmStartWork(jobId, { from: client2, })
+      }
+
+    })
+
+    it("should have presetup values", async () => {
+      assert.equal((await jobsDataProvider.getJobsCount.call()).toNumber(), 3)
+
+      assert.lengthOf(
+        (await jobsDataProvider.getJobs.call(
+          allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 1, 100
+        )).removeZeros(),
+        3
+      )
+
+      assert.lengthOf(
+        (await jobsDataProvider.getJobForWorker.call(
+          worker, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )).removeZeros(),
+        2
+      )
+      await asserts.throws( // there is no jobs for passed worker
+        jobsDataProvider.getJobForWorker.call(
+          stranger, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )
+      )
+      assert.lengthOf(
+        (await jobsDataProvider.getJobForWorker.call(
+          worker, JobState.STARTED, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )).removeZeros(),
+        1
+      )
+
+      assert.lengthOf(
+        (await jobsDataProvider.getJobsForClient.call(
+          client, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )).removeZeros(),
+        2
+      )
+      assert.lengthOf(
+        (await jobsDataProvider.getJobsForClient.call(
+          client2, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )).removeZeros(),
+        1
+      )
+
+      assert.lengthOf(
+        await jobsDataProvider.getJobsByIds.call([1]),
+        JOBS_RESULT_OFFSET
+      )
+
+      assert.lengthOf(
+        await jobsDataProvider.getJobsByIds.call([ 1, 2, ]),
+        JOBS_RESULT_OFFSET * 2
+      )
+          
+      assert.equal((await jobsDataProvider.getJobOffersCount.call(1)).toNumber(), 1)
+      assert.equal((await jobsDataProvider.getJobOffersCount.call(2)).toNumber(), 0)
+      assert.equal((await jobsDataProvider.getJobOffersCount.call(3)).toNumber(), 1)
+
+      assert.lengthOf(
+        (await jobsDataProvider.getJobOffers.call(1, 0, 100))[1].removeZeros(),
+        1
+      )
+      assert.lengthOf(
+        (await jobsDataProvider.getJobOffers.call(2, 0, 100))[1].removeZeros(),
+        0
+      )
+      assert.lengthOf(
+        (await jobsDataProvider.getJobOffers.call(3, 0, 100))[1].removeZeros(),
+        1
+      )
+
+      assert.isFalse(await jobsDataProvider.isActivatedState(1, await jobsDataProvider.getJobState(1)))
+      assert.isTrue(await jobsDataProvider.isActivatedState(3, await jobsDataProvider.getJobState(3)))
+    })
+
+    it("should have update values after job's state changed", async () => {
+      await jobController.cancelJob(3, { from: client2, })
+      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client2, })
+
+      assert.equal((await jobsDataProvider.getJobsCount.call()).toNumber(), 4)
+
+      assert.lengthOf(
+        (await jobsDataProvider.getJobs.call(
+          allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 1, 100
+        )).removeZeros(),
+        4
+      )
+
+      assert.lengthOf(
+        (await jobsDataProvider.getJobForWorker.call(
+          worker, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )).removeZeros(),
+        2
+      )
+      assert.lengthOf(
+        (await jobsDataProvider.getJobForWorker.call(
+          worker, JobState.STARTED, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )).removeZeros(),
+        0
+      )
+      assert.lengthOf(
+        (await jobsDataProvider.getJobForWorker.call(
+          worker, JobState.FINALIZED, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )).removeZeros(),
+        1
+      )
+
+      assert.lengthOf(
+        (await jobsDataProvider.getJobsForClient.call(
+          client, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )).removeZeros(),
+        2
+      )
+      assert.lengthOf(
+        (await jobsDataProvider.getJobsForClient.call(
+          client2, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )).removeZeros(),
+        2
+      )
+
+      assert.isFalse(await jobsDataProvider.isActivatedState(1, await jobsDataProvider.getJobState(1)))
+      assert.isTrue(await jobsDataProvider.isActivatedState(3, await jobsDataProvider.getJobState(3)))
+    })
+
+    it("check values from filters", async () => {
+      {
+        const jobs = (await jobsDataProvider.getJobs.call(
+          allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 1, 30
+        )).removeZeros()
+        assert.equal(jobs.toString(), [ 1, 2, 3, ].toString())
+      }
+      {
+        const jobs = (await jobsDataProvider.getJobs.call(
+          allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 1, 1
+        )).removeZeros()
+        assert.equal(jobs.toString(), [1].toString())
+      }
+      {
+        const jobs = (await jobsDataProvider.getJobForWorker.call(
+          worker, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )).removeZeros()
+        assert.equal(jobs.toString(), [ 1, 3, ].toString())
+      }
+      {
+        const jobs = (await jobsDataProvider.getJobForWorker.call(
+          worker, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 1
+        )).removeZeros()
+        assert.equal(jobs.toString(), [1].toString())
+      }
+      {
+        const jobs = (await jobsDataProvider.getJobsForClient.call(
+          client, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )).removeZeros()
+        assert.equal(jobs.toString(), [ 1, 2, ].toString())
+      }
+      {
+        const jobs = (await jobsDataProvider.getJobsForClient.call(
+          client, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 1
+        )).removeZeros()
+        assert.equal(jobs.toString(), [1].toString())
+      }
+      {
+        const jobs = (await jobsDataProvider.getJobsForClient.call(
+          client, JobState.STARTED, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 1
+        )).removeZeros()
+        assert.equal(jobs.toString(), [].toString())
+      }
+      {
+        const [ , _workers, _rates, _estimates, _ontops, ] = await jobsDataProvider.getJobOffers.call(1, 0, 100)
+        assert.equal(_workers.length, _rates.length)
+        assert.equal(_workers.length, _estimates.length)
+        assert.equal(_workers.length, _ontops.length)
+        assert.lengthOf(_workers, 1)
+        assert.equal(_workers.toString(), [worker].toString())
+        assert.equal(_rates.toString(), [workerRate].toString())
+        assert.equal(_estimates.toString(), [jobEstimate].toString())
+        assert.equal(_ontops.toString(), [workerOnTop].toString())
+      }
+    })
+
+    it("check values from filters after changes", async () => {
+      await jobController.cancelJob(3, { from: client2, })
+      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client2, })
+
+      {
+        const jobs = (await jobsDataProvider.getJobs.call(
+          allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 1, 100
+        )).removeZeros()        
+        assert.equal(jobs.toString(), [ 1, 2, 3, 4, ].toString())
+      }
+      {
+        const jobs = (await jobsDataProvider.getJobs.call(
+          JobState.FINALIZED, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 1, 100
+        )).removeZeros()
+        assert.equal(jobs.toString(), [3].toString())
+      }
+      {
+        const jobs = (await jobsDataProvider.getJobForWorker.call(
+          worker, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )).removeZeros()
+        assert.equal(jobs.toString(), [ 1, 3, ].toString())
+      }
+      {
+        const jobs = (await jobsDataProvider.getJobForWorker.call(
+          worker, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 1
+        )).removeZeros()
+        assert.equal(jobs.toString(), [1].toString())
+      }
+      {
+        const jobs = (await jobsDataProvider.getJobsForClient.call(
+          client2, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 100
+        )).removeZeros()
+        assert.equal(jobs.toString(), [ 3, 4, ].toString())
+      }
+      {
+        const jobs = (await jobsDataProvider.getJobsForClient.call(
+          client2, allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 1
+        )).removeZeros()
+        assert.equal(jobs.toString(), [3].toString())
+      }
+      {
+        const jobs = (await jobsDataProvider.getJobsForClient.call(
+          client2, JobState.FINALIZED, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 1
+        )).removeZeros()
+        assert.equal(jobs.toString(), [3].toString())
+      }
+    })
+  })
 
 });

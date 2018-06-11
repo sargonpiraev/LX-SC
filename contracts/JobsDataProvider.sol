@@ -34,7 +34,7 @@ contract JobsDataProvider is JobDataCore {
         uint _skillsArea,
         uint _skillsCategory,
         uint _skills,
-        bool _paused,
+        uint _paused,
         uint _fromId,
         uint _maxLen
     )
@@ -64,7 +64,7 @@ contract JobsDataProvider is JobDataCore {
         uint _skillsArea,
         uint _skillsCategory,
         uint _skills,
-        bool _paused,
+        uint _paused,
         uint _fromIdx,
         uint _maxLen
     )
@@ -72,7 +72,7 @@ contract JobsDataProvider is JobDataCore {
     view
     returns (uint[] _ids)
     {
-        uint _count = store.count(clientJobs, bytes32(_client));
+        uint _count = getJobForClientCount(_client);
         require(_fromIdx < _count);
         _maxLen = (_fromIdx + _maxLen <= _count) ? _maxLen : (_count - _fromIdx);
         _ids = new uint[](_maxLen);
@@ -93,13 +93,15 @@ contract JobsDataProvider is JobDataCore {
     /// @notice Gets filtered jobs for a worker
     /// Doesn't inlcude jobs for which a worker had posted an offer but
     /// other worker got the job
+    /// @param _jobState a bitmask, job's state; if INT.MAX then jobs with any state will be included in output
+    /// @param _paused if job should be paused or not, convertible to bool; if greater than '1' then output includes both states
     function getJobForWorker(
         address _worker,
         uint _jobState,
         uint _skillsArea,
         uint _skillsCategory,
         uint _skills,
-        bool _paused,
+        uint _paused,
         uint _fromIdx,
         uint _maxLen
     )
@@ -107,7 +109,7 @@ contract JobsDataProvider is JobDataCore {
     view
     returns (uint[] _ids)
     {
-        uint _count = store.count(workerJobs, bytes32(_worker));
+        uint _count = getJobForWorkerCount(_worker);
         require(_fromIdx < _count);
         _maxLen = (_fromIdx + _maxLen <= _count) ? _maxLen : (_count - _fromIdx);
         _ids = new uint[](_maxLen);
@@ -127,17 +129,21 @@ contract JobsDataProvider is JobDataCore {
         uint _skillsArea,
         uint _skillsCategory,
         uint _skills,
-        bool _paused
+        uint _paused
     )
     private
     view
     returns (bool)
     {
-        return _jobState == store.get(jobState, _jobId) &&
-            _paused == store.get(jobPaused, _jobId) &&
+        return _hasFlag(store.get(jobState, _jobId), _jobState) &&
+            (_paused > 1 ? true : (_toBool(_paused) == store.get(jobPaused, _jobId))) &&
             _hasFlag(store.get(jobSkillsArea, _jobId), _skillsArea) &&
             _hasFlag(store.get(jobSkillsCategory, _jobId), _skillsCategory) &&
             _hasFlag(store.get(jobSkills, _jobId), _skills);
+    }
+
+    function _toBool(uint _value) private pure returns (bool) {
+        return _value == 1 ? true : false;
     }
 
     function getJobsCount() public view returns (uint) {
