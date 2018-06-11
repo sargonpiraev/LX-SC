@@ -246,6 +246,22 @@ contract JobsDataProvider is JobDataCore {
         return store.get(jobWorker, _jobId);
     }
 
+    function isActivatedState(uint _jobId, uint _jobState) public view returns (bool) {
+        uint _flow = store.get(jobWorkflowType, _jobId);
+        bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
+        if (_needsConfirmation && 
+        _jobState >= JOB_STATE_STARTED
+        ) {
+            return true;
+        }
+
+        if (!_needsConfirmation &&
+            _jobState >= JOB_STATE_PENDING_START
+        ) {
+            return true;
+        }
+    }
+
     function getJobSkillsArea(uint _jobId) public view returns (uint) {
         return store.get(jobSkillsArea, _jobId);
     }

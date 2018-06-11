@@ -60,15 +60,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
 
   const JOB_STATES = {
     NOT_SET: 0, 
-    CREATED: 1, 
-    OFFER_ACCEPTED: 2, 
-    PENDING_START: 3, 
-    STARTED: 4, 
-    PENDING_FINISH: 5, 
-    FINISHED: 6, 
-    WORK_ACCEPTED: 7, 
-    WORK_REJECTED: 8, 
-    FINALIZED: 9,
+    CREATED: 2**0, 
+    OFFER_ACCEPTED: 2**1, 
+    PENDING_START: 2**2, 
+    STARTED: 2**3, 
+    PENDING_FINISH: 2**4, 
+    FINISHED: 2**5, 
+    WORK_ACCEPTED: 2**6, 
+    WORK_REJECTED: 2**7, 
+    FINALIZED: 2**8,
   }
 
   let FINALIZED_JOB;

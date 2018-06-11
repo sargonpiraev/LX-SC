@@ -12,18 +12,18 @@ import "./adapters/StorageAdapter.sol";
 
 contract JobDataCore is StorageAdapter, BitOps {
 
-    enum JobState { 
-        NOT_SET, 
-        CREATED, 
-        OFFER_ACCEPTED, 
-        PENDING_START, 
-        STARTED, 
-        PENDING_FINISH, 
-        FINISHED, 
-        WORK_ACCEPTED, 
-        WORK_REJECTED, 
-        FINALIZED
-    }
+    /* JobState */
+    
+    uint constant JOB_STATE_NOT_SET = 0;
+    uint constant JOB_STATE_CREATED = 0x001;        // 00000000001
+    uint constant JOB_STATE_OFFER_ACCEPTED = 0x002; // 00000000010
+    uint constant JOB_STATE_PENDING_START = 0x004;  // 00000000100
+    uint constant JOB_STATE_STARTED = 0x008;        // 00000001000
+    uint constant JOB_STATE_PENDING_FINISH = 0x010; // 00000010000
+    uint constant JOB_STATE_FINISHED = 0x020;       // 00000100000
+    uint constant JOB_STATE_WORK_ACCEPTED = 0x040;  // 00001000000
+    uint constant JOB_STATE_WORK_REJECTED = 0x080;  // 00010000000
+    uint constant JOB_STATE_FINALIZED = 0x100;      // 00100000000
 
     uint constant OK = 1;
 

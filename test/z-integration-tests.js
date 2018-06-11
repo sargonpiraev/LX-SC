@@ -26,17 +26,17 @@ contract('Integration tests (user stories)', (accounts) => {
 
     const reverter = new Reverter(web3);
 
-    const stages = {
+    const JobState = {
         NOT_SET: 0, 
-        CREATED: 1, 
-        OFFER_ACCEPTED: 2, 
-        PENDING_START: 3, 
-        STARTED: 4, 
-        PENDING_FINISH: 5, 
-        FINISHED: 6, 
-        WORK_ACCEPTED: 7, 
-        WORK_REJECTED: 8, 
-        FINALIZED: 9,
+        CREATED: 2**0, 
+        OFFER_ACCEPTED: 2**1, 
+        PENDING_START: 2**2, 
+        STARTED: 2**3, 
+        PENDING_FINISH: 2**4, 
+        FINISHED: 2**5, 
+        WORK_ACCEPTED: 2**6, 
+        WORK_REJECTED: 2**7, 
+        FINALIZED: 2**8,
     };
 
     const roles = {
@@ -340,7 +340,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("job should have `Created` state", async () => {
                 const jobState = await contracts.jobsDataProvider.getJobState.call(job.id)
-                assert.equal(jobState, stages.CREATED)
+                assert.equal(jobState, JobState.CREATED)
             })
 
             it("worker should be able to post an offer with OK code", async () => {
@@ -428,7 +428,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("job should have `Finalized` state", async () => {
                 const jobState = await contracts.jobsDataProvider.getJobState.call(job.id)
-                assert.equal(jobState, stages.FINALIZED)
+                assert.equal(jobState, JobState.FINALIZED)
             })
 
             it("should have increased worker's balance after the payment", async () => {
@@ -489,7 +489,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await contracts.jobController.confirmStartWork(otherJob.id, { from: users.client })
 
                 const jobState = await contracts.jobsDataProvider.getJobState.call(otherJob.id)
-                assert.equal(jobState, stages.STARTED)
+                assert.equal(jobState, JobState.STARTED)
             })
 
             it("some time should pass", async () => {
@@ -519,7 +519,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await contracts.jobController.confirmEndWork(otherJob.id, { from: users.client })
 
                 const jobState = await contracts.jobsDataProvider.getJobState.call(otherJob.id)
-                assert.equal(jobState, stages.FINISHED)
+                assert.equal(jobState, JobState.FINISHED)
             })
 
             let afterPaymentWorker2Balance
@@ -569,7 +569,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("a job should have been finalized", async () => {
                 const jobState = await contracts.jobsDataProvider.getJobState.call(job.id)
-                assert.equal(jobState, stages.FINALIZED)
+                assert.equal(jobState, JobState.FINALIZED)
             })
 
             it("should have no rating set up for worker by the client", async () => {
@@ -665,7 +665,7 @@ contract('Integration tests (user stories)', (accounts) => {
                     let jobSkills = await contracts.jobsDataProvider.getJobSkills.call(jobId)
                     let jobState = await contracts.jobsDataProvider.getJobState.call(jobId)
 
-                    if (jobState != stages.CREATED) {
+                    if (jobState != JobState.CREATED) {
                         return;
                     }
 
@@ -723,19 +723,19 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("job should have `Accepted` state", async () => {
-                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.OFFER_ACCEPTED)
+                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), JobState.OFFER_ACCEPTED)
             })
 
             it("should be able to start work", async () => {
                 await contracts.jobController.startWork(job.id, { from: users.worker })
 
-                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.PENDING_START)
+                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), JobState.PENDING_START)
             })
 
             it("should be able to confirm work is started by client", async () => {
                 await contracts.jobController.confirmStartWork(job.id, { from: users.client })
 
-                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.STARTED)
+                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), JobState.STARTED)
             })
 
             it("some time should pass", async () => {
@@ -749,13 +749,13 @@ contract('Integration tests (user stories)', (accounts) => {
             it("should end work when it is ready", async () => {
                 await contracts.jobController.endWork(job.id, { from: users.worker })
 
-                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.PENDING_FINISH)
+                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), JobState.PENDING_FINISH)
             })
 
             it("should have confirmation about finishing work from client", async () => {
                 await contracts.jobController.confirmEndWork(job.id, { from: users.client })
 
-                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.FINISHED)
+                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), JobState.FINISHED)
             })
 
             it("should receive payment for the work", async () => {
@@ -799,7 +799,7 @@ contract('Integration tests (user stories)', (accounts) => {
                     const jobSkills = await contracts.jobsDataProvider.getJobSkills.call(jobId)
                     const jobState = await contracts.jobsDataProvider.getJobState.call(jobId)
 
-                    if (jobState != stages.CREATED) {
+                    if (jobState != JobState.CREATED) {
                         return;
                     }
 
@@ -1009,7 +1009,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await contracts.jobController.confirmEndWork(otherJob.id, { from: users.client })
                 await contracts.jobController.releasePayment(otherJob.id, { from: users.default })
 
-                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), stages.FINALIZED)
+                assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), JobState.FINALIZED)
             })
 
             it("other worker should have the same reward as the first worker", async () => {

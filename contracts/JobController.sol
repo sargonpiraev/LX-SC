@@ -74,8 +74,8 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         _;
     }
 
-    modifier onlyJobState(uint _jobId, JobState _jobState) {
-        if (store.get(jobState, _jobId) != uint(_jobState)) {
+    modifier onlyJobState(uint _jobId, uint _jobState) {
+        if (store.get(jobState, _jobId) != _jobState) {
             _emitErrorCode(JOB_CONTROLLER_INVALID_STATE);
             assembly {
                 mstore(0, 13003) // JOB_CONTROLLER_INVALID_STATE
@@ -239,17 +239,17 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
                        store.get(jobOfferOntop, _jobId, worker);
             }
         } else if (
-            _jobState == uint(JobState.STARTED) ||
-            (!_needsConfirmation && _jobState == uint(JobState.PENDING_START)) ||
-            (_needsConfirmation && _jobState == uint(JobState.PENDING_FINISH))
+            _jobState == JOB_STATE_STARTED ||
+            (!_needsConfirmation && _jobState == JOB_STATE_PENDING_START) ||
+            (_needsConfirmation && _jobState == JOB_STATE_PENDING_FINISH)
         ) {
             // Job has been canceled right after start or right before completion,
             // minimum of 1 working hour + "on top" should be released.
             return store.get(jobOfferOntop, _jobId, worker) +
                    store.get(jobOfferRate, _jobId, worker) * 60;
         } else if (
-            _jobState == uint(JobState.OFFER_ACCEPTED) ||
-            (_needsConfirmation && _jobState == uint(JobState.PENDING_START))
+            _jobState == JOB_STATE_OFFER_ACCEPTED ||
+            (_needsConfirmation && _jobState == JOB_STATE_PENDING_START)
         ) {
             // Job hasn't even started yet, but has been accepted,
             // release just worker "on top" expenses.
@@ -261,7 +261,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         address worker = store.get(jobWorker, _jobId);
         uint _jobState = _getJobState(_jobId);
 
-        if (_jobState == uint(JobState.WORK_ACCEPTED)) {
+        if (_jobState == JOB_STATE_WORK_ACCEPTED) {
             return store.get(jobOfferRate, _jobId, worker);
         }
     }
@@ -302,7 +302,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         store.set(bindStatus, jobId, false);
         store.set(jobsCount, jobId);
         store.set(jobCreatedAt, jobId, now);
-        store.set(jobState, jobId, uint(JobState.CREATED));
+        store.set(jobState, jobId, JOB_STATE_CREATED);
         store.set(jobWorkflowType, jobId, _flowType);
         store.set(jobClient, jobId, msg.sender);
         store.set(jobSkillsArea, jobId, _area);
@@ -324,7 +324,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     )
     onlyNotClient(_jobId)
     onlyFlow(_jobId, WORKFLOW_TM)
-    onlyJobState(_jobId, JobState.CREATED)
+    onlyJobState(_jobId, JOB_STATE_CREATED)
     public
     returns (uint)
     {
@@ -352,7 +352,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     )
     onlyNotClient(_jobId)
     onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
-    onlyJobState(_jobId, JobState.CREATED)
+    onlyJobState(_jobId, JOB_STATE_CREATED)
     external
     returns (uint) {
         require(_price > 0);
@@ -384,7 +384,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         address _worker
     )
     onlyClient(_jobId)
-    onlyJobState(_jobId, JobState.CREATED)
+    onlyJobState(_jobId, JOB_STATE_CREATED)
     external
     payable
     returns (uint _resultCode)
@@ -404,7 +404,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         }
 
         store.set(jobAcceptedAt, _jobId, now);
-        store.set(jobState, _jobId, uint(JobState.OFFER_ACCEPTED));
+        store.set(jobState, _jobId, JOB_STATE_OFFER_ACCEPTED);
         _cleanupJobOffers(_jobId, _worker);
 
         JobController(getEventsHistory()).emitJobOfferAccepted(_jobId, _worker);
@@ -425,12 +425,12 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _jobId
     )
     onlyWorker(_jobId)
-    onlyJobState(_jobId, JobState.OFFER_ACCEPTED)
+    onlyJobState(_jobId, JOB_STATE_OFFER_ACCEPTED)
     external
     returns (uint)
     {
         store.set(jobPendingStartAt, _jobId, now);
-        store.set(jobState, _jobId, uint(JobState.PENDING_START));
+        store.set(jobState, _jobId, JOB_STATE_PENDING_START);
         return OK;
     }
 
@@ -439,11 +439,11 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     )
     onlyClient(_jobId)
     onlyFlow(_jobId, WORKFLOW_TM)
-    onlyJobState(_jobId, JobState.PENDING_START)
+    onlyJobState(_jobId, JOB_STATE_PENDING_START)
     external
     returns (uint)
     {
-        store.set(jobState, _jobId, uint(JobState.STARTED));
+        store.set(jobState, _jobId, JOB_STATE_STARTED);
         store.set(jobStartTime, _jobId, now);
 
         JobController(getEventsHistory()).emitWorkStarted(_jobId, now);
@@ -541,7 +541,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     {
         _resumeWork(_jobId);  // In case worker have forgotten about paused timer
         store.set(jobPendingFinishAt, _jobId, now);
-        store.set(jobState, _jobId, uint(JobState.PENDING_FINISH));
+        store.set(jobState, _jobId, JOB_STATE_PENDING_FINISH);
         return OK;
     }
 
@@ -550,12 +550,12 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     )
     onlyClient(_jobId)
     onlyFlow(_jobId, WORKFLOW_TM)
-    onlyJobState(_jobId, JobState.PENDING_FINISH)
+    onlyJobState(_jobId, JOB_STATE_PENDING_FINISH)
     external
     returns (uint)
     {
         store.set(jobFinishTime, _jobId, now);
-        store.set(jobState, _jobId, uint(JobState.FINISHED));
+        store.set(jobState, _jobId, JOB_STATE_FINISHED);
 
         JobController(getEventsHistory()).emitWorkFinished(_jobId, now);
         return OK;
@@ -592,7 +592,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         }
 
         store.set(jobFinalizedAt, _jobId, _getJobState(_jobId));
-        store.set(jobState, _jobId, uint(JobState.FINALIZED));
+        store.set(jobState, _jobId, JOB_STATE_FINALIZED);
 
         JobController(getEventsHistory()).emitJobCanceled(_jobId);
         return OK;
@@ -602,11 +602,11 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     external
     onlyClient(_jobId)
     onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
-    onlyJobState(_jobId, JobState.PENDING_FINISH)
+    onlyJobState(_jobId, JOB_STATE_PENDING_FINISH)
     returns (uint) 
     {
         store.set(jobFinishTime, _jobId, now);
-        store.set(jobState, _jobId, uint(JobState.WORK_ACCEPTED));
+        store.set(jobState, _jobId, JOB_STATE_WORK_ACCEPTED);
 
         JobController(getEventsHistory()).emitWorkAccepted(_jobId, now);
         return OK;
@@ -616,11 +616,11 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     external
     onlyClient(_jobId)
     onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
-    onlyJobState(_jobId, JobState.PENDING_FINISH)
+    onlyJobState(_jobId, JOB_STATE_PENDING_FINISH)
     returns (uint _resultCode) 
     {
         store.set(jobFinishTime, _jobId, now);
-        store.set(jobState, _jobId, uint(JobState.WORK_REJECTED));
+        store.set(jobState, _jobId, JOB_STATE_WORK_REJECTED);
 
         JobController(getEventsHistory()).emitWorkRejected(_jobId, now);
         return OK;
@@ -634,7 +634,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     external
     auth
     onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
-    onlyJobState(_jobId, JobState.WORK_REJECTED)
+    onlyJobState(_jobId, JOB_STATE_WORK_REJECTED)
     returns (uint _resultCode) {
         address worker = store.get(jobWorker, _jobId);
         uint payCheck = store.get(jobOfferRate, _jobId, worker);
@@ -666,7 +666,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         }
 
         store.set(jobFinalizedAt, _jobId, _getJobState(_jobId));
-        store.set(jobState, _jobId, uint(JobState.FINALIZED));
+        store.set(jobState, _jobId, JOB_STATE_FINALIZED);
 
         JobController(getEventsHistory()).emitWorkDistputeResolved(_jobId, now);
         return OK;
@@ -695,7 +695,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         }
 
         store.set(jobFinalizedAt, _jobId, _getJobState(_jobId));
-        store.set(jobState, _jobId, uint(JobState.FINALIZED));
+        store.set(jobState, _jobId, JOB_STATE_FINALIZED);
 
         JobController(getEventsHistory()).emitPaymentReleased(_jobId);
         return OK;
@@ -777,19 +777,19 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
         uint _flowType = _flow & ~WORKFLOW_FEATURE_FLAGS;
         if (_flowType == WORKFLOW_TM) {
-            if (_needsConfirmation && _jobState == uint(JobState.FINISHED)) {
+            if (_needsConfirmation && _jobState == JOB_STATE_FINISHED) {
                 return true;
             }
             
             if (!_needsConfirmation &&
-                (_jobState == uint(JobState.PENDING_FINISH) || _jobState == uint(JobState.FINISHED))
+                (_jobState == JOB_STATE_PENDING_FINISH || _jobState == JOB_STATE_FINISHED)
             ) {
                 return true;
             }
         }
 
         if (_flowType == WORKFLOW_FIXED_PRICE) {
-            if (_jobState == uint(JobState.WORK_ACCEPTED)) {
+            if (_jobState == JOB_STATE_WORK_ACCEPTED) {
                 return true;
             }
         }
@@ -798,32 +798,32 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     function _isStartedStateForFlow(uint _flow, uint _jobState) internal pure returns (bool) {
         bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
         if (_needsConfirmation && 
-        _jobState == uint(JobState.STARTED)) {
+        _jobState == JOB_STATE_STARTED) {
             return true;
         }
 
         if (!_needsConfirmation &&
-            (_jobState == uint(JobState.PENDING_START) || _jobState == uint(JobState.STARTED))
+            (_jobState == JOB_STATE_PENDING_START || _jobState == JOB_STATE_STARTED)
         ) {
             return true;
         }
     }
 
     function _isActiveStateForFlow(uint _flow, uint _jobState) internal pure returns (bool) {
-        if (_jobState == uint(JobState.OFFER_ACCEPTED)) {
+        if (_jobState == JOB_STATE_OFFER_ACCEPTED) {
             return true;
         }
         
-        if (_jobState == uint(JobState.PENDING_START)) {
+        if (_jobState == JOB_STATE_PENDING_START) {
             return true;
         }
 
-        if (_jobState == uint(JobState.STARTED)) {
+        if (_jobState == JOB_STATE_STARTED) {
             return true;
         }
 
         bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
-        if (_needsConfirmation && _jobState == uint(JobState.PENDING_FINISH)) {
+        if (_needsConfirmation && _jobState == JOB_STATE_PENDING_FINISH) {
             return true;
         }
     }
