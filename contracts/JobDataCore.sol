@@ -82,6 +82,8 @@ contract JobDataCore is StorageAdapter, BitOps {
     StorageInterface.UIntSetMapping workerJobs;
     /// @dev mapping(posted offer job id => set(worker addresses))
     StorageInterface.AddressesSetMapping jobOffers;
+    /// @dev mapping(posted offer job id => mapping(worker => post date))
+    StorageInterface.UIntAddressUIntMapping jobOfferPostedAt;
 
     StorageInterface.UIntBoolMapping bindStatus;
 
@@ -133,6 +135,7 @@ contract JobDataCore is StorageAdapter, BitOps {
         clientJobs.init("clientJobs");
         workerJobs.init("workerJobs");
         jobOffers.init("jobOffers");
+        jobOfferPostedAt.init("jobOfferPostedAt");
 
         bindStatus.init("bindStatus");
             

@@ -219,7 +219,8 @@ contract JobsDataProvider is JobDataCore {
         address[] _workers,
         uint[] _rates,
         uint[] _estimates,
-        uint[] _onTops
+        uint[] _onTops,
+        uint[] _offerPostedAt
     ) {
         uint _offersCount = getJobOffersCount(_jobId);
         if (_fromIdx > _offersCount) {
@@ -233,6 +234,7 @@ contract JobsDataProvider is JobDataCore {
         _rates = new uint[](_maxLen);
         _estimates = new uint[](_maxLen);
         _onTops = new uint[](_maxLen);
+        _offerPostedAt = new uint[](_maxLen);
         uint _pointer = 0;
 
         for (uint _offerIdx = _fromIdx; _offerIdx < _fromIdx + _maxLen; ++_offerIdx) {
@@ -240,6 +242,7 @@ contract JobsDataProvider is JobDataCore {
             _rates[_pointer] = store.get(jobOfferRate, _jobId, _workers[_pointer]);
             _estimates[_pointer] = store.get(jobOfferEstimate, _jobId, _workers[_pointer]);
             _onTops[_pointer] = store.get(jobOfferOntop, _jobId, _workers[_pointer]);
+            _offerPostedAt[_pointer] = store.get(jobOfferPostedAt, _jobId, _workers[_pointer]);
             _pointer += 1;
         }
     }

@@ -339,8 +339,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         store.set(jobOfferRate, _jobId, msg.sender, _rate);
         store.set(jobOfferEstimate, _jobId, msg.sender, _estimate);
         store.set(jobOfferOntop, _jobId, msg.sender, _ontop);
-        store.add(workerJobs, bytes32(msg.sender), _jobId);
-        store.add(jobOffers, bytes32(_jobId), msg.sender);
+        _addJobOffer(_jobId);
 
         _emitJobOfferPosted(_jobId, msg.sender, _rate, _estimate, _ontop);
         return OK;
@@ -362,8 +361,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         }
 
         store.set(jobOfferRate, _jobId, msg.sender, _price);
-        store.add(workerJobs, bytes32(msg.sender), _jobId);
-        store.add(jobOffers, bytes32(_jobId), msg.sender);
+        _addJobOffer(_jobId);
 
         JobController(getEventsHistory()).emitJobOfferPosted(_jobId, msg.sender, _price);
 
@@ -377,6 +375,12 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
             store.get(jobSkillsCategory, _jobId),
             store.get(jobSkills, _jobId)
         );
+    }
+
+    function _addJobOffer(uint _jobId) private {
+        store.add(workerJobs, bytes32(msg.sender), _jobId);
+        store.add(jobOffers, bytes32(_jobId), msg.sender);
+        store.set(jobOfferPostedAt, _jobId, msg.sender, now);
     }
 
     function acceptOffer(
