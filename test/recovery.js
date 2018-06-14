@@ -60,7 +60,6 @@ contract('Recovery', function(accounts) {
     )
     .then(() => recovery.recoverUser(userMock.address, newUser, {from: caller}))
     .then(assertExpectations())
-    .then(() => recovery.setRoles2Library(Roles2Library.address));
   });
 
   it('should recover users', () => {

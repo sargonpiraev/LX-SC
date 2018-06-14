@@ -94,6 +94,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     const recovery = "0xffffffffffffffffffffffffffffffffffffffff";
 
     return Promise.resolve()
+    .then(() => ignoreSkillsCheck(true))
     .then(() => userFactory.createUserWithProxyAndRecovery(
       _worker, recovery, roles, jobArea, [jobCategory], [jobSkills]
     ))
@@ -108,6 +109,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const payment = await jobController.calculateLockAmountFor.call(_worker, jobId)
       return await jobController.acceptOffer(jobId, _worker, { from: _client, value: payment, })
     })
+    .then(() => ignoreSkillsCheck(false))
     .then(() => jobId);
   }
 
@@ -123,6 +125,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(() => jobId);
   }
 
+  const ignoreSkillsCheck = (enabled = true) => {
+    return mock.ignore(userLibrary.hasSkills.getData(0,0,0,0).slice(0, 10), enabled);
+  }
 
   before('setup', () => {
     return Mock.deployed()
@@ -147,23 +152,22 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(instance => ratingsLibrary = instance)
     .then(() => BoardController.deployed())
     .then(instance => boardController = instance)
-
+    
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
-
+    
     .then(() => userFactory.setUserLibrary(UserLibraryMock.address))
     .then(() => jobController.setUserLibrary(mock.address))
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
     .then(() => jobController.setBoardController(boardController.address))
-
+    
     .then(() => ratingsLibrary.setJobController(jobsDataProvider.address))
     .then(() => ratingsLibrary.setUserLibrary(mock.address))
     .then(() => ratingsLibrary.setBoardController(boardController.address))
-
     .then(() => setupJob(0, 0, 7))
     .then(jobId => finishJob(jobId))  // jobId#1, to test finished jobs
     .then(jobId => FINALIZED_JOB = jobId.toNumber())
-
+    
     .then(() => setupJob(0, 0, 7))  // jobId#2, to test canceled jobs
     .then(jobId => NOT_FINALIZED_JOB = jobId.toNumber())
 
@@ -1345,6 +1349,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateArea.getData(0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  true))
       .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "AreaEvaluated"))
@@ -1361,6 +1375,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateCategory.getData(0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "CategoryEvaluated"))
@@ -1378,6 +1402,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateSkill.getData(0,0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
       .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "SkillEvaluated"))
@@ -1393,6 +1427,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateArea.getData(0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  false))
       .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "AreaEvaluated"))
@@ -1409,6 +1453,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateCategory.getData(0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  false))
       .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "CategoryEvaluated"))
@@ -1426,6 +1480,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateSkill.getData(0,0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  false))
       .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "SkillEvaluated"))
@@ -1442,6 +1506,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateArea.getData(0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area), true))
       .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "AreaEvaluated"))
@@ -1467,6 +1541,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateCategory.getData(0,0,0,0).slice(0,10)
+        ),
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "CategoryEvaluated"))
@@ -1494,6 +1578,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateSkill.getData(0,0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
       .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "SkillEvaluated"))
@@ -1526,8 +1620,28 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator1,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateArea.getData(0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker1, area1),  true))
       .then(() => ratingsLibrary.evaluateArea(worker1, rating1, area1, {from: evaluator1}))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator2,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateArea.getData(0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker2, area2),  true))
       .then(() => ratingsLibrary.evaluateArea(worker2, rating2, area2, {from: evaluator2}))
       .then(() => ratingsLibrary.getAreaEvaluation(worker1, area1, evaluator1))
@@ -1550,8 +1664,28 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator1,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateCategory.getData(0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker1, area1, category1),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker1, rating1, area1, category1, {from: evaluator1}))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator2,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateCategory.getData(0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker2, area2, category2),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker2, rating2, area2, category2, {from: evaluator2}))
       .then(() => ratingsLibrary.getCategoryEvaluation(worker1, area1, category1, evaluator1))
@@ -1576,8 +1710,28 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator1,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateSkill.getData(0,0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker1, area1, category1, skill1),  true))
       .then(() => ratingsLibrary.evaluateSkill(worker1, rating1, area1, category1, skill1, {from: evaluator1}))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator2,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateSkill.getData(0,0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker2, area2, category2, skill2),  true))
       .then(() => ratingsLibrary.evaluateSkill(worker2, rating2, area2, category2, skill2, {from: evaluator2}))
       .then(() => ratingsLibrary.getSkillEvaluation(worker1, area1, category1, skill1, evaluator1))
@@ -1595,6 +1749,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateCategory.getData(0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
       .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
@@ -1612,6 +1776,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateSkill.getData(0,0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
       .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
       .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
@@ -1631,6 +1805,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const ratings = [9, 8, 7, 6, 5];
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          client,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateMany.getData(0,0,[],[],[]).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(7), helpers.getFlag(9)),  true))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, helpers.getFlag(4), helpers.getFlag(9)),  true))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(10), helpers.getFlag(12)),  true))
@@ -1657,6 +1841,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const ratings = [9, 8, 7, 6, 5];
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          client,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateMany.getData(0,0,[],[],[]).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(7), helpers.getFlag(9)),  true))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, helpers.getFlag(4), helpers.getFlag(9)),  true))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(10), helpers.getFlag(12)),  true))

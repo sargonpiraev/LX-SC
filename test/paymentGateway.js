@@ -791,8 +791,8 @@ contract('PaymentGateway', function(accounts) {
 
       return Promise.resolve()
         .then(() => deposit(sender, value))
-        .then(() => {
-          const expectedSig = helpers.getSig("transferAll(address,address,uint256,address,uint256,uint256,address)");
+        .then(async () => {
+          const expectedSig = paymentGateway.contract.transferAll.getData(0,0,0,0,0,0).slice(0,10);
           return mock.expect(
             paymentGateway.address,
             0,
@@ -800,7 +800,7 @@ contract('PaymentGateway', function(accounts) {
               sender,
               paymentGateway.address,
               expectedSig
-            ), 0)
+            ), await mock.convertUIntToBytes32(ErrorsNamespace.OK))
           }
         )
         .then(() => paymentGateway.setRoles2Library(Mock.address))
