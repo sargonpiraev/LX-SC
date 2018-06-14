@@ -6,10 +6,10 @@
 pragma solidity ^0.4.18;
 
 
-import './adapters/MultiEventsHistoryAdapter.sol';
-import './adapters/Roles2LibraryAdapter.sol';
-import './adapters/StorageAdapter.sol';
-import './base/BitOps.sol';
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "./adapters/MultiEventsHistoryAdapter.sol";
+import "./adapters/Roles2LibraryAdapter.sol";
+import "./base/BitOps.sol";
 
 
 /**
@@ -61,7 +61,7 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     StorageInterface.AddressUIntUIntMapping skillCategories;
     StorageInterface.AddressUIntUIntUIntMapping skills;
 
-    function UserLibrary(
+    constructor(
         Storage _store, 
         bytes32 _crate, 
         address _roles2Library
@@ -70,9 +70,9 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     Roles2LibraryAdapter(_roles2Library)
     public
     {
-        skillAreas.init('skillAreas');
-        skillCategories.init('skillCategories');
-        skills.init('skills');
+        skillAreas.init("skillAreas");
+        skillCategories.init("skillCategories");
+        skills.init("skills");
     }
 
     function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
@@ -103,7 +103,9 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     public view
     returns (bool partialCategory, bool fullCategory) 
     {
-        var (partialArea, fullArea) = getAreaInfo(_user, _area);
+        bool partialArea;
+        bool fullArea;
+        (partialArea, fullArea) = getAreaInfo(_user, _area);
         if (!partialArea) {
             return (false, false);
         }
@@ -141,7 +143,9 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     public view 
     returns (bool) 
     {
-        var (partialCategory, fullCategory) = getCategoryInfo(_user, _area, _category);
+        bool partialCategory;
+        bool fullCategory;
+        (partialCategory, fullCategory) = getCategoryInfo(_user, _area, _category);
         if (!partialCategory) {
             return false;
         }
@@ -352,15 +356,15 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     }
 
     function emitSkillAreasSet(address _user, uint _areas) public {
-        SkillAreasSet(_self(), _user, _areas);
+        emit SkillAreasSet(_self(), _user, _areas);
     }
 
     function emitSkillCategoriesSet(address _user, uint _area, uint _categories) public {
-        SkillCategoriesSet(_self(), _user, _area, _categories);
+        emit SkillCategoriesSet(_self(), _user, _area, _categories);
     }
 
     function emitSkillsSet(address _user, uint _area, uint _category, uint _skills) public {
-        SkillsSet(_self(), _user, _area, _category, _skills);
+        emit SkillsSet(_self(), _user, _area, _category, _skills);
     }
 
 }

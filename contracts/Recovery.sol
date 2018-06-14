@@ -6,8 +6,8 @@
 pragma solidity ^0.4.18;
 
 
-import './User.sol';
-import './adapters/Roles2LibraryAdapter.sol';
+import "./User.sol";
+import "./adapters/Roles2LibraryAdapter.sol";
 
 
 contract Recovery is Roles2LibraryAdapter {
@@ -16,7 +16,7 @@ contract Recovery is Roles2LibraryAdapter {
 
     event UserRecovered(address prevUser, address newUser, User userContract);
 
-    function Recovery(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {}
+    constructor(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {}
 
     function recoverUser(User _userContract, address _newAddress) auth public returns (uint) {
         address prev = _userContract.contractOwner();
@@ -24,7 +24,7 @@ contract Recovery is Roles2LibraryAdapter {
             revert();
         }
 
-        UserRecovered(prev, _newAddress, _userContract);
+        emit UserRecovered(prev, _newAddress, _userContract);
         return OK;
     }
 

@@ -6,8 +6,8 @@
 pragma solidity ^0.4.18;
 
 
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
 import "./base/BitOps.sol";
-import "./adapters/StorageAdapter.sol";
 
 
 contract JobDataCore is StorageAdapter, BitOps {
@@ -88,7 +88,7 @@ contract JobDataCore is StorageAdapter, BitOps {
     // At which state job has been marked as FINALIZED
     StorageInterface.UIntUIntMapping jobFinalizedAt;
 
-    function JobDataCore(
+    constructor(
         Storage _store,
         bytes32 _crate
     )

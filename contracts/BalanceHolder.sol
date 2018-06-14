@@ -6,12 +6,12 @@
 pragma solidity ^0.4.18;
 
 
-import './adapters/Roles2LibraryAdapter.sol';
-import './base/ERC20Interface.sol';
+import "solidity-shared-lib/contracts/ERC20Interface.sol";
+import "./adapters/Roles2LibraryAdapter.sol";
 
 contract BalanceHolder is Roles2LibraryAdapter {
 
-    function BalanceHolder(address _roles2Library)
+    constructor(address _roles2Library)
     Roles2LibraryAdapter(_roles2Library)
     public
     {
@@ -40,7 +40,7 @@ contract BalanceHolder is Roles2LibraryAdapter {
     {
         require(_to != address(0));
 
-        if(_amount > this.balance) {
+        if(_amount > address(this).balance) {
             return false;
         }
 

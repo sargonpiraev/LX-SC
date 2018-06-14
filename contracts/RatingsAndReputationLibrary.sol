@@ -6,10 +6,10 @@
 pragma solidity ^0.4.18;
 
 
-import './adapters/MultiEventsHistoryAdapter.sol';
-import './adapters/Roles2LibraryAdapter.sol';
-import './adapters/StorageAdapter.sol';
-import './base/BitOps.sol';
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "./adapters/MultiEventsHistoryAdapter.sol";
+import "./adapters/Roles2LibraryAdapter.sol";
+import "./base/BitOps.sol";
 
 
 contract UserLibraryInterface {
@@ -96,7 +96,8 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     modifier canSetJobRating(uint _jobId, address _to) {
-        var (, rating) = store.get(jobRatingsGiven, _to, _jobId);
+        uint rating;
+        (, rating) = store.get(jobRatingsGiven, _to, _jobId);
         if (rating > 0) {
             _emitErrorCode(RATING_AND_REPUTATION_RATING_IS_ALREADY_SET);
             assembly {
@@ -157,7 +158,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
       _;
     }
 
-    function RatingsAndReputationLibrary(
+    constructor(
 		Storage _store, 
 		bytes32 _crate, 
 		address _roles2Library
@@ -440,31 +441,31 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     function emitUserRatingGiven(address _rater, address _to, uint _rating) public {
-        UserRatingGiven(_self(), _rater, _to, _rating);
+        emit UserRatingGiven(_self(), _rater, _to, _rating);
     }
 
     function emitBoardRatingGiven(address _rater, uint _to, uint8 _rating) public {
-        BoardRatingGiven(_self(), _rater, _to, _rating);
+        emit BoardRatingGiven(_self(), _rater, _to, _rating);
     }
 
     function emitJobRatingGiven(address _rater, address _to, uint _jobId, uint8 _rating) public {
-        JobRatingGiven(_self(), _rater, _to, _rating, _jobId);
+        emit JobRatingGiven(_self(), _rater, _to, _rating, _jobId);
     }
 
     function emitSkillRatingGiven(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill, uint _jobId) public {
-        SkillRatingGiven(_self(), _rater, _to, _rating, _area, _category, _skill, _jobId);
+        emit SkillRatingGiven(_self(), _rater, _to, _rating, _area, _category, _skill, _jobId);
     }
 
     function emitAreaEvaluated(address _rater, address _to, uint8 _rating, uint _area) public {
-        AreaEvaluated(_self(), _rater, _to, _rating, _area);
+        emit AreaEvaluated(_self(), _rater, _to, _rating, _area);
     }
 
     function emitCategoryEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category) public {
-        CategoryEvaluated(_self(), _rater, _to, _rating, _area, _category);
+        emit CategoryEvaluated(_self(), _rater, _to, _rating, _area, _category);
     }
 
     function emitSkillEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill) public {
-        SkillEvaluated(_self(), _rater, _to, _rating, _area, _category, _skill);
+        emit SkillEvaluated(_self(), _rater, _to, _rating, _area, _category, _skill);
     }
 
     function _emitUserRatingGiven(address _rater, address _to, uint _rating) internal {

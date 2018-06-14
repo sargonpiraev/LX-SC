@@ -39,10 +39,10 @@ contract MultiEventsHistoryAdapter {
     }
 
     function emitError(bytes32 _msg) public {
-        Error(_self(), _msg);
+        emit Error(_self(), _msg);
     }
 
     function emitErrorCode(uint _errorCode) public {
-        ErrorCode(_self(), _errorCode);
+        emit ErrorCode(_self(), _errorCode);
     }
 }

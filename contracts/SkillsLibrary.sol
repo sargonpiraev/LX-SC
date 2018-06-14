@@ -6,9 +6,9 @@
 pragma solidity ^0.4.18;
 
 
-import './adapters/MultiEventsHistoryAdapter.sol';
-import './adapters/Roles2LibraryAdapter.sol';
-import './adapters/StorageAdapter.sol';
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "./adapters/MultiEventsHistoryAdapter.sol";
+import "./adapters/Roles2LibraryAdapter.sol";
 
 
 /**
@@ -67,7 +67,7 @@ contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return _flag & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa == 0;
     }
 
-    function SkillsLibrary(
+    constructor(
         Storage _store, 
         bytes32 _crate, 
         address _roles2Library
@@ -167,14 +167,14 @@ contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     }
 
     function emitAreaSet(uint _area, bytes32 _hash) public {
-        AreaSet(_self(), _area, _hash);
+        emit AreaSet(_self(), _area, _hash);
     }
 
     function emitCategorySet(uint _area, uint _category, bytes32 _hash) public {
-        CategorySet(_self(), _area, _category, _hash);
+        emit CategorySet(_self(), _area, _category, _hash);
     }
 
     function emitSkillSet(uint _area, uint _category, uint _skill, bytes32 _hash) public {
-        SkillSet(_self(), _area, _category, _skill, _hash);
+        emit SkillSet(_self(), _area, _category, _skill, _hash);
     }
 }

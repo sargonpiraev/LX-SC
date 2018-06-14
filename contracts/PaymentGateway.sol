@@ -5,10 +5,10 @@
 
 pragma solidity ^0.4.18;
 
-import './adapters/MultiEventsHistoryAdapter.sol';
-import './adapters/Roles2LibraryAdapter.sol';
-import './adapters/StorageAdapter.sol';
-import './libs/SafeMath.sol';
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "./adapters/MultiEventsHistoryAdapter.sol";
+import "./adapters/Roles2LibraryAdapter.sol";
+import "./libs/SafeMath.sol";
 
 
 contract ERC20BalanceInterface {
@@ -35,14 +35,14 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     event FeeSet(address indexed self, uint feePercent);
     event Deposited(address indexed self, address indexed by, uint value);
     event Withdrawn(address indexed self, address indexed by, uint value);
-    event Transferred(address indexed self, address from, address indexed to, uint value);
+    event Transferred(address indexed self, address from, address to, uint value);
 
     StorageInterface.Address balanceHolder;
     StorageInterface.AddressUIntMapping balances; // contract => user => balance
     StorageInterface.Address feeAddress;
     StorageInterface.UInt fees; // 10000 is 100%.
 
-    function PaymentGateway(
+    constructor(
         Storage _store,
         bytes32 _crate,
         address _roles2Library
@@ -320,19 +320,19 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     }
 
     function emitFeeSet(uint _feePercent) public {
-        FeeSet(_self(), _feePercent);
+        emit FeeSet(_self(), _feePercent);
     }
 
     function emitDeposited(address _by, uint _value) public {
-        Deposited(_self(), _by, _value);
+        emit Deposited(_self(), _by, _value);
     }
 
     function emitWithdrawn(address _by, uint _value) public {
-        Withdrawn(_self(), _by, _value);
+        emit Withdrawn(_self(), _by, _value);
     }
 
     function emitTransferred(address _from, address _to, uint _value) public {
-        Transferred(_self(), _from, _to, _value);
+        emit Transferred(_self(), _from, _to, _value);
     }
 
 }

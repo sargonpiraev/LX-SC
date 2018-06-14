@@ -5,7 +5,7 @@
 
 pragma solidity ^0.4.18;
 
-import './base/Owned.sol';
+import "solidity-shared-lib/contracts/Owned.sol";
 
 
 contract UserProxy is Owned {
@@ -21,7 +21,7 @@ contract UserProxy is Owned {
     );
 
     function () external payable {
-        Received(msg.sender, msg.value);
+        emit Received(msg.sender, msg.value);
     }
 
     function forward(
@@ -41,6 +41,6 @@ contract UserProxy is Owned {
         }
         require(success || !_throwOnFailedCall);
 
-        Forwarded(_destination, _value, _data);
+        emit Forwarded(_destination, _value, _data);
     }
 }

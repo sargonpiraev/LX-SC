@@ -5,8 +5,8 @@
 
 pragma solidity ^0.4.11;
 
-import "./base/Owned.sol";
-import "./adapters/StorageAdapter.sol";
+import "solidity-shared-lib/contracts/Owned.sol";
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
 import "./adapters/Roles2LibraryAdapter.sol";
 
 /**
@@ -27,7 +27,7 @@ contract ContractsManager is Owned, StorageAdapter, Roles2LibraryAdapter {
     /**
     *  @notice Constructor that sets `storage` and `crate` to given values.
     */
-    function ContractsManager(Storage _store, bytes32 _crate, address _roles2Library)
+    constructor(Storage _store, bytes32 _crate, address _roles2Library)
     public
     StorageAdapter(_store, _crate)
     Roles2LibraryAdapter(_roles2Library)
@@ -56,7 +56,7 @@ contract ContractsManager is Owned, StorageAdapter, Roles2LibraryAdapter {
         store.add(contractsAddresses, _contract);
         store.set(contractsTypes, _type, _contract);
 
-        ContractsManagerAddContract(_contract, _type);
+        emit ContractsManagerAddContract(_contract, _type);
         return OK;
     }
 
@@ -80,7 +80,7 @@ contract ContractsManager is Owned, StorageAdapter, Roles2LibraryAdapter {
         // TODO
         //store.remove(contractsTypes, _type, _contract);
 
-        ContractsManagerRemoveContract(_contract);
+        emit ContractsManagerRemoveContract(_contract);
         return OK;
     }
 
@@ -128,7 +128,7 @@ contract ContractsManager is Owned, StorageAdapter, Roles2LibraryAdapter {
     private
     returns (uint)
     {
-        Error(msg.sender, e);
+        emit Error(msg.sender, e);
         return e;
     }
 }

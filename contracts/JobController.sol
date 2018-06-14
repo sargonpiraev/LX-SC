@@ -6,9 +6,9 @@
 pragma solidity ^0.4.18;
 
 
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
 import "./adapters/MultiEventsHistoryAdapter.sol";
 import "./adapters/Roles2LibraryAdapter.sol";
-import "./adapters/StorageAdapter.sol";
 import "./base/BitOps.sol";
 import "./JobDataCore.sol";
 
@@ -131,7 +131,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         _;
     }
 
-    function JobController(
+    constructor(
         Storage _store,
         bytes32 _crate,
         address _roles2Library
@@ -714,59 +714,59 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     )
     public
     {
-        JobPosted(_self(), _jobId, bytes32(_flowType), _client, _skillsArea, _skillsCategory, _skills, _defaultPay, _detailsIPFSHash, _bindStatus);
+        emit JobPosted(_self(), _jobId, bytes32(_flowType), _client, _skillsArea, _skillsCategory, _skills, _defaultPay, _detailsIPFSHash, _bindStatus);
     }
 
     function emitJobOfferPosted(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) public {
-        JobOfferPosted(_self(), _jobId, _worker, _rate, _estimate, _ontop);
+        emit JobOfferPosted(_self(), _jobId, _worker, _rate, _estimate, _ontop);
     }
 
     function emitJobOfferPosted(uint _jobId, address _worker, uint _price) public {
-        JobOfferPosted(_self(), _jobId, _worker, _price);
+        emit JobOfferPosted(_self(), _jobId, _worker, _price);
     }
 
     function emitJobOfferAccepted(uint _jobId, address _worker) public {
-        JobOfferAccepted(_self(), _jobId, _worker);
+        emit JobOfferAccepted(_self(), _jobId, _worker);
     }
 
     function emitWorkStarted(uint _jobId, uint _at) public {
-        WorkStarted(_self(), _jobId, _at);
+        emit WorkStarted(_self(), _jobId, _at);
     }
 
     function emitWorkPaused(uint _jobId, uint _at) public {
-        WorkPaused(_self(), _jobId, _at);
+        emit WorkPaused(_self(), _jobId, _at);
     }
 
     function emitWorkResumed(uint _jobId, uint _at) public {
-        WorkResumed(_self(), _jobId, _at);
+        emit WorkResumed(_self(), _jobId, _at);
     }
 
     function emitTimeAdded(uint _jobId, uint _time) public {
-        TimeAdded(_self(), _jobId, _time);
+        emit TimeAdded(_self(), _jobId, _time);
     }
 
     function emitWorkFinished(uint _jobId, uint _at) public {
-        WorkFinished(_self(), _jobId, _at);
+        emit WorkFinished(_self(), _jobId, _at);
     }
 
     function emitWorkAccepted(uint _jobId, uint _at) public {
-        WorkAccepted(_self(), _jobId, _at);
+        emit WorkAccepted(_self(), _jobId, _at);
     }
 
     function emitWorkRejected(uint _jobId, uint _at) public {
-        WorkRejected(_self(), _jobId, _at);
+        emit WorkRejected(_self(), _jobId, _at);
     }
 
     function emitWorkDistputeResolved(uint _jobId, uint _at) public {
-        WorkDisputeResolved(_self(), _jobId, _at);
+        emit WorkDisputeResolved(_self(), _jobId, _at);
     }
 
     function emitPaymentReleased(uint _jobId) public {
-        PaymentReleased(_self(), _jobId);
+        emit PaymentReleased(_self(), _jobId);
     }
 
     function emitJobCanceled(uint _jobId) public {
-        JobCanceled(_self(), _jobId);
+        emit JobCanceled(_self(), _jobId);
     }
 
     function _getJobState(uint _jobId) private view returns (uint) {

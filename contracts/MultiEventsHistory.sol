@@ -21,7 +21,7 @@ contract MultiEventsHistory is Roles2LibraryAdapter {
     // Authorized calling contracts.
     mapping(address => bool) public isAuthorized;
 
-    function MultiEventsHistory(address _roles2Library) public Roles2LibraryAdapter(_roles2Library) {}
+    constructor(address _roles2Library) public Roles2LibraryAdapter(_roles2Library) {}
 
     /**
      * Authorize new caller contract.

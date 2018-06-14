@@ -6,9 +6,9 @@
 pragma solidity ^0.4.18;
 
 
-import './User.sol';
-import './UserProxy.sol';
-import './base/Owned.sol';
+import "solidity-shared-lib/contracts/Owned.sol";
+import "./User.sol";
+import "./UserProxy.sol";
 
 
 contract User is Owned {
@@ -24,7 +24,7 @@ contract User is Owned {
         }
     }
 
-    function User(address _owner, address _recoveryContract) public {
+    constructor(address _owner, address _recoveryContract) public {
         userProxy = new UserProxy();
         recoveryContract = _recoveryContract;
         contractOwner = _owner;
