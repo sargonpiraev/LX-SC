@@ -1821,15 +1821,17 @@ contract('JobController', function(accounts) {
         assert.equal(jobs.toString(), [].toString())
       }
       {
-        const [ , _workers, _rates, _estimates, _ontops, ] = await jobsDataProvider.getJobOffers.call(1, 0, 100)
+        const [ , _workers, _rates, _estimates, _ontops, _offerPostedAt, ] = await jobsDataProvider.getJobOffers.call(1, 0, 100)
         assert.equal(_workers.length, _rates.length)
         assert.equal(_workers.length, _estimates.length)
         assert.equal(_workers.length, _ontops.length)
+        assert.equal(_workers.length, _offerPostedAt.length)
         assert.lengthOf(_workers, 1)
         assert.equal(_workers.toString(), [worker].toString())
         assert.equal(_rates.toString(), [workerRate].toString())
         assert.equal(_estimates.toString(), [jobEstimate].toString())
         assert.equal(_ontops.toString(), [workerOnTop].toString())
+        assert.notEqual(_offerPostedAt.toString(), [0].toString())
       }
     })
 
@@ -1878,6 +1880,27 @@ contract('JobController', function(accounts) {
           client2, JobState.FINALIZED, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 0, 1
         )).removeZeros()
         assert.equal(jobs.toString(), [3].toString())
+      }
+
+      {
+        const [ , _beforeWorkers, _beforeRates, _beforeEstimates, _beforeOntops, _beforeOfferPostedAt, ] = await jobsDataProvider.getJobOffers.call(1, 0, 100)
+        const [ _newWorkerRate, _newWorkerEstimates, _newWorkerOntops, ] = [ workerRate + 10000, jobEstimate + 20000, workerOnTop - 15000, ]
+        const jobOfferTx = await jobController.postJobOffer(1, _newWorkerRate , _newWorkerEstimates, _newWorkerOntops, { from: worker, })
+        const [ , _afterWorkers, _afterRates, _afterEstimates, _afterOntops, _afterOfferPostedAt, ] = await jobsDataProvider.getJobOffers.call(1, 0, 100)
+
+        assert.equal(_beforeWorkers.length, _afterWorkers.length)
+        assert.equal(_beforeRates.length, _afterRates.length)
+
+        const _workerIdx = _beforeWorkers.indexOf(worker)
+        assert.notEqual(_workerIdx, -1)
+
+        const jobOfferBlock = web3.eth.getBlock(jobOfferTx.receipt.blockNumber)
+        const expectedJobOfferUpdatedAt = jobOfferBlock.timestamp
+        assert.equal(_afterWorkers[_workerIdx], worker)
+        assert.equal(_afterRates[_workerIdx].toString(), _newWorkerRate.toString())
+        assert.equal(_afterEstimates[_workerIdx].toString(), _newWorkerEstimates.toString())
+        assert.equal(_afterOntops[_workerIdx].toString(), _newWorkerOntops.toString())
+        assert.equal(_afterOfferPostedAt[_workerIdx].toString(), expectedJobOfferUpdatedAt.toString())
       }
     })
   })
