@@ -10,7 +10,7 @@
         "migrate": "./node_modules/truffle/build/cli.bundled.js migrate",
         "migrate:reset": "./node_modules/truffle/build/cli.bundled.js migrate --reset",
         "console": "./node_modules/truffle/build/cli.bundled.js console --network development",
-        "testrpc": "./node_modules/ethereumjs-testrpc/build/cli.node.js -g 1 --gasLimit 4700000 --trace_request true | grep -Ev \"FilterSubprovider|eth_getFilterChanges\""
+        "testrpc": "./node_modules/ganache-cli/build/cli.node.js -g 1 --gasLimit 4700000 --trace_request true | grep -Ev \"FilterSubprovider|eth_getFilterChanges\""
     },
     "repository": {
         "type": "git",
