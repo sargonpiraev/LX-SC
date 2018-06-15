@@ -6,19 +6,16 @@
 pragma solidity ^0.4.18;
 
 
-import './User.sol';
-import './UserLibrary.sol';
-import './UserProxy.sol';
-import './adapters/MultiEventsHistoryAdapter.sol';
-import './adapters/Roles2LibraryAdapter.sol';
-
-
-contract UserLibraryInterface {
-    function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) public returns (uint);
-}
+import "./User.sol";
+import "./UserProxy.sol";
+import "./adapters/MultiEventsHistoryAdapter.sol";
+import "./adapters/Roles2LibraryAdapter.sol";
 
 
 contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
+
+    uint constant USER_FACTORY_SCOPE = 21000;
+    uint constant USER_FACTORY_ROLE_IS_NOT_ALLOWED = 21000;
 
     event UserCreated(
         address indexed self,
@@ -26,13 +23,13 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         address proxy,
         address recoveryContract,
         address owner,
-        uint8[] roles,
-        uint areas,
-        uint[] categories,
-        uint[] skills
+        uint8[] roles
     );
 
-    UserLibraryInterface userLibrary;
+    /// @dev mapping(role => is allowed)
+    mapping(uint8 => bool) public allowedRoles;
+    mapping(uint8 => uint8) internal indexToRoles;
+    uint8 internal allowedRolesCount;
 
     constructor(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {}
 
@@ -43,37 +40,102 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         return OK;
     }
 
-    function setUserLibrary(UserLibraryInterface _userLibrary) auth external returns (uint) {
-        userLibrary = _userLibrary;
+    function addAllowedRoles(uint8[] _addedRoles) auth external returns (uint) {
+        uint8 _allowedRolesCount = allowedRolesCount;
+        for (uint _roleIdx = 0; _roleIdx < _addedRoles.length; ++_roleIdx) {
+            uint8 _role = _addedRoles[_roleIdx];
+            if (allowedRoles[_role]) {
+                continue;
+            }
+
+            allowedRoles[_role] = true;
+            _allowedRolesCount += 1;
+            indexToRoles[_allowedRolesCount] = _role;
+        }
+        
+        allowedRolesCount = _allowedRolesCount;
+
         return OK;
     }
 
-    function getUserLibrary() public view returns (address) {
-        return userLibrary;
+    function removeAllowedRoles(uint8[] _removedRoles) auth external returns (uint) {
+        uint8 _allowedRolesCount = allowedRolesCount;
+        for (uint _roleIdx = 0; _roleIdx < _removedRoles.length; ++_roleIdx) {
+            uint8 _role = _removedRoles[_roleIdx];
+            if (!allowedRoles[_role]) {
+                continue;
+            }
+
+            uint8 _allowedRoleIdx = _getRoleIndex(_role);
+            if (_allowedRolesCount != _allowedRoleIdx) {
+                indexToRoles[_allowedRoleIdx] = indexToRoles[_allowedRolesCount];
+            }
+
+            delete indexToRoles[_allowedRolesCount];
+            delete allowedRoles[_role];
+            _allowedRolesCount -= 1;
+        }
+        
+        allowedRolesCount = _allowedRolesCount;
+
+        return OK;
+    }
+
+    function getAllowedRoles() public view returns (uint8[] _roles) {
+        _roles = new uint8[](allowedRolesCount);
+        for (uint8 _roleIdx = 0; _roleIdx < _roles.length; ++_roleIdx) {
+            _roles[_roleIdx] = indexToRoles[_roleIdx + 1];
+        }
     }
 
     function createUserWithProxyAndRecovery(
         address _owner,
         address _recoveryContract,
-        uint8[] _roles,
-        uint _areas,
-        uint[] _categories,
-        uint[] _skills
+        uint8[] _roles
     )
-    auth
     public
     returns (uint) 
     {
         require(_owner != 0x0);
 
+        for (uint _roleIdx = 0; _roleIdx < _roles.length; ++_roleIdx) {
+            require(allowedRoles[_roles[_roleIdx]], "Should provide only allowed roles");
+        }
+
         User user = new User(_owner, _recoveryContract);
         UserProxy proxy = UserProxy(user.getUserProxy());
         _setRoles(proxy, _roles);
-        _setSkills(proxy, _areas, _categories, _skills);
 
-        _emitUserCreated(user, proxy, _recoveryContract, _owner, _roles, _areas, _categories, _skills);
+        UserFactory(getEventsHistory()).emitUserCreated(
+            user,
+            proxy,
+            _recoveryContract,
+            _owner,
+            _roles
+        );
         return OK;
     }
+
+    function emitUserCreated(
+        address _user,
+        address _proxy,
+        address _recoveryContract,
+        address _owner,
+        uint8[] _roles
+    ) 
+    external 
+    {
+        emit UserCreated(
+            _self(),
+            _user,
+            _proxy,
+            _recoveryContract,
+            _owner,
+            _roles
+        );
+    }
+
+    /* INTERNAL */
 
     function _setRoles(address _user, uint8[] _roles) internal {
         for (uint i = 0; i < _roles.length; i++) {
@@ -83,63 +145,14 @@ contract UserFactory is MultiEventsHistoryAdapter, Roles2LibraryAdapter {
         }
     }
 
-    function _setSkills(address _user, uint _areas, uint[] _categories, uint[] _skills) internal {
-        if (_areas == 0) {
-            return;
+    function _getRoleIndex(uint8 _role) private view returns (uint8) {
+        uint8 _allowedRolesCount = allowedRolesCount;
+        for (uint8 _roleIdx = 0; _roleIdx < _allowedRolesCount; ++_roleIdx) {
+            if (indexToRoles[_roleIdx] == _role) {
+                return _roleIdx;
+            }
         }
-    
-        uint resultCode = userLibrary.setMany(_user, _areas, _categories, _skills);
-        if (OK != resultCode) {
-            revert();
-        }
-    }
-
-    function _emitUserCreated(
-        address _user,
-        address _proxy,
-        address _recoveryContract,
-        address _owner,
-        uint8[] _roles,
-        uint _areas,
-        uint[] _categories,
-        uint[] _skills
-    ) 
-    internal 
-    {
-        UserFactory(getEventsHistory()).emitUserCreated(
-            _user,
-            _proxy,
-            _recoveryContract,
-            _owner,
-            _roles,
-            _areas,
-            _categories,
-            _skills
-        );
-    }
-
-    function emitUserCreated(
-        address _user,
-        address _proxy,
-        address _recoveryContract,
-        address _owner,
-        uint8[] _roles,
-        uint _areas,
-        uint[] _categories,
-        uint[] _skills
-    ) 
-    public 
-    {
-        emit UserCreated(
-            _self(),
-            _user,
-            _proxy,
-            _recoveryContract,
-            _owner,
-            _roles,
-            _areas,
-            _categories,
-            _skills
-        );
+        // NOTE: Should provide only existed role
+        assert(false);
     }
 }
