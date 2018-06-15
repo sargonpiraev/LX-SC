@@ -93,10 +93,6 @@ Contract that could keep its state in layout-independent way storing them in key
 
 Manages read/write access into contracts' storage that inherits from Storage contract. Provides a way to divide common Storage into different sections (crates) and protects from unauthorized access.
 
-#### [SkillsLibrary](https://github.com/ChronoBank/LX-SC/blob/master/contracts/SkillsLibrary.sol)
-
-Database, provides functionality for managing user's skills, categories and areas. Stores allowed skills, areas, categories and their descriptions. Access to skills data, categories and areas of the system.
-
 
 ## Controller contracts
 
@@ -156,6 +152,10 @@ High-order contract to manipulate balances of users. Able to lock balances and r
 #### [JobsDataProvider](https://github.com/ChronoBank/LX-SC/blob/master/contracts/JobsDataProvider.sol)
 
 Read-only contract, provides getters for JobController state
+
+#### [SkillsLibrary](https://github.com/ChronoBank/LX-SC/blob/master/contracts/SkillsLibrary.sol)
+
+Database, provides functionality for managing user's skills, categories and areas. Stores allowed skills, areas, categories and their descriptions. Access to skills data, categories and areas of the system.
 
 
 # Contract Interactions Diagram
