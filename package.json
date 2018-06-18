@@ -27,13 +27,15 @@
   },
   "homepage": "https://github.com/ChronoBank/LX-SC#readme",
   "dependencies": {
-    "bluebird": "^3.5.0",
     "abi-decoder": "^1.0.9",
-    "solidity-storage-lib": "chronobank/solidity-storage-lib"
+    "bluebird": "^3.5.0",
+    "solidity-storage-lib": "chronobank/solidity-storage-lib",
+    "truffle-hdwallet-provider": "mikefluff/truffle-hdwallet-provider"
   },
   "devDependencies": {
     "ganache-cli": "^6.1.0",
     "truffle": "4.1.7",
+    "babel-polyfill": "^6.26.0",
     "truffle-hdwallet-provider": "mikefluff/truffle-hdwallet-provider#7a2eccca1ba17c235a3ef258914ca74ea5f13014",
     "standard-version": "^4.0.0"
   }
