@@ -214,7 +214,17 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
         return store.count(users);
     }
 
-    /// @dev AND filter
+    /// @notice Gets a number of users that fulfill all requirements: area, all categories and masked skills.
+    /// (similar to AND search)
+    /// @param _area single area to query
+    /// @param _categories list of categories that should be included in provided area
+    /// @param _skills list of skills for each provided categories
+    /// @param _fromIdx pagination param; should be 0 at the beginning, then the latest userIdx that comes from return
+    /// @param _maxLen pagination param; could be getUsersCount() number
+    /// @return {
+    ///     "_count": "amount of found users by provided criterias",
+    ///     "_userIdx": user index where query has stopped, pass to the next query
+    /// }
     function getStrictUsersByAreaCount(
         uint _area, 
         uint[] _categories,
@@ -236,6 +246,17 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
         );
     }
 
+    /// @notice Gets a number of users that fulfill any requirements: area, any category and masked skills.
+    /// (similar to OR search)
+    /// @param _area single area to query
+    /// @param _categories list of categories that could be included in provided area
+    /// @param _skills list of skills for each provided categories
+    /// @param _fromIdx pagination param; should be 0 at the beginning, then the latest userIdx that comes from return
+    /// @param _maxLen pagination param; could be getUsersCount() number
+    /// @return {
+    ///     "_count": "amount of found users by provided criterias",
+    ///     "_userIdx": user index where query has stopped, pass to the next query
+    /// }
     function getUsersByAreaCount(
         uint _area, 
         uint[] _categories,
