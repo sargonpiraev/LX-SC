@@ -10,7 +10,6 @@ const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Storage = artifacts.require('./Storage.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
-const UserLibraryMock = artifacts.require('./UserLibraryMock.sol');
 const UserFactory = artifacts.require('./UserFactory.sol');
 const BoardController = artifacts.require('./BoardController.sol');
 
@@ -95,9 +94,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
 
     return Promise.resolve()
     .then(() => ignoreSkillsCheck(true))
-    .then(() => userFactory.createUserWithProxyAndRecovery(
-      _worker, recovery, roles, jobArea, [jobCategory], [jobSkills]
-    ))
+    .then(() => userFactory.addAllowedRoles(roles))
+    .then(() => userFactory.createUserWithProxyAndRecovery(_worker, recovery, roles))
+    // .then(() => userLibrary.setMany(_worker, jobArea, [jobCategory], [jobSkills], { from: accounts[0], }))
     .then(() => jobController.postJob(
       jobFlow, jobArea, jobCategory, jobSkills, 4 /* default pay size */, "Job details", {from: _client}
     ))
@@ -156,7 +155,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
     
-    .then(() => userFactory.setUserLibrary(UserLibraryMock.address))
+    // .then(() => userFactory.setUserLibrary(UserLibraryMock.address))
     .then(() => jobController.setUserLibrary(mock.address))
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
     .then(() => jobController.setBoardController(boardController.address))

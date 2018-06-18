@@ -35,15 +35,18 @@ BoardController.deployed().then(b => console.log(b.contract.closeBoard.getData(0
 Roles2Library.deployed().then(r => r.addRoleCapability(ModeratorRole, BoardController.address, "0x1d132702"));
 Roles2Library.deployed().then(r => r.addRoleCapability(ModeratorRole, BoardController.address, "0x210c1f29"));
 
-UserFactory.deployed().then(f => console.log(f.contract.createUserWithProxyAndRecovery.getData(0x0, 0x0, [], 0, [], []).slice(0,10)))
+UserFactory.deployed().then(f => console.log(f.contract.createUserWithProxyAndRecovery.getData(0x0, 0x0, []).slice(0,10)))
 Recovery.deployed().then(r => console.log(r.contract.recoverUser.getData(0x0, 0x0).slice(0,10)))
 
 Roles2Library.deployed().then(r => r.addRoleCapability(ModeratorRole, UserFactory.address, "0x5be62401"));
 Roles2Library.deployed().then(r => r.addRoleCapability(ModeratorRole, Recovery.address, "0x722c1809"));
 
-UserFactory.deployed().then(f => f.createUserWithProxyAndRecovery("0x003045868e9b5405f710643d1b31dab330b186ec", Recovery.address, [WorkerRole,], 16, [16,], [16,]))
+UserFactory.deployed().then(f => f.createUserWithProxyAndRecovery("0x003045868e9b5405f710643d1b31dab330b186ec", Recovery.address, [WorkerRole,])) // By anyone
+
 // User: 0x4a7018836d7f6d14cb0e1bf1c7ba36498c495cad
 // UserProxy: 0xf7658f6cfdbaa8c35675f0b2995cfae13599ed09
+
+UserLibrary.deployed().then(u => u.setSkills("0xf7658f6cfdbaa8c35675f0b2995cfae13599ed09", 16, 16, 16)) // for UserProxy address
 
 UserLibrary.deployed().then(u => u.setSkills("0x00aabd706f4ee7ec560517f82a1d492b21fef05e", 16, 16, 16))
 UserLibrary.deployed().then(u => u.setSkills("0x00aabd706f4ee7ec560517f82a1d492b21fef05e", 64, 64, 64))

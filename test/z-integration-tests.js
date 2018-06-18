@@ -159,7 +159,6 @@ contract('Integration tests (user stories)', (accounts) => {
     }
 
     const setupWorker = async (_job, _worker = users.worker) => {
-        const roles = []
         await contracts.userLibrary.setMany(_worker, _job.area, [_job.category], [_job.skills], { from: users.root })
         return _worker
     }
@@ -1187,8 +1186,7 @@ contract('Integration tests (user stories)', (accounts) => {
         before(async () => {
             userRecoveryAddress = contracts.recovery.address
 
-            const createUserWithProxyAndRecoveryData = contracts.userFactory.contract.createUserWithProxyAndRecovery.getData(0x0, 0x0, [], 0, [], [])
-            await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.userFactory.address, createUserWithProxyAndRecoveryData, { from: users.contractOwner })
+            await contracts.userFactory.addAllowedRoles(userInfo.roles, { from: users.root, })
 
             const recoverData = contracts.recovery.contract.recoverUser.getData(0x0, 0x0)
             await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.recovery.address, recoverData, { from: users.contractOwner })
@@ -1199,28 +1197,12 @@ contract('Integration tests (user stories)', (accounts) => {
         })
 
         describe("I want to be able to register in system", () => {
-
-            it("user should not be able to register itself with UNAUTHORIZED code", async () => {
+            it("and anyone should create user if all is good with OK code", async () => {
                 assert.equal((await contracts.userFactory.createUserWithProxyAndRecovery.call(
                     userMainAddress,
                     userRecoveryAddress,
                     userInfo.roles,
-                    userInfo.areas,
-                    userInfo.categories,
-                    userInfo.skills,
-                    { from: userMainAddress, }
-                )).toNumber(), ErrorsScope.UNAUTHORIZED)
-            })
-
-            it("moderator should moderate user's data and create user if all is good with OK code", async () => {
-                assert.equal((await contracts.userFactory.createUserWithProxyAndRecovery.call(
-                    userMainAddress,
-                    userRecoveryAddress,
-                    userInfo.roles,
-                    userInfo.areas,
-                    userInfo.categories,
-                    userInfo.skills,
-                    { from: users.moderator, }
+                    { from: users.default, }
                 )).toNumber(), ErrorsScope.OK)
             })
 
@@ -1229,10 +1211,7 @@ contract('Integration tests (user stories)', (accounts) => {
                     userMainAddress,
                     userRecoveryAddress,
                     userInfo.roles,
-                    userInfo.areas,
-                    userInfo.categories,
-                    userInfo.skills,
-                    { from: users.moderator, }
+                    { from: users.default, }
                 )
                 const userCreatedEvent = (await eventsHelper.findEvent([contracts.userFactory,], tx, "UserCreated"))[0]
                 assert.isDefined(userCreatedEvent)

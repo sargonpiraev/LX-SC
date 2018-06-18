@@ -53,106 +53,169 @@ contract('UserFactory', function(accounts) {
             caller,
             userFactory.address,
             userFactory.contract.setupEventsHistory.getData(0x0).slice(0, 10)
-          ), 0)
-        )
+          ), 0
+        ))
         .then(() => userFactory.setupEventsHistory(newAddress, {from: caller}))
         .then(helpers.assertExpectations(mock));
     });
 
-    it('should check auth on setup user library', () => {
+    it("should check auth on setup allowed roles", async () => {
       const caller = accounts[1];
-      const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
-      return Promise.resolve()
-        .then(() => userFactory.setRoles2Library(Mock.address))
-        .then(() => mock.expect(
+      await userFactory.setRoles2Library(Mock.address)
+      await mock.expect(
+        userFactory.address,
+        0,
+        roles2LibraryInterface.canCall.getData(
+          caller,
           userFactory.address,
-          0,
-          roles2LibraryInterface.canCall.getData(
-            caller,
-            userFactory.address,
-            userFactory.contract.setUserLibrary.getData(0x0).slice(0, 10)
-          ), 0)
-        )
-        .then(() => userFactory.setUserLibrary(newAddress, {from: caller}))
-        .then(helpers.assertExpectations(mock));
-    });
+          userFactory.contract.addAllowedRoles.getData([]).slice(0, 10)
+        ), 0
+      )
+      await userFactory.addAllowedRoles([10], { from: caller, })
+      await helpers.assertExpectations(mock)()
+    })
 
+    it("should check auth on removing allowed roles", async () => {
+      const caller = accounts[1];
+
+      await userFactory.setRoles2Library(Mock.address)
+      await mock.expect(
+        userFactory.address,
+        0,
+        roles2LibraryInterface.canCall.getData(
+          caller,
+          userFactory.address,
+          userFactory.contract.removeAllowedRoles.getData([]).slice(0, 10)
+        ), 0
+      )
+      await userFactory.removeAllowedRoles([10], { from: caller, })
+      await helpers.assertExpectations(mock)()
+    })
+
+    it("should add roles to allowed roles", async () => {
+      const caller = accounts[0]
+      const roles = [ 10,20, ]
+
+      await userFactory.setRoles2Library(Mock.address)
+      await mock.expect(
+        userFactory.address,
+        0,
+        roles2LibraryInterface.canCall.getData(
+          caller,
+          userFactory.address,
+          userFactory.contract.addAllowedRoles.getData([]).slice(0, 10)
+        ),
+        await mock.convertUIntToBytes32(1)
+      )
+      await userFactory.addAllowedRoles(roles, { from: caller, })
+      await helpers.assertExpectations(mock)()
+      assert.equal((await userFactory.getAllowedRoles.call()).toString(), roles.toString())
+    })
+
+    it("should remove roles from allowed roles", async () => {
+      const caller = accounts[0]
+      const ROLE1 = 10
+      const ROLE2 = 20
+      const roles = [ ROLE1, ROLE2, ]
+
+      await userFactory.setRoles2Library(Mock.address)
+      await mock.expect(
+        userFactory.address,
+        0,
+        roles2LibraryInterface.canCall.getData(
+          caller,
+          userFactory.address,
+          userFactory.contract.addAllowedRoles.getData([]).slice(0, 10)
+        ),
+        await mock.convertUIntToBytes32(1)
+      )
+      await userFactory.addAllowedRoles(roles, { from: caller, })
+      await mock.expect(
+        userFactory.address,
+        0,
+        roles2LibraryInterface.canCall.getData(
+          caller,
+          userFactory.address,
+          userFactory.contract.removeAllowedRoles.getData([]).slice(0, 10)
+        ),
+        await mock.convertUIntToBytes32(1)
+      )
+      await userFactory.removeAllowedRoles([ROLE1], { from: caller, })
+      await helpers.assertExpectations(mock)()
+      assert.equal((await userFactory.getAllowedRoles.call()).toString(), [ROLE2].toString())
+    })
   });
 
 
   describe("User creation", () => {
 
-    it('should check auth on user creation', () => {
+    it('should NOT check auth on user creation', async () => {
       const caller = accounts[1];
       const owner = accounts[2];
       const roles = [1, 2];
-      const areas = 333;
-      const categories = [1, 2, 3];
-      const skills = [4, 5, 6];
       const expectedSig = helpers.getSig(
-        "createUserWithProxyAndRecovery(address,address,uint8[],uint256,uint256[],uint256[])"
+        "createUserWithProxyAndRecovery(address,address,uint8[])"
       );
-      return Promise.resolve()
-        .then(() => userFactory.setRoles2Library(Mock.address))
-        .then(() => mock.expect(
+
+      await userFactory.setRoles2Library(Mock.address)
+      await mock.expect(
+        userFactory.address,
+        0,
+        roles2LibraryInterface.canCall.getData(
+          caller,
           userFactory.address,
-          0,
-          roles2LibraryInterface.canCall.getData(
-            caller,
-            userFactory.address,
-            expectedSig
-          ), 0)
+          expectedSig
+        ), 0
+      )
+      try {
+        await userFactory.createUserWithProxyAndRecovery(
+          owner, recovery, roles, {from: caller}
         )
-        .then(() => userFactory.createUserWithProxyAndRecovery(
-          owner, recovery, roles, areas, categories, skills, {from: caller}
-        ))
-        .then(helpers.assertExpectations(mock));
+      } catch (e) {}
+      assert.equal((await mock.expectationsLeft.call()).toNumber(), 1)
     });
 
-    it.skip('should THROW if failed to set roles', () => {
+    it('should THROW if failed to set roles', async () => {
       const caller = accounts[1];
       const owner = accounts[2];
       const roles = [1, 2];
-      const areas = 333;
-      const categories = [1, 2, 3];
-      const skills = [4, 5, 6];
-      return Promise.resolve()
-        .then(() => roles2Library.addUserSkill) // FIXME
-        .then(() => userFactory.setRoles2Library(roles2Library.address))
-        .then(() => asserts.throws(
-          userFactory.createUserWithProxyAndRecovery(
-            owner, recovery, roles, areas, categories, skills, {from: caller}
-        )));
+
+      await userFactory.setRoles2Library(roles2Library.address)
+      await asserts.throws(
+        userFactory.createUserWithProxyAndRecovery(owner, recovery, roles, { from: caller, })
+      )
     });
 
-    it('should THROW if failed to set skills'); // TODO
-
-    it('should create users with roles', () => {
+    it('should create users with roles', async () => {
       const owner = accounts[1];
       const roles = [1, 2];
-      const areas = 0;
-      const categories = [];
-      const skills = [];
-      return Promise.resolve()
-        .then(() => userFactory.createUserWithProxyAndRecovery(owner, recovery, roles, areas, categories, skills))
-        .then(tx => eventsHelper.extractEvents(tx, "UserCreated"))
-        .then(events => {
-          assert.equal(events.length, 1);
-          assert.equal(events[0].address, multiEventsHistory.address);
-          assert.equal(events[0].args.self, userFactory.address);
-          assert.equal(events[0].event, 'UserCreated');
-          assert.equal(events[0].args.owner, owner);
-          assert.equal(events[0].args.roles.length, 2);
-          assert.equal(events[0].args.areas.toString(), '0');
-          assert.equal(events[0].args.categories.length, 0);
-          assert.equal(events[0].args.skills.length, 0);
-          assert.equal(events[0].args.recoveryContract, recovery);
-          assert.notEqual(events[0].args.user, undefined);
-          assert.notEqual(events[0].args.proxy, undefined);
-        })
+
+      await userFactory.setRoles2Library(roles2Library.address)
+      await mock.expect(
+        userFactory.address,
+        0,
+        roles2LibraryInterface.canCall.getData(
+          accounts[0],
+          userFactory.address,
+          userFactory.contract.addAllowedRoles.getData([]).slice(0, 10)
+        ),
+        await mock.convertUIntToBytes32(1)
+      )
+      await userFactory.addAllowedRoles(roles, { from: accounts[0], })
+      const tx = await userFactory.createUserWithProxyAndRecovery(owner, recovery, roles)
+      const events = await eventsHelper.extractEvents(tx, "UserCreated")
+      assert.equal(events.length, 1);
+      assert.equal(events[0].address, multiEventsHistory.address);
+      assert.equal(events[0].args.self, userFactory.address);
+      assert.equal(events[0].event, 'UserCreated');
+      assert.equal(events[0].args.owner, owner);
+      assert.equal(events[0].args.roles.length, roles.length);
+      assert.equal(events[0].args.recoveryContract, recovery);
+      assert.isDefined(events[0].args.user);
+      assert.isDefined(events[0].args.proxy);
     });
 
-    it('should create users with skills', () => {
+    it.skip('should create users with skills', () => {
       const owner = accounts[1];
       const roles = [];
       const areas = 4;
@@ -178,7 +241,7 @@ contract('UserFactory', function(accounts) {
         })
     });
 
-    it('should create users with roles and skills', () => {
+    it.skip('should create users with roles and skills', () => {
       const owner = accounts[1];
       const roles = [1, 2];
       const areas = 4;
@@ -204,7 +267,7 @@ contract('UserFactory', function(accounts) {
         })
     });
 
-    it('should create users without roles and skills', () => {
+    it.skip('should create users without roles and skills', () => {
       const owner = accounts[1];
       return userFactory.createUserWithProxyAndRecovery(owner, recovery, [], 0, [], [])
         .then(tx => eventsHelper.extractEvents(tx, "UserCreated"))
@@ -226,7 +289,7 @@ contract('UserFactory', function(accounts) {
       const owner = accounts[1];
       let user;
       let proxy;
-      return userFactory.createUserWithProxyAndRecovery(owner, recovery, [], 0, [], [])
+      return userFactory.createUserWithProxyAndRecovery(owner, recovery, [])
         .then(tx => {
               return Promise.resolve()
               .then(() => User.at(tx.logs[0].args.user))
@@ -240,16 +303,23 @@ contract('UserFactory', function(accounts) {
         .then(result => assert.equal(result, user.address));
     });
 
-    it('should create multiple users', () => {
+    it('should create multiple users', async () => {
       const users = accounts.slice(2, 5);
       const roles = [1, 2, 3, 4, 5];
-      const areas = 0;
-      const categories = [1, 2, 3, 4, 5];
-      const skills = [1, 2, 3, 4, 5];
-      return Promise.each(users, u => {
-        return userFactory.createUserWithProxyAndRecovery(
-            u, recovery, roles, areas, categories, skills
-          )
+
+      await mock.expect(
+        userFactory.address,
+        0,
+        roles2LibraryInterface.canCall.getData(
+          accounts[0],
+          userFactory.address,
+          userFactory.contract.addAllowedRoles.getData([]).slice(0, 10)
+        ),
+        await mock.convertUIntToBytes32(1)
+      )
+      await userFactory.addAllowedRoles(roles, { from: accounts[0], })
+      await Promise.each(users, u => {
+        return userFactory.createUserWithProxyAndRecovery(u, recovery, roles)
           .then(helpers.assertLogs([{
             event: "UserCreated",
             args: {
@@ -259,30 +329,35 @@ contract('UserFactory', function(accounts) {
       })
     });
 
-    it('should create users with 250 roles', () => {
+    it.skip('should create users with 250 roles', async () => {
       // TODO: FIXME! does not work with truffle 4.0.0 / solidity 0.4.15 / testrpc 4.0.0+
-      // const owner = accounts[1];
-      // const areas = 1;
-      // const categories = [1];
-      // const skills = [1];
-      //
-      // const roles = [...Array(92).keys()].slice(1);
-      // return userFactory.createUserWithProxyAndRecovery(owner, recovery, roles, areas, categories, skills)
-      //   .then(helpers.assertLogs([{
-      //     address: multiEventsHistory.address,
-      //     event: "UserCreated",
-      //     args: {
-      //       owner: owner,
-      //       roles: roles,
-      //       areas: 1,
-      //       categories: categories,
-      //       skills: skills,
-      //       recoveryContract: recovery
-      //     }
-      //   }]))
+      const owner = accounts[1];      
+      const roles = [...Array(92).keys()].slice(1);
+
+      await mock.expect(
+        userFactory.address,
+        0,
+        roles2LibraryInterface.canCall.getData(
+          accounts[0],
+          userFactory.address,
+          userFactory.contract.addAllowedRoles.getData([]).slice(0, 10)
+        ),
+        await mock.convertUIntToBytes32(1)
+      )
+      await userFactory.addAllowedRoles(roles, { from: accounts[0], })
+      await userFactory.createUserWithProxyAndRecovery(owner, recovery, roles)
+        .then(helpers.assertLogs([{
+          address: multiEventsHistory.address,
+          event: "UserCreated",
+          args: {
+            owner: owner,
+            recoveryContract: recovery,
+            roles: roles,
+          }
+        }]))
     });
 
-    it('should create users with 250 categories', () => {
+    it.skip('should create users with 250 categories', () => {
       const owner = accounts[1];
       const roles = [1];
       const areas = 1;
@@ -305,7 +380,7 @@ contract('UserFactory', function(accounts) {
         }]))
     });
 
-    it('should create users with 250 skills', () => {
+    it.skip('should create users with 250 skills', () => {
       const owner = accounts[1];
       const roles = [1];
       const areas = 1;
