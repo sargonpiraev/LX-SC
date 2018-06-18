@@ -24,6 +24,7 @@ contract UserProxy is Owned {
         emit Received(msg.sender, msg.value);
     }
 
+    // TODO: need to add a possibility to forward callss with multisig requirement
     function forward(
         address _destination,
         bytes _data,
