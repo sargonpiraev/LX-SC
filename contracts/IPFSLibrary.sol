@@ -7,8 +7,8 @@ pragma solidity ^0.4.21;
 
 
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
 import "./adapters/MultiEventsHistoryAdapter.sol";
-import "./adapters/Roles2LibraryAdapter.sol";
 
 
 contract IPFSLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter {
@@ -17,7 +17,7 @@ contract IPFSLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
 
     StorageInterface.AddressBytes32Bytes32Mapping ipfsHashes;
 
-    function IPFSLibrary(
+    constructor(
         Storage _store,
         bytes32 _crate,
         address _roles2Library

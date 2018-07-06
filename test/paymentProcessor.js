@@ -7,7 +7,6 @@ const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol')
 const Roles2Library = artifacts.require('./Roles2Library.sol');
 
 const Asserts = require('./helpers/asserts');
-const Promise = require('bluebird');
 const Reverter = require('./helpers/reverter');
 const ErrorsNamespace = require('../common/errors')
 

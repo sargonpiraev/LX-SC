@@ -7,8 +7,8 @@ pragma solidity ^0.4.21;
 
 
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
 import "./adapters/MultiEventsHistoryAdapter.sol";
-import "./adapters/Roles2LibraryAdapter.sol";
 
 
 /**
@@ -67,7 +67,7 @@ contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
         return _flag & 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa == 0;
     }
 
-    function SkillsLibrary(
+    constructor(
         Storage _store, 
         bytes32 _crate, 
         address _roles2Library

@@ -6,8 +6,8 @@
 pragma solidity ^0.4.21;
 
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
 import "./adapters/MultiEventsHistoryAdapter.sol";
-import "./adapters/Roles2LibraryAdapter.sol";
 import "./libs/SafeMath.sol";
 
 
@@ -42,7 +42,7 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     StorageInterface.Address feeAddress;
     StorageInterface.UInt fees; // 10000 is 100%.
 
-    function PaymentGateway(
+    constructor(
         Storage _store,
         bytes32 _crate,
         address _roles2Library
