@@ -1,25 +1,20 @@
 const BoardController = artifacts.require('BoardController')
-const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const Mock = artifacts.require('./Mock.sol');
+const Owned = artifacts.require('Owned');
 const JobController = artifacts.require('./JobController.sol');
 const JobsDataProvider = artifacts.require('./JobsDataProvider.sol');
-const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
-const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
-const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Roles2Library = artifacts.require('./Roles2Library.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
-const UserFactory = artifacts.require('./UserFactory.sol');
+const UserFactory = artifacts.require('UserFactory');
 const Recovery = artifacts.require('./Recovery.sol');
-const User = artifacts.require('./User.sol');
+const UserInterface = artifacts.require('UserInterface');
+const UserBackendProvider = artifacts.require('UserBackendProvider');
 const RatingsAndReputationLibrary = artifacts.require('./RatingsAndReputationLibrary.sol');
 
-
-const Asserts = require('./helpers/asserts')
 const Reverter = require('./helpers/reverter')
 const eventsHelper = require('./helpers/eventsHelper')
 const helpers = require('./helpers/helpers')
-const Promise = require('bluebird')
 const ErrorsScope = require("../common/errors")
 
 contract('Integration tests (user stories)', (accounts) => {
@@ -128,8 +123,6 @@ contract('Integration tests (user stories)', (accounts) => {
     ]
 
     const setupJob = async (_job, _client = users.client, _depositBalance = 1000000000) => {
-        const roles = []
-
         const postJobTx = await contracts.jobController.postJob(_job.flow, _job.area, _job.category, _job.skills, _job.defaultPay, _job.details, { from: _client })
         const postJobEvent = (await eventsHelper.findEvent([contracts.jobController], postJobTx, "JobPosted"))[0]
 
@@ -171,13 +164,14 @@ contract('Integration tests (user stories)', (accounts) => {
 
     const setupBoardWithJobs = async (/*board = board, jobs = jobs*/) => {
         board.id = await setupBoard(board)
-
-        await Promise.each(jobs, async (job, idx) => {
+        
+        for (var i = 0; i < jobs.length; ++i) {
+            const job = jobs[i]
             let jobId = await setupJob(job)
-            jobs[idx].id = jobId
-
+            jobs[i].id = jobId
+            
             await bindJobWithBoard(jobId, board.id)
-        })
+        }
     }
 
     const cleanUpBoards = (/*board = board, jobs = jobs*/) => {
@@ -329,7 +323,9 @@ contract('Integration tests (user stories)', (accounts) => {
             before(async () => {
                 await setupBoardWithJobs()
                 job = jobs[0]
-                await Promise.each(workers, async (_worker) => await setupWorker(job, _worker))
+                for (const _worker of workers) {
+                    await setupWorker(job, _worker)
+                }
             })
 
             after(async () => {
@@ -658,25 +654,26 @@ contract('Integration tests (user stories)', (accounts) => {
                 const jobsCount = await contracts.jobsDataProvider.getJobsCount.call()
                 const jobsIds = [...Array.apply(null, { length: jobsCount }).keys()].map(id => id + 1);
 
-                await Promise.each(jobsIds, async (jobId) => {
+                for (const jobId of jobsIds) {
                     let jobSkillsArea = await contracts.jobsDataProvider.getJobSkillsArea.call(jobId)
                     let jobSkillsCategory = await contracts.jobsDataProvider.getJobSkillsCategory.call(jobId)
                     let jobSkills = await contracts.jobsDataProvider.getJobSkills.call(jobId)
                     let jobState = await contracts.jobsDataProvider.getJobState.call(jobId)
-
+    
                     if (jobState != JobState.CREATED) {
-                        return;
+                        continue
                     }
-
+    
                     if (jobSkillsArea != workerExpertise.area ||
                         jobSkillsCategory != workerExpertise.category ||
                         jobSkills != workerExpertise.skills)
                     {
-                        return;
+                        continue
                     }
-
+    
                     appropriateJobIds.push(jobId)
-                })
+                    
+                }
 
                 assert.notEqual(appropriateJobIds.length, 0)
             })
@@ -760,8 +757,8 @@ contract('Integration tests (user stories)', (accounts) => {
             it("should receive payment for the work", async () => {
                 await contracts.jobController.releasePayment(job.id, { from: users.default })
 
-                const afterPaymentWorkerBalance = (await contracts.paymentGateway.getBalance.call(users.worker)).toNumber()
-                assert.isAbove(afterPaymentWorkerBalance, initialWorkerBalance)
+                const afterPaymentWorkerBalance = await contracts.paymentGateway.getBalance.call(users.worker)
+                assert.notEqual(afterPaymentWorkerBalance.toString(16), initialWorkerBalance.toString(16))
 
                 //TODO: @ahiatsevich see unimplemented test below
                 //const initialEthBalance = web3.eth.getBalance(users.worker);
@@ -792,25 +789,26 @@ contract('Integration tests (user stories)', (accounts) => {
                 const jobsCount = await contracts.jobsDataProvider.getJobsCount.call()
                 const jobsIds = [...Array.apply(null, { length: jobsCount }).keys()].map(id => id + 1);
 
-                await Promise.each(jobsIds, async (jobId) => {
+                for (const jobId of jobsIds) {
                     const jobSkillsArea = await contracts.jobsDataProvider.getJobSkillsArea.call(jobId)
                     const jobSkillsCategory = await contracts.jobsDataProvider.getJobSkillsCategory.call(jobId)
                     const jobSkills = await contracts.jobsDataProvider.getJobSkills.call(jobId)
                     const jobState = await contracts.jobsDataProvider.getJobState.call(jobId)
-
+    
                     if (jobState != JobState.CREATED) {
-                        return;
+                        continue
                     }
-
+    
                     if (jobSkillsArea != workerExpertise.area ||
                         jobSkillsCategory != workerExpertise.category ||
                         jobSkills != workerExpertise.skills)
                     {
-                        return;
+                        continue
                     }
-
+    
                     appropriateJobIds.push(jobId)
-                })
+                    
+                }
 
                 assert.isAtLeast(appropriateJobIds.length, 2)
             })
@@ -1175,18 +1173,17 @@ contract('Integration tests (user stories)', (accounts) => {
         let userRecoveryAddress
         const userMainAddress = users.worker
         const userNewAddress = users.recovery
+        const oracle = users.moderator
         const userInfo = {
-            roles: [roles.worker,],
             areas: 4,
             categories: [1,],
             skills: [1,],
+            use2FA: false,
         }
         let userContract
 
         before(async () => {
             userRecoveryAddress = contracts.recovery.address
-
-            await contracts.userFactory.addAllowedRoles(userInfo.roles, { from: users.root, })
             
             const recoverData = contracts.recovery.contract.recoverUser.getData(0x0, 0x0)
             await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.recovery.address, recoverData, { from: users.contractOwner })
@@ -1201,7 +1198,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 assert.equal((await contracts.userFactory.createUserWithProxyAndRecovery.call(
                     userMainAddress,
                     userRecoveryAddress,
-                    userInfo.roles,
+                    userInfo.use2FA,
                     { from: users.default, }
                 )).toNumber(), ErrorsScope.OK)
             })
@@ -1210,13 +1207,15 @@ contract('Integration tests (user stories)', (accounts) => {
                 const tx = await contracts.userFactory.createUserWithProxyAndRecovery(
                     userMainAddress,
                     userRecoveryAddress,
-                    userInfo.roles,
+                    userInfo.use2FA,
                     { from: users.default, }
                 )
                 const userCreatedEvent = (await eventsHelper.findEvent([contracts.userFactory,], tx, "UserCreated"))[0]
                 assert.isDefined(userCreatedEvent)
 
-                userContract = await User.at(userCreatedEvent.args.user)
+                console.log(`### created user address ${userCreatedEvent.args.user}`)
+
+                userContract = UserInterface.at(userCreatedEvent.args.user)
             })
         })
 
@@ -1237,14 +1236,14 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("user should have new contract owner", async () => {
-                assert.equal(await userContract.contractOwner.call(), userNewAddress)
+                assert.equal(await Owned.at(userContract.address).contractOwner.call(), userNewAddress)
             })
         })
 
         describe("I want to change recovery address", async () => {
 
             it("new address is current user", async () => {
-                assert.equal(await userContract.contractOwner.call(), userNewAddress)
+                assert.equal(await Owned.at(userContract.address).contractOwner.call(), userNewAddress)
             })
 
             it("user should be able to change recovery address with OK code", async () => {
@@ -1271,7 +1270,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("should be able to recover by the new recovery address", async () => {
                 await userContract.recoverUser(userMainAddress, { from: users.moderator, })
-                assert.equal(await userContract.contractOwner.call(), userMainAddress)
+                assert.equal(await Owned.at(userContract.address).contractOwner.call(), userMainAddress)
             })
         })
     })

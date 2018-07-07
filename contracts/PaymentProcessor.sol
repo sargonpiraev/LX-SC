@@ -5,7 +5,8 @@
 
 pragma solidity ^0.4.18;
 
-import "./adapters/Roles2LibraryAdapter.sol";
+
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
 
 
 contract PaymentGatewayInterface {
@@ -39,7 +40,7 @@ contract PaymentProcessor is Roles2LibraryAdapter {
         }
     }
 
-    function PaymentProcessor(address _roles2Library) public Roles2LibraryAdapter(_roles2Library) {}
+    constructor(address _roles2Library) public Roles2LibraryAdapter(_roles2Library) {}
 
 
     // Only contract owner

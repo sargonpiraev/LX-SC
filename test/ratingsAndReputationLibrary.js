@@ -16,9 +16,7 @@ const BoardController = artifacts.require('./BoardController.sol');
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
 
-
 const Asserts = require('./helpers/asserts');
-const Promise = require('bluebird');
 const Reverter = require('./helpers/reverter');
 const eventsHelper = require('./helpers/eventsHelper');
 const helpers = require('./helpers/helpers')
@@ -34,8 +32,6 @@ contract('RatingsAndReputationLibrary', function(accounts) {
   const worker = accounts[2];
 
   const boardId = 1;
-  const boardName = 'Name';
-  const boardDescription = 'Description';
   const boardTags = 1;
   const boardArea = 1;
   const boardCategory = 1;
@@ -79,23 +75,18 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     return a.valueOf() === b.valueOf();
   };
 
-  const p = (...data) => {
-    console.log(...data);
-  }
-
   const setupJob = (_jobArea, _jobCategory, _jobSkills, _client=client, _worker=worker) => {
     let jobId;
     const jobArea = helpers.getFlag(_jobArea);
     const jobCategory = helpers.getFlag(_jobCategory);
     const jobSkills = _jobSkills;  // uint
 
-    const roles = [];
+    const use2FA = false;
     const recovery = "0xffffffffffffffffffffffffffffffffffffffff";
 
     return Promise.resolve()
     .then(() => ignoreSkillsCheck(true))
-    .then(() => userFactory.addAllowedRoles(roles))
-    .then(() => userFactory.createUserWithProxyAndRecovery(_worker, recovery, roles))
+    .then(() => userFactory.createUserWithProxyAndRecovery(_worker, recovery, use2FA))
     // .then(() => userLibrary.setMany(_worker, jobArea, [jobCategory], [jobSkills], { from: accounts[0], }))
     .then(() => jobController.postJob(
       jobFlow, jobArea, jobCategory, jobSkills, 4 /* default pay size */, "Job details", {from: _client}
@@ -246,14 +237,13 @@ contract('RatingsAndReputationLibrary', function(accounts) {
 
   describe('User rating', () => {
 
-    it('should NOT be able to set invalid user rating', () => {
+    it('should NOT be able to set invalid user rating', async () => {
       const ratings = [-1, 0, 11, 100500];
       const address = '0xffffffffffffffffffffffffffffffffffffffff';
-      return Promise.each(ratings, rating => {
-        return ratingsLibrary.setUserRating(address, rating, {from: SENDER})
-        .then(() => ratingsLibrary.getUserRating(SENDER, address))
-        .then(asserts.equal(0));
-      });
+      for (const rating of ratings) {
+        await ratingsLibrary.setUserRating(address, rating, {from: SENDER})
+        assert.equal((await ratingsLibrary.getUserRating(SENDER, address)).toNumber(), 0)
+      }
     });
 
     it('should have "RATING_AND_REPUTATION_INVALID_RATING" code when invalid user rating set', () => {
@@ -355,28 +345,27 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       });
     });
 
-    it('should set user rating from multiple accounts', () => {
+    it('should set user rating from multiple accounts', async () => {
       const raters = accounts.slice(1, 4);
       const rating = 5;
       const address = '0xffffffffffffffffffffffffffffffffffffffff';
-      return Promise.each(raters, r => {
-        return ratingsLibrary.setUserRating(address, rating, {from: r})
-        .then(() => ratingsLibrary.getUserRating(r, address))
-        .then(asserts.equal(5));
-      });
+
+      for (const r of raters) {
+        await ratingsLibrary.setUserRating(address, rating, {from: r})
+        assert.equal((await ratingsLibrary.getUserRating(r, address)).toNumber(), rating)
+      }
     });
 
   });
 
   describe('Board rating', () => {
 
-    it('should NOT be able to set invalid board rating', () => {
+    it('should NOT be able to set invalid board rating', async () => {
       const ratings = [-1, 0, 11, 100500];
-      return Promise.each(ratings, rating => {
-        return ratingsLibrary.setBoardRating(boardId, rating, {from: SENDER})
-        .then(() => ratingsLibrary.getBoardRating(SENDER, boardId))
-        .then(asserts.equal(0));
-      });
+      for (const rating of ratings) {
+        await ratingsLibrary.setBoardRating(boardId, rating, {from: SENDER})
+        assert.equal((await ratingsLibrary.getBoardRating(SENDER, boardId)).toNumber(), 0)
+      }
     });
 
     it('should have "BoardRatingGiven" event when invalid board rating set', () => {
@@ -480,26 +469,25 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       });
     });
 
-    it('should set board rating from multiple accounts', () => {
+    it('should set board rating from multiple accounts', async () => {
       const raters = accounts.slice(1, 4);
       const rating = 5;
-      return Promise.each(raters, r => {
-        return boardController.bindUserWithBoard(boardId, r)
-        .then(() => ratingsLibrary.setBoardRating(boardId, rating, {from: r}))
-        .then(() => ratingsLibrary.getBoardRating(r, boardId))
-        .then(asserts.equal(5));
-      });
+      for (const r of raters) {
+        await boardController.bindUserWithBoard(boardId, r)
+        await ratingsLibrary.setBoardRating(boardId, rating, {from: r})
+        assert.equal((await ratingsLibrary.getBoardRating(r, boardId)).toNumber(), rating)
+      }
     });
 
   });
 
   describe('Job rating', () => {
 
-    it('should NOT set invalid job rating', () => {
+    it('should NOT set invalid job rating', async () => {
       const ratings = [-1, 0, 11, 100500];
       const jobId = FINALIZED_JOB;
-      return Promise.each(ratings, rating => {
-        return Promise.resolve()
+      for (const rating of ratings) {
+        await Promise.resolve()
         .then(() => ratingsLibrary.setJobRating.call(worker, rating, jobId, {from: client}))
         .then(code => assert.equal(code.toNumber(), ErrorsNamespace.RATING_AND_REPUTATION_INVALID_RATING))
         .then(() => ratingsLibrary.setJobRating(worker, rating, jobId, {from: client}))
@@ -512,8 +500,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
           assert.equal(tx[1], 0);
           assert.equal(tx[0], 0);
         })
-        .then(() => helpers.assertExpectations(mock));
-      })
+        .then(() => helpers.assertExpectations(mock)); 
+      }
     });
 
     it("should NOT allow to rate a job if it's not at FINALIZED state", () => {
@@ -723,71 +711,66 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => jobsDataProvider.getJobState(jobId))
       .then(asserts.equal(JOB_STATES.FINISHED))  // Ensure all previous stage changes was successful
       .then(() => call(...args))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
-    });
-
-    it('should NOT allow to rate worker skills not from job client', () => {
-      const jobId = FINALIZED_JOB;
-      const area = helpers.getFlag(0);
-      const category = helpers.getFlag(0);
-      const skills = [1, 2, 4];
-      const ratings = [3, 7, 9];
-      return Promise.resolve()
-      .then(() => Promise.each(accounts.slice(2), account => {
-        return ratingsLibrary.rateWorkerSkills(
-          jobId, worker, area, category, skills, ratings, {from: account}
-        )
-        .then(() => Promise.each(skills, skill => {
-          return ratingsLibrary.getSkillRating(
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
             worker, area, category, skill, jobId
           )
-          .then(tx => {
-            assert.equal(tx[0], 0);
-            assert.equal(tx[1], 0);
-          });
-        }));
-      }));
+          assert.equal(who, 0);
+          assert.equal(rating, 0);  
+        }
+      })
     });
 
-    it('should NOT allow to rate worker skills not for job worker', () => {
+    it('should NOT allow to rate worker skills not from job client', async () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
       const category = helpers.getFlag(0);
       const skills = [1, 2, 4];
       const ratings = [3, 7, 9];
-      return Promise.resolve()
-      .then(() => Promise.each(accounts.slice(3), account => {
-        return ratingsLibrary.rateWorkerSkills(
+      
+      for (const account of accounts.slice(2)) {
+        await ratingsLibrary.rateWorkerSkills(
+          jobId, worker, area, category, skills, ratings, {from: account}
+        )
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      }
+    });
+
+    it('should NOT allow to rate worker skills not for job worker', async () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+
+      for (const account of accounts.slice(3)) {
+        await ratingsLibrary.rateWorkerSkills(
           jobId, account, area, category, skills, ratings, {from: client}
         )
-        .then(() => Promise.each(skills, skill => {
-          return ratingsLibrary.getSkillRating(
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
             account, area, category, skill, jobId
           )
-          .then(tx => {
-            assert.equal(tx[0], 0);
-            assert.equal(tx[1], 0);
-          });
-        }));
-      }))
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      }
+      
       // Ensure actual worker doesn't have skills rated
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
+      for (const skill of skills) {
+        const [ who, rating, ] = await ratingsLibrary.getSkillRating(
           worker, area, category, skill, jobId
         )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+        assert.equal(who, 0);
+        assert.equal(rating, 0);
+      }
     });
 
     it('should NOT allow to rate worker skills if a job was canceled on OFFER_ACCEPTED state', () => {
@@ -805,15 +788,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT allow to rate worker skills if a job was canceled on PENDING START state', () => {
@@ -832,15 +815,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT allow to set skills if they are already set', () => {
@@ -853,15 +836,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, (skill, i) => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], client);
-          assert.equal(tx[1], ratings[i]);
-        });
-      }))
+      .then(async () => {
+        for (var i = 0; i < skills.length; ++i) {
+          const skill = skills[i]
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, client);
+          assert.equal(rating, ratings[i]);
+        }
+      })
       .then(() => ratingsLibrary.rateWorkerSkills.call(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
@@ -882,15 +866,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, (skill, i) => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], client);
-          assert.equal(tx[1], ratings[i]);
-        });
-      }));
+      .then(async () => {
+        for (var i = 0; i < skills.length; ++i) {
+          const skill = skills[i]
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, client);
+          assert.equal(rating, ratings[i]);
+        }
+      })
     });
 
     it('should NOT rate worker skills with even flag job area', () => {
@@ -903,15 +888,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with multi-flag job area', () => {
@@ -924,15 +909,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with area that is unrelated to the given job', () => {
@@ -945,15 +930,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with even flag job category', () => {
@@ -966,15 +951,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with multi-flag job category', () => {
@@ -987,15 +972,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with category that is unrelated to the given job', () => {
@@ -1008,15 +993,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with multi-flag skill', () => {
@@ -1029,15 +1014,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => asserts.throws(ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       )))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with skill that is not unrelated to the given job', () => {
@@ -1050,15 +1035,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => asserts.throws(ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       )))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT set skill ratings that are more than 10', () => {
@@ -1071,15 +1056,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => asserts.throws(ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       )))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT set skill ratings that are less than 1', () => {
@@ -1092,15 +1077,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => asserts.throws(ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       )))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
 
@@ -1114,15 +1099,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, (skill, i) => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], client);
-          assert.equal(tx[1], ratings[i]);
-        });
-      }));
+      .then(async () => {
+        for (var i = 0; i < skills.length; ++i) {
+          const skill = skills[i]
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, client);
+          assert.equal(rating, ratings[i]);
+        }
+      })
     });
 
     it('should allow to rate worker skills on canceled job if it ended up with STARTED state', () => {
@@ -1142,15 +1128,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, (skill, i) => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], client);
-          assert.equal(tx[1], ratings[i]);
-        });
-      }));
+      .then(async () => {
+        for (var i = 0; i < skills.length; ++i) {
+          const skill = skills[i]
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, client);
+          assert.equal(rating, ratings[i]);
+        }
+      })
     });
 
     it('should allow to rate worker skills on canceled job if it ended up with PENDING_FINISH state', () => {
@@ -1171,15 +1158,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, (skill, i) => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], client);
-          assert.equal(tx[1], ratings[i]);
-        });
-      }));
+      .then(async () => {
+        for (var i = 0; i < skills.length; ++i) {
+          const skill = skills[i]
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, client);
+          assert.equal(rating, ratings[i]);
+        }
+      })
     });
 
     it('should emit "SkillRatingGiven" event on rate worker skills with valid parameters', () => {
@@ -1195,7 +1183,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => eventsHelper.extractEvents(tx, "SkillRatingGiven"))
       .then(events => {
         assert.equal(events.length, 3);
-        return Promise.each(skills, (skill, i) => {
+
+        for (var i = 0; i < skills.length; ++i) {
           assert.equal(events[i].event, "SkillRatingGiven");
           assert.equal(events[i].args.jobId, jobId);
           assert.equal(events[i].args.rater, client);
@@ -1203,8 +1192,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
           assert.equal(events[i].args.area.toString(), area.toString());
           assert.equal(events[i].args.category.toString(), category.toString());
           assert.equal(events[i].args.skill.toString(), skills[i].toString());
-          assert.equal(events[i].args.rating, ratings[i]);
-        });
+          assert.equal(events[i].args.rating, ratings[i]);         
+        }
       });
     });
 

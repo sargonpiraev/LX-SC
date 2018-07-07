@@ -7,8 +7,8 @@ pragma solidity ^0.4.21;
 
 
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
 import "./adapters/MultiEventsHistoryAdapter.sol";
-import "./adapters/Roles2LibraryAdapter.sol";
 import "./base/BitOps.sol";
 
 
@@ -158,7 +158,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
       _;
     }
 
-    function RatingsAndReputationLibrary(
+    constructor(
 		Storage _store, 
 		bytes32 _crate, 
 		address _roles2Library

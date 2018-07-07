@@ -6,20 +6,25 @@
 pragma solidity ^0.4.21;
 
 
-import "./User.sol";
-import "./adapters/Roles2LibraryAdapter.sol";
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
+import "solidity-user-lib/contracts/UserInterface.sol";
+import "solidity-shared-lib/contracts/Owned.sol";
 
 
 contract Recovery is Roles2LibraryAdapter {
 
     uint constant RECOVERY_SCOPE = 19000;
 
-    event UserRecovered(address prevUser, address newUser, User userContract);
+    event UserRecovered(address prevUser, address newUser, UserInterface userContract);
 
-    function Recovery(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {}
+    constructor(address _roles2Library) Roles2LibraryAdapter(_roles2Library) public {}
 
-    function recoverUser(User _userContract, address _newAddress) auth public returns (uint) {
-        address prev = _userContract.contractOwner();
+    function recoverUser(UserInterface _userContract, address _newAddress) 
+    auth 
+    public 
+    returns (uint) 
+    {
+        address prev = Owned(_userContract).contractOwner();
         if (OK != _userContract.recoverUser(_newAddress)) {
             revert();
         }

@@ -7,7 +7,7 @@ pragma solidity ^0.4.21;
 
 import "solidity-shared-lib/contracts/Owned.sol";
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
-import "./adapters/Roles2LibraryAdapter.sol";
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
 
 /**
 *  @title ContractsManager
@@ -27,7 +27,7 @@ contract ContractsManager is Owned, StorageAdapter, Roles2LibraryAdapter {
     /**
     *  @notice Constructor that sets `storage` and `crate` to given values.
     */
-    function ContractsManager(Storage _store, bytes32 _crate, address _roles2Library)
+    constructor(Storage _store, bytes32 _crate, address _roles2Library)
     public
     StorageAdapter(_store, _crate)
     Roles2LibraryAdapter(_roles2Library)

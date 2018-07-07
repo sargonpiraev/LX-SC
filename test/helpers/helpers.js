@@ -4,7 +4,6 @@ const Asserts = require('./asserts');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
 const asserts = Asserts(assert);
-const eventsHelper = require('./eventsHelper');
 
 Array.prototype.unique = function() {
   return this.filter(function (value, index, self) {

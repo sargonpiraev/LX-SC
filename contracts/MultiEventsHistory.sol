@@ -5,7 +5,8 @@
 
 pragma solidity ^0.4.18;
 
-import "./adapters/Roles2LibraryAdapter.sol";
+
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
 
 
 /**
@@ -21,7 +22,7 @@ contract MultiEventsHistory is Roles2LibraryAdapter {
     // Authorized calling contracts.
     mapping(address => bool) public isAuthorized;
 
-    function MultiEventsHistory(address _roles2Library) public Roles2LibraryAdapter(_roles2Library) {}
+    constructor(address _roles2Library) public Roles2LibraryAdapter(_roles2Library) {}
 
     /**
      * Authorize new caller contract.

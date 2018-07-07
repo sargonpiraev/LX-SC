@@ -14,7 +14,6 @@ const Storage = artifacts.require('./Storage.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
 
 const Asserts = require('./helpers/asserts');
-const Promise = require('bluebird');
 const Reverter = require('./helpers/reverter');
 const eventsHelper = require('./helpers/eventsHelper');
 
@@ -380,30 +379,30 @@ contract('JobController', function(accounts) {
         .then(asserts.equal(0));
     });
 
-    it('should allow anyone to post a job', () => {
-      return Promise.each(accounts, account => {
-        return jobController.postJob.call(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: account})
-          .then(jobId => assert.equal(jobId, 1));
-      });
+    it('should allow anyone to post a job', async () => {
+      for (const account of accounts) {
+        const jobId = await jobController.postJob.call(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: account})
+        assert.equal(jobId.toNumber(), 1) 
+      }
     });
 
-    it('should allow to post a job several times by different users', () => {
+    it('should allow to post a job several times by different users', async () => {
       const clients = accounts.slice(1, 4);
       const area = 1;
       const category = 4;
       const skills = 2;
       const args = [jobFlow, area, category, skills, jobDefaultPaySize, "Job details"];
-      return Promise.each(clients, c => {
-          return jobController.postJob(...args, {from: c})
-            .then(helpers.assertLogs([{
-              event: "JobPosted",
-              args: {
-                client: c
-              }
-            }]))
-        })
-        .then(() => jobsDataProvider.getJobsCount())
-        .then(asserts.equal(3));
+
+      for (const c of clients) {
+        const tx = await jobController.postJob(...args, {from: c})
+        helpers.assertLogs(tx, [{
+          event: "JobPosted",
+          args: {
+            client: c
+          }
+        }])
+      }
+      assert.equal((await jobsDataProvider.getJobsCount.call()).toNumber(), 3)
     });
 
   });
@@ -542,19 +541,19 @@ contract('JobController', function(accounts) {
         .then(() => jobController.postJob(
           jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}
         ))
-        .then(() => {
-          return Promise.each(workers, w => {
-            return jobController.postJobOffer(...args, {from: w})
-              .then(tx => helpers.assertLogs(tx, [{
-                address: multiEventsHistory.address,
-                event: "JobOfferPosted",
-                args: {
-                  self: jobController.address,
-                  jobId: jobId,
-                  worker: w
-                }
-              }]));
-          })
+        .then(async () => {
+          for (const w of workers) {
+            const tx = await jobController.postJobOffer(...args, {from: w})
+            helpers.assertLogs(tx, [{
+              address: multiEventsHistory.address,
+              event: "JobOfferPosted",
+              args: {
+                self: jobController.address,
+                jobId: jobId,
+                worker: w
+              }
+            }])
+          }
         });
     });
 
