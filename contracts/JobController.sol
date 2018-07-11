@@ -39,6 +39,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
     event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint price);
     event JobOfferAccepted(address indexed self, uint indexed jobId, address worker);
+    event StartWorkRequested(address indexed self, uint indexed jobId, uint at);
     event WorkStarted(address indexed self, uint indexed jobId, uint at);
     event TimeAdded(address indexed self, uint indexed jobId, uint time);  // Additional `time` in minutes
     event WorkPaused(address indexed self, uint indexed jobId, uint at);
@@ -435,6 +436,8 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     {
         store.set(jobPendingStartAt, _jobId, now);
         store.set(jobState, _jobId, JOB_STATE_PENDING_START);
+
+        JobController(getEventsHistory()).emitStartWorkRequested(_jobId, now);
         return OK;
     }
 
@@ -731,6 +734,10 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
 
     function emitJobOfferAccepted(uint _jobId, address _worker) public {
         emit JobOfferAccepted(_self(), _jobId, _worker);
+    }
+
+    function emitStartWorkRequested(uint _jobId, uint _at) public {
+        emit StartWorkRequested(_self(), _jobId, _at);
     }
 
     function emitWorkStarted(uint _jobId, uint _at) public {

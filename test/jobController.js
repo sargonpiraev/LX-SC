@@ -382,7 +382,7 @@ contract('JobController', function(accounts) {
     it('should allow anyone to post a job', async () => {
       for (const account of accounts) {
         const jobId = await jobController.postJob.call(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: account})
-        assert.equal(jobId.toNumber(), 1) 
+        assert.equal(jobId.toNumber(), 1)
       }
     });
 
@@ -1055,8 +1055,15 @@ contract('JobController', function(accounts) {
         })
         // Request start of work
         .then(() => jobController.startWork(jobId, {from: worker}))
-        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
-        .then(events => assert.equal(events.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "StartWorkRequested"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'StartWorkRequested');
+          const log = events[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), jobId);
+        })
         // Confirm start of work
         .then(() => jobController.confirmStartWork(jobId, {from: client}))
         .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
@@ -1196,8 +1203,15 @@ contract('JobController', function(accounts) {
         })
         // Request start of work
         .then(() => jobController.startWork(jobId, {from: worker}))
-        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
-        .then(events => assert.equal(events.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "StartWorkRequested"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'StartWorkRequested');
+          const log = events[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), jobId);
+        })
         // Confirm start of work
         .then(() => jobController.confirmStartWork(jobId, {from: client}))
         .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
